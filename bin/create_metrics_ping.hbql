@@ -1,0 +1,1 @@
+create 'metrics_ping', {NAME => 'ping', COMPRESSION => 'LZO', VERSIONS => '1', TTL => '2147483647', BLOCKSIZE => '65536', IN_MEMORY => 'false', BLOCKCACHE => 'true'}
