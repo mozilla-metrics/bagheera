@@ -2,6 +2,7 @@ package com.mozilla.bagheera.hazelcast.persistence;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -40,6 +41,12 @@ public class NoOpMapStore implements MapStore<String, String> {
 	@Override
 	public void deleteAll(Collection<String> keys) {
 		logger.info(String.format("storeAll called with %d entries", keys.size()));
+	}
+
+	@Override
+	public Set<String> loadAllKeys() {
+		logger.info("loadAllKeys called");
+		return null;
 	}
 
 }
