@@ -33,19 +33,29 @@
         <max-size>0</max-size>
         <eviction-percentage>25</eviction-percentage>
         <merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+        <!-- NoOpMapStore
         <map-store enabled="true">
             <class-name>com.mozilla.bagheera.hazelcast.persistence.NoOpMapStore</class-name>
             <write-delay-seconds>5</write-delay-seconds>
         </map-store>
-	    <!-- HBaseMapStore
+        -->
+        <!-- BerkeleyMapStore
+        <map-store enabled="true">
+            <class-name>com.mozilla.bagheera.hazelcast.persistence.BerkeleyMapStore</class-name>
+            <write-delay-seconds>5</write-delay-seconds>
+            <property name="bdb.home">/tmp/</property>
+        </map-store>
+        -->
+	    <!-- HBaseMapStore -->
         <map-store enabled="true">
             <class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
             <write-delay-seconds>5</write-delay-seconds>
-            <property name="hbase.cluster.distributed">true</property>
-            <property name="hbase.rootdir"></property>
+            <property name="hbase.cluster.distributed">false</property>
             <property name="hbase.zookeeper.quorum">localhost</property>
             <property name="zookeeper.znode.parent">/hbase</property>
+            <property name="hazelcast.hbase.pool.size">3</property>
+            <property name="hazelcast.hbase.table">bagheera</property>
+            <property name="hazelcast.hbase.column.family">json</property>
         </map-store>
-	    -->
     </map>
 </hazelcast>

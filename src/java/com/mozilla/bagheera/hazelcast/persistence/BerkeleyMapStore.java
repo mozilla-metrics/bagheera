@@ -17,20 +17,28 @@
 
 package com.mozilla.bagheera.hazelcast.persistence;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.MapLoaderLifecycleSupport;
-import com.hazelcast.core.MapStore;
-import com.hazelcast.impl.ThreadContext;
-import com.sleepycat.je.*;
-
 import java.io.File;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
-public class BerkeleyMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport {
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.MapLoaderLifecycleSupport;
+import com.hazelcast.core.MapStore;
+import com.hazelcast.impl.ThreadContext;
+import com.hazelcast.nio.DataSerializable;
+import com.sleepycat.je.Database;
+import com.sleepycat.je.DatabaseConfig;
+import com.sleepycat.je.DatabaseEntry;
+import com.sleepycat.je.Environment;
+import com.sleepycat.je.EnvironmentConfig;
+import com.sleepycat.je.OperationStatus;
+import com.sleepycat.je.Transaction;
+
+public class BerkeleyMapStore implements MapStore<String, DataSerializable>, MapLoaderLifecycleSupport {
 
     volatile Database db = null;
     final Logger logger = Logger.getLogger(this.getClass().getName());
@@ -40,7 +48,7 @@ public class BerkeleyMapStore implements MapStore<String, String>, MapLoaderLife
         EnvironmentConfig envConfig = new EnvironmentConfig();
         envConfig.setTransactional(true);
         envConfig.setAllowCreate(true);
-        Environment exampleEnv = new Environment(new File("/dev/shm"), envConfig);
+        Environment exampleEnv = new Environment(new File(properties.getProperty("bdb.home")), envConfig);
         Transaction txn = exampleEnv.beginTransaction(null, null);
         DatabaseConfig dbConfig = new DatabaseConfig();
         dbConfig.setTransactional(true);
@@ -58,17 +66,17 @@ public class BerkeleyMapStore implements MapStore<String, String>, MapLoaderLife
     }
 
     @Override
-    public void store(String key, String value) {
+    public void store(String key, DataSerializable value) {
         ThreadContext tc = ThreadContext.get();
         db.put(null, new DatabaseEntry(tc.toByteArray(key)), new DatabaseEntry(tc.toByteArray(value)));
     }
 
     @Override
-    public void storeAll(Map<String, String> entries) {
+    public void storeAll(Map<String, DataSerializable> entries) {
         logger.info(Thread.currentThread().getId() + ": Storing " + entries.size() + " entries ");
         long current = System.currentTimeMillis();
         ThreadContext tc = ThreadContext.get();
-        for (Map.Entry<String, String> entry : entries.entrySet()) {
+        for (Map.Entry<String, DataSerializable> entry : entries.entrySet()) {
             OperationStatus os = db.put(null, new DatabaseEntry(tc.toByteArray(entry.getKey())), new DatabaseEntry(tc.toByteArray(entry.getValue())));
             if(os != OperationStatus.SUCCESS) {
                 throw new RuntimeException("No Success");
@@ -81,21 +89,24 @@ public class BerkeleyMapStore implements MapStore<String, String>, MapLoaderLife
 
     @Override
     public void delete(String key) {
-        //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     public void deleteAll(Collection<String> keys) {
-        //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
-    public String load(String key) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public DataSerializable load(String key) {
+        return null;
     }
 
     @Override
-    public Map<String, String> loadAll(Collection<String> keys) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public Map<String, DataSerializable> loadAll(Collection<String> keys) {
+        return null;
     }
+
+	@Override
+	public Set<String> loadAllKeys() {
+		return null;
+	}
 }
