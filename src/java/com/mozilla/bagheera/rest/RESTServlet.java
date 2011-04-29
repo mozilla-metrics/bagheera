@@ -21,10 +21,13 @@ package com.mozilla.bagheera.rest;
 
 import java.io.IOException;
 
+import org.apache.commons.pool.impl.GenericObjectPool.Config;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.rest.Constants;
 import org.apache.hadoop.hbase.rest.metrics.RESTMetrics;
+
+import redis.clients.jedis.JedisPool;
 
 /**
  * Singleton class encapsulating global REST servlet state and functions.
@@ -34,7 +37,9 @@ public class RESTServlet implements Constants {
 	private static final int DEFAULT_POOL_SIZE = 10;
 	private static RESTServlet INSTANCE;
 	private final Configuration conf;
-	private final HTablePool pool;
+	private final Config jedisConf;
+	private final HTablePool tablePool;
+	private final JedisPool jedisPool;
 	private final RESTMetrics metrics = new RESTMetrics();
 
 	/**
@@ -51,9 +56,9 @@ public class RESTServlet implements Constants {
 	 * @return the RESTServlet singleton instance
 	 * @throws IOException
 	 */
-	public synchronized static RESTServlet getInstance(Configuration conf) throws IOException {
+	public synchronized static RESTServlet getInstance(Configuration conf, Config redisConf) throws IOException {
 		if (INSTANCE == null) {
-			INSTANCE = new RESTServlet(conf, DEFAULT_POOL_SIZE);
+			INSTANCE = new RESTServlet(conf, DEFAULT_POOL_SIZE, redisConf);
 		}
 		
 		return INSTANCE;
@@ -65,9 +70,9 @@ public class RESTServlet implements Constants {
 	 * @return
 	 * @throws IOException
 	 */
-	public synchronized static RESTServlet getInstance(Configuration conf, int poolSize) throws IOException {
+	public synchronized static RESTServlet getInstance(Configuration conf, int poolSize, Config redisConf) throws IOException {
 		if (INSTANCE == null) {
-			INSTANCE = new RESTServlet(conf, poolSize);
+			INSTANCE = new RESTServlet(conf, poolSize, redisConf);
 		}
 		
 		return INSTANCE;
@@ -75,6 +80,7 @@ public class RESTServlet implements Constants {
 
 	public synchronized static void stop() {
 		if (INSTANCE != null) {
+			INSTANCE.jedisPool.destroy();
 			INSTANCE = null;
 		}
 	}
@@ -86,19 +92,29 @@ public class RESTServlet implements Constants {
 	 * @param numThreads
 	 * @throws IOException
 	 */
-	private RESTServlet(Configuration conf, int poolSize) throws IOException {
+	private RESTServlet(Configuration conf, int poolSize, Config redisConf) throws IOException {
 		this.conf = conf;
-		this.pool = new HTablePool(conf, poolSize);
+		this.tablePool = new HTablePool(conf, poolSize);
+		this.jedisConf = redisConf;
+		this.jedisPool = new JedisPool(redisConf, "localhost");
 	}
 
 	public HTablePool getTablePool() {
-		return pool;
+		return tablePool;
 	}
 
 	public Configuration getConfiguration() {
 		return conf;
 	}
 
+	public JedisPool getJedisPool() {
+		return jedisPool;
+	}
+	
+	public Config getJedisConfig() {
+		return jedisConf;
+	}
+	
 	public RESTMetrics getMetrics() {
 		return metrics;
 	}

@@ -21,7 +21,16 @@ package com.mozilla.bagheera.rest;
 
 import java.io.IOException;
 
+import javax.ws.rs.core.CacheControl;
+
 public class ResourceBase {
+	
+	private static CacheControl cacheControl;
+	static {
+		cacheControl = new CacheControl();
+		cacheControl.setNoCache(true);
+		cacheControl.setNoTransform(false);
+	}
 	
 	protected RESTServlet servlet;
 

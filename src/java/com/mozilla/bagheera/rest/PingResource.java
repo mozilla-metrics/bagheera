@@ -28,7 +28,6 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
-import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -45,13 +44,6 @@ import com.mozilla.bagheera.util.IdUtil;
 public class PingResource extends ResourceBase {
 
 	private static final Logger LOG = Logger.getLogger(PingResource.class);
-
-	private static CacheControl cacheControl;
-	static {
-		cacheControl = new CacheControl();
-		cacheControl.setNoCache(true);
-		cacheControl.setNoTransform(false);
-	}
 	
 	private HTablePool pool;
 	private final byte[] family;
