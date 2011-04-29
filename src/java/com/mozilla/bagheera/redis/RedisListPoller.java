@@ -61,7 +61,7 @@ public class RedisListPoller {
 				
 				if (values.size() > 0) {
 					try {
-						hbaseDao.batchPut(values);
+						hbaseDao.putStringList(values);
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();

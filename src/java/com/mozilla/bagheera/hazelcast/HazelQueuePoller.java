@@ -51,7 +51,7 @@ public class HazelQueuePoller {
 					values.add(v);
 				}
 				try {
-					hbaseDao.batchPut(values);
+					hbaseDao.putStringList(values);
 				} catch (IOException e) {
 					// TODO: Log an error
 					// Something bad here so put these values back in the queue

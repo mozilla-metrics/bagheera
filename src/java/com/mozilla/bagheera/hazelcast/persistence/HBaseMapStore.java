@@ -19,21 +19,15 @@
  */
 package com.mozilla.bagheera.hazelcast.persistence;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTablePool;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
@@ -41,16 +35,14 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
 import com.hazelcast.impl.ascii.rest.RestValue;
+import com.mozilla.bagheera.dao.HBaseTableDao;
 
 public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLifecycleSupport {
 
     private static final Logger logger = Logger.getLogger(HBaseMapStore.class);
 	private HTablePool pool;
-	private byte[] tableName;
-	private byte[] family;
-	private byte[] qualifier;
-	private HTableInterface table;
-
+	private HBaseTableDao table;
+	
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
 		try {
 			Configuration conf = HBaseConfiguration.create();
@@ -60,19 +52,19 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 				}
 			}
 			int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-			tableName = Bytes.toBytes(properties.getProperty("hazelcast.hbase.table", "default"));
-			family = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.family", "json"));
+			String tableName = properties.getProperty("hazelcast.hbase.table", "default");
+			String family = properties.getProperty("hazelcast.hbase.column.family", "json");
 			String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
-			qualifier = columnQualifier == null ? HConstants.EMPTY_BYTE_ARRAY : Bytes.toBytes(columnQualifier);
+			String qualifier = columnQualifier == null ? "" : columnQualifier;
 			pool = new HTablePool(conf, hbasePoolSize);
-			table = pool.getTable(tableName);
+			table = new HBaseTableDao(pool, tableName, family, qualifier);
 		} catch (Exception e) {
 			logger.error("Error during init", e);
 		}
     }
 
     public void destroy() {
-		pool.putTable(table);
+		pool.closeTablePool(table.getTableName());
     }
 
 	@Override
@@ -95,10 +87,8 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 
 	@Override
 	public void store(String key, RestValue value) {
-		Put put = new Put(Bytes.toBytes(key));
-		put.add(family, qualifier, value.getValue());
 		try {
-			table.put(put);
+			table.put(Bytes.toBytes(key), value.getValue());
 		} catch (Exception e) {
 			logger.error("Error during put", e);
 		}
@@ -108,15 +98,13 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 	public void storeAll(Map<String, RestValue> pairs) {
         logger.info(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
         long current = System.currentTimeMillis();
-		List<Put> puts = new ArrayList<Put>(pairs.size());
-		for (Iterator<Entry<String, RestValue>> iterator = pairs.entrySet().iterator(); iterator.hasNext();) {
-			Entry<String, RestValue> entry = iterator.next();
-			Put put = new Put(Bytes.toBytes(entry.getKey()));
-			put.add(family, qualifier, entry.getValue().getValue());
-			puts.add(put);
+		Map<byte[], byte[]> byteMap = new HashMap<byte[], byte[]>();
+		for (Map.Entry<String, RestValue> p : pairs.entrySet()) {
+			byteMap.put(Bytes.toBytes(p.getKey()), p.getValue().getValue());
 		}
+
 		try {
-			table.put(puts);
+			table.putByteMap(byteMap);
 		} catch (Exception e) {
 			logger.error("Error during put", e);
 		}
