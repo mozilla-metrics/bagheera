@@ -49,7 +49,7 @@ public class HBaseTableDao {
 	public byte[] getTableName() {
 		return tableName;
 	}
-	
+
 	public void put(String value) throws IOException {
 		put(IdUtil.generateBucketizedId(), Bytes.toBytes(value));
 	}
@@ -57,7 +57,7 @@ public class HBaseTableDao {
 	public void put(String key, String value) throws IOException {
 		put(Bytes.toBytes(key), Bytes.toBytes(value));
 	}
-	
+
 	public void put(byte[] key, byte[] value) throws IOException {
 		HTableInterface table = null;
 		try {
@@ -92,7 +92,7 @@ public class HBaseTableDao {
 		}
 		putList(puts);
 	}
-	
+
 	public void putByteMap(Map<byte[], byte[]> values) throws IOException {
 		List<Put> puts = new ArrayList<Put>();
 		for (Map.Entry<byte[], byte[]> entry : values.entrySet()) {
@@ -102,11 +102,11 @@ public class HBaseTableDao {
 		}
 		putList(puts);
 	}
-	
+
 	public void putList(List<Put> puts) throws IOException {
 		HTable table = null;
 		try {
-			table = (HTable)pool.getTable(tableName);
+			table = (HTable) pool.getTable(tableName);
 			table.setAutoFlush(false);
 			table.put(puts);
 			table.flushCommits();

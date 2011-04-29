@@ -39,11 +39,11 @@ import com.mozilla.bagheera.dao.HBaseTableDao;
 
 public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLifecycleSupport {
 
-    private static final Logger logger = Logger.getLogger(HBaseMapStore.class);
+	private static final Logger logger = Logger.getLogger(HBaseMapStore.class);
 	private HTablePool pool;
 	private HBaseTableDao table;
-	
-    public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+
+	public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
 		try {
 			Configuration conf = HBaseConfiguration.create();
 			for (String name : properties.stringPropertyNames()) {
@@ -61,11 +61,11 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		} catch (Exception e) {
 			logger.error("Error during init", e);
 		}
-    }
+	}
 
-    public void destroy() {
+	public void destroy() {
 		pool.closeTablePool(table.getTableName());
-    }
+	}
 
 	@Override
 	public RestValue load(String key) {
@@ -96,8 +96,8 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 
 	@Override
 	public void storeAll(Map<String, RestValue> pairs) {
-        logger.info(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
-        long current = System.currentTimeMillis();
+		logger.info(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
+		long current = System.currentTimeMillis();
 		Map<byte[], byte[]> byteMap = new HashMap<byte[], byte[]>();
 		for (Map.Entry<String, RestValue> p : pairs.entrySet()) {
 			byteMap.put(Bytes.toBytes(p.getKey()), p.getValue().getValue());
@@ -108,7 +108,8 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		} catch (Exception e) {
 			logger.error("Error during put", e);
 		}
-        logger.info(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(), (System.currentTimeMillis() - current)));
+		logger.info(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
+				(System.currentTimeMillis() - current)));
 	}
 
 	@Override

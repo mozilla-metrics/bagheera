@@ -33,20 +33,21 @@ public class IdUtil {
 
 	public static final int DEFAULT_NUM_BUCKETS = Byte.MAX_VALUE;
 	public static final int HEX_BUCKETS = 16;
-	
+
 	public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyyMMdd");
 	private static final Random RAND = new Random();
-	
+
 	public static byte[] generateBucketizedId() throws IOException {
 		return byteBucketizeId(UUID.randomUUID().toString(), Calendar.getInstance().getTime());
 	}
-	
+
 	public static byte[] bucketizeId(String id) throws IOException {
 		return byteBucketizeId(id, Calendar.getInstance().getTime());
 	}
-	
+
 	/**
 	 * Takes a given id and prefixes it with a byte character and the date
+	 * 
 	 * @param id
 	 * @param d
 	 * @return
@@ -59,12 +60,13 @@ public class IdUtil {
 		baos.write(randByte);
 		baos.write(Bytes.toBytes(SDF.format(d)));
 		baos.write(Bytes.toBytes(id));
-		
+
 		return baos.toByteArray();
 	}
-	
+
 	/**
 	 * Takes a given id and prefixes it with a hex character and the date
+	 * 
 	 * @param id
 	 * @param d
 	 * @return
@@ -76,8 +78,8 @@ public class IdUtil {
 		baos.write(Bytes.toBytes(Integer.toHexString(bucket)));
 		baos.write(Bytes.toBytes(SDF.format(d)));
 		baos.write(Bytes.toBytes(id));
-		
+
 		return baos.toByteArray();
 	}
-	
+
 }
