@@ -22,6 +22,7 @@ package com.mozilla.bagheera.rest;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -32,12 +33,11 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.impl.ascii.rest.RestValue;
 import com.mozilla.bagheera.util.IdUtil;
 
 @Path("/ping")
@@ -45,62 +45,21 @@ public class PingResource extends ResourceBase {
 
 	private static final Logger LOG = Logger.getLogger(PingResource.class);
 	
-	private HTablePool pool;
-	private final byte[] family;
-	private final byte[] qualifier;
-	
 	public PingResource() throws IOException {
 		super();
-		pool = servlet.getTablePool();
-		family = Bytes.toBytes("ping");
-		qualifier = Bytes.toBytes("json");
 	}
 	
 	@POST
 	@Path("{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response ping(@PathParam("name") String name, @Context HttpServletRequest request) throws IOException {
-		servlet.getMetrics().incrementRequests(1);
-		// Get the specified table
-		HTableInterface table = pool.getTable(name);
-		if (table == null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Table name was not found: name=" + name);
-			}
-			return Response.status(Response.Status.NOT_FOUND).build();
-		}
-		
-		// Read in the JSON data straight from the request
-		// TODO: Should we consider using a model or not here?
-		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
-		String line = null;
-		StringBuilder sb = new StringBuilder();
-		while ((line = reader.readLine()) != null) {
-			sb.append(line);
-		}
-		
-		// Put the value into HBase
-		Put p = new Put(IdUtil.generateBucketizedId());
-		p.add(family, qualifier, Bytes.toBytes(sb.toString()));
-		table.put(p);
-		
-		return Response.ok().build();
+	public Response mapPut(@PathParam("name") String name, @Context HttpServletRequest request) throws IOException {	
+		return mapPut(name, new String(IdUtil.generateBucketizedId()), request);
 	}
 	
 	@POST
 	@Path("{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response ping(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
-		servlet.getMetrics().incrementRequests(1);
-		// Get the specified table
-		HTableInterface table = pool.getTable(name);
-		if (table == null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Table name was not found: name=" + name);
-			}
-			return Response.status(Response.Status.NOT_FOUND).build();
-		}
-		
+	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
 		// Read in the JSON data straight from the request
 		// TODO: Should we consider using a model or not here?
 		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
@@ -109,11 +68,11 @@ public class PingResource extends ResourceBase {
 		while ((line = reader.readLine()) != null) {
 			sb.append(line);
 		}
-		
-		// Put the value into HBase
-		Put p = new Put(IdUtil.bucketizeId(id));
-		p.add(family, qualifier, Bytes.toBytes(sb.toString()));
-		table.put(p);
+
+		Map<String,RestValue> m = Hazelcast.getMap(name);
+		RestValue rv = new RestValue();
+		rv.setValue(Bytes.toBytes(sb.toString()));
+		m.put(id, rv);
 		
 		return Response.ok().build();
 	}

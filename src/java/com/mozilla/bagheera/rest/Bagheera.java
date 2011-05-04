@@ -24,7 +24,6 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.apache.commons.pool.impl.GenericObjectPool.Config;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 public class Bagheera {
@@ -34,7 +33,7 @@ public class Bagheera {
 		
 		// Call this here to initialize it once
 		int hbasePoolSize = Integer.parseInt(System.getProperty("hbase.pool.size", "10"));
-		RESTServlet servlet = RESTServlet.getInstance(conf, hbasePoolSize, new Config());
+		RESTServlet servlet = RESTServlet.getInstance(conf, hbasePoolSize);
 		    
 		int port = Integer.parseInt(System.getProperty("server.port", "8080"));
 		Server server = new Server(port);

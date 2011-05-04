@@ -14,6 +14,7 @@ HADOOP_CONF_PATH=/etc/hadoop/conf
 HBASE_CONF_PATH=/etc/hbase/conf
 
 CLASSPATH=$MAIN_JAR:$HADOOP_CONF_PATH:$HBASE_CONF_PATH
+JAVA_OPTS="-Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
 
 for lib in `ls lib/*.jar`;
 do
@@ -22,4 +23,4 @@ done
 
 echo $CLASSPATH
 
-java -Dhazelcast.config=$HAZELCAST_CONFIG -cp $CLASSPATH $SERVER_CLASS_NAME
+java -Dhazelcast.config=$HAZELCAST_CONFIG $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
