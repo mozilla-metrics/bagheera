@@ -1,15 +1,15 @@
 #!/bin/bash
 
 function usage() {
-  echo "Usage: $0 <jar>"
+  echo "Usage: $0 <jar> <hazelcast-config-path>"
 }
 
 # Print usage if incorrect number of args
-[[ $# -ne 1 ]] && usage
+[[ $# -ne 2 ]] && usage
 
 MAIN_JAR=$1
-SERVER_PORT=$2
-SERVER_CLASS_NAME="com.mozilla.bagheera.redis.RedisListPoller"
+HAZELCAST_CONFIG=$2
+SERVER_CLASS_NAME="com.mozilla.bagheera.hazelcast.HazelQueuePoller"
 HADOOP_CONF_PATH=/etc/hadoop/conf
 HBASE_CONF_PATH=/etc/hbase/conf
 
@@ -22,4 +22,4 @@ done
 
 echo $CLASSPATH
 
-java -cp $CLASSPATH $SERVER_CLASS_NAME
+java -Dhazelcast.super.client=true -Dhazelcast.config=$HAZELCAST_CONFIG -cp $CLASSPATH $SERVER_CLASS_NAME

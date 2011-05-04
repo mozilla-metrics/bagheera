@@ -20,8 +20,10 @@
 package com.mozilla.bagheera.redis;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -36,6 +38,8 @@ public class RedisListPoller {
 	private static final int DEFAULT_HBASE_BATCH_PUT_SIZE = 100;
 	private static final int DEFAULT_REDIS_TIMEOUT = 5000;
 	private static final int DEFAULT_SLEEP_TIMEOUT = 5000;
+	private static final String VALUE_DELIMITER = "\u0001";
+	private static final Pattern VALUE_DELIMITER_PATTERN = Pattern.compile(VALUE_DELIMITER);
 	
 	private HBaseTableDao hbaseDao;
 	private Jedis jedis;
@@ -50,24 +54,26 @@ public class RedisListPoller {
 	public void run() throws IOException {
 		try {
 			while(true) {
-				List<String> values = new ArrayList<String>();
+				Map<String,String> values = new HashMap<String,String>();
 				long redis_size = jedis.llen(this.listName);
 				long batch_size = redis_size > DEFAULT_HBASE_BATCH_PUT_SIZE ? DEFAULT_HBASE_BATCH_PUT_SIZE : redis_size;
 				for (long i=0; i < batch_size; i++) {
 					List<String> results = jedis.blpop(DEFAULT_REDIS_TIMEOUT, this.listName);
-					values.add(results.get(1));
-					hbaseDao.put(results.get(1));
+					if (results != null && results.size() > 0) {
+						String[] splits = VALUE_DELIMITER_PATTERN.split(results.get(1));
+						values.put(splits[0], splits[1]);
+					}
 				}
 				
 				if (values.size() > 0) {
 					try {
-						hbaseDao.putStringList(values);
+						hbaseDao.putStringMap(values);
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 						// Something bad here so put these values back in the queue
-						for (String v : values) {
-							jedis.lpush(this.listName, v);
+						for (Map.Entry<String, String> v : values.entrySet()) {
+							jedis.lpush(this.listName, v.getKey() + VALUE_DELIMITER + v.getValue());
 						}
 						
 						throw e;

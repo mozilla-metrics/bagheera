@@ -47,7 +47,8 @@ import redis.clients.jedis.JedisPool;
 public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 
 	private HttpRequest request;
-	private static final Pattern uriPattern = Pattern.compile("/redis/(.+)");
+	private static final Pattern uriPattern = Pattern.compile("/redis/(.+)/(.+)");
+	private static final String VALUE_DELIMITER = "\u0001";
 	private JedisPool jedisPool;
 	
 	public HttpRequestHandler(JedisPool jedisPool) {
@@ -60,13 +61,17 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 
 			Matcher uriMatcher = uriPattern.matcher(request.getUri());
 			HttpResponseStatus status = HttpResponseStatus.NOT_FOUND;
-			if (uriMatcher.find() && uriMatcher.groupCount() > 0) {
+			if (uriMatcher.find() && uriMatcher.groupCount() == 2) {
 				String listName = uriMatcher.group(1);
+				String id = uriMatcher.group(2);
 				ChannelBuffer content = request.getContent();
 				if (content.readable()) {
+					StringBuilder sb = new StringBuilder(id);
+					sb.append(VALUE_DELIMITER);
+					sb.append(content.toString(CharsetUtil.UTF_8));
 					Jedis jedis = jedisPool.getResource();
 					try {
-						jedis.rpush(listName, content.toString(CharsetUtil.UTF_8));
+						jedis.rpush(listName, sb.toString());
 						status = HttpResponseStatus.OK;
 					} finally {
 						jedisPool.returnResource(jedis);

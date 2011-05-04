@@ -50,6 +50,14 @@ public class HBaseTableDao {
 		return tableName;
 	}
 
+	public byte[] getColumnFamily() {
+		return family;
+	}
+	
+	public byte[] getColumnQualifier() {
+		return qualifier;
+	}
+	
 	public void put(String value) throws IOException {
 		put(IdUtil.generateBucketizedId(), Bytes.toBytes(value));
 	}

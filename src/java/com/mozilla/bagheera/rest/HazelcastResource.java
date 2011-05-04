@@ -22,6 +22,8 @@ package com.mozilla.bagheera.rest;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -31,37 +33,49 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.UUID;
+
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.impl.ascii.rest.RestValue;
 
-@Path("/redis")
-public class RedisListResource extends ResourceBase {
+@Path("/hazelcast")
+public class HazelcastResource extends ResourceBase {
 
-	private static final Logger LOG = Logger.getLogger(RedisListResource.class);
+	private static final Logger LOG = Logger.getLogger(HazelcastResource.class);
 	private static final String VALUE_DELIMITER = "\u0001";
-	
-	private JedisPool jedisPool;
-	
-	public RedisListResource() throws IOException {
+
+	public HazelcastResource() throws IOException {
 		super();
-		jedisPool = servlet.getJedisPool();
 	}
-	
+
 	@POST
-	@Path("{name}")
+	@Path("map/{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response ping(@PathParam("name") String name, @Context HttpServletRequest request) throws IOException {
-		return ping(name, UUID.randomUUID().toString(), request);
-	}
-	
-	@POST
-	@Path("{name}/{id}")
-	@Consumes(MediaType.APPLICATION_JSON)
-	public Response ping(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
+	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
+		// Read in the JSON data straight from the request
+		// TODO: Should we consider using a model or not here?
+		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
+		String line = null;
+		StringBuilder sb = new StringBuilder();
+		while ((line = reader.readLine()) != null) {
+			sb.append(line);
+		}
+
+		Map<String,RestValue> m = Hazelcast.getMap(name);
+		RestValue rv = new RestValue();
+		rv.setValue(Bytes.toBytes(sb.toString()));
+		m.put(id, rv);
 		
+		return Response.ok().build();
+	}
+	
+
+	@POST
+	@Path("queue/{name}/{id}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response queuePut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
 		// Read in the JSON data straight from the request
 		// TODO: Should we consider using a model or not here?
 		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
@@ -71,12 +85,13 @@ public class RedisListResource extends ResourceBase {
 		while ((line = reader.readLine()) != null) {
 			sb.append(line);
 		}
-		
-		Jedis jedis = jedisPool.getResource();
+
+		BlockingQueue<String> q = Hazelcast.getQueue(name);
 		try {
-			jedis.rpush(name, sb.toString());
-		} finally {
-			jedisPool.returnResource(jedis);
+			q.put(sb.toString());
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		
 		return Response.ok().build();

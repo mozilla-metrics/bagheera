@@ -21,7 +21,6 @@ import java.io.File;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -40,73 +39,68 @@ import com.sleepycat.je.Transaction;
 
 public class BerkeleyMapStore implements MapStore<String, DataSerializable>, MapLoaderLifecycleSupport {
 
-    volatile Database db = null;
-    final Logger logger = Logger.getLogger(this.getClass().getName());
-
-    @Override
-    public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
-        EnvironmentConfig envConfig = new EnvironmentConfig();
-        envConfig.setTransactional(true);
-        envConfig.setAllowCreate(true);
-        Environment exampleEnv = new Environment(new File(properties.getProperty("bdb.home")), envConfig);
-        Transaction txn = exampleEnv.beginTransaction(null, null);
-        DatabaseConfig dbConfig = new DatabaseConfig();
-        dbConfig.setTransactional(true);
-        dbConfig.setAllowCreate(true);
-        dbConfig.setSortedDuplicates(true);
-        db = exampleEnv.openDatabase(txn,
-                "/" + mapName,
-                dbConfig);
-        txn.commit();
-    }
-
-    @Override
-    public void destroy() {
-        db.close();
-    }
-
-    @Override
-    public void store(String key, DataSerializable value) {
-        ThreadContext tc = ThreadContext.get();
-        db.put(null, new DatabaseEntry(tc.toByteArray(key)), new DatabaseEntry(tc.toByteArray(value)));
-    }
-
-    @Override
-    public void storeAll(Map<String, DataSerializable> entries) {
-        logger.info(Thread.currentThread().getId() + ": Storing " + entries.size() + " entries ");
-        long current = System.currentTimeMillis();
-        ThreadContext tc = ThreadContext.get();
-        for (Map.Entry<String, DataSerializable> entry : entries.entrySet()) {
-            OperationStatus os = db.put(null, new DatabaseEntry(tc.toByteArray(entry.getKey())), new DatabaseEntry(tc.toByteArray(entry.getValue())));
-            if(os != OperationStatus.SUCCESS) {
-                throw new RuntimeException("No Success");
-
-
-            }
-        }
-        logger.info(Thread.currentThread().getId() + ": Stored " + entries.size() + " entries in " + (System.currentTimeMillis() - current) + " ms");
-    }
-
-    @Override
-    public void delete(String key) {
-    }
-
-    @Override
-    public void deleteAll(Collection<String> keys) {
-    }
-
-    @Override
-    public DataSerializable load(String key) {
-        return null;
-    }
-
-    @Override
-    public Map<String, DataSerializable> loadAll(Collection<String> keys) {
-        return null;
-    }
+	private static final Logger logger = Logger.getLogger(BerkeleyMapStore.class);
+	volatile Database db = null;
 
 	@Override
-	public Set<String> loadAllKeys() {
+	public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+		EnvironmentConfig envConfig = new EnvironmentConfig();
+		envConfig.setTransactional(true);
+		envConfig.setAllowCreate(true);
+		Environment exampleEnv = new Environment(new File(properties.getProperty("bdb.home")), envConfig);
+		Transaction txn = exampleEnv.beginTransaction(null, null);
+		DatabaseConfig dbConfig = new DatabaseConfig();
+		dbConfig.setTransactional(true);
+		dbConfig.setAllowCreate(true);
+		dbConfig.setSortedDuplicates(true);
+		db = exampleEnv.openDatabase(txn, "/" + mapName, dbConfig);
+		txn.commit();
+	}
+
+	@Override
+	public void destroy() {
+		db.close();
+	}
+
+	@Override
+	public void store(String key, DataSerializable value) {
+		ThreadContext tc = ThreadContext.get();
+		db.put(null, new DatabaseEntry(tc.toByteArray(key)), new DatabaseEntry(tc.toByteArray(value)));
+	}
+
+	@Override
+	public void storeAll(Map<String, DataSerializable> entries) {
+		logger.info(Thread.currentThread().getId() + ": Storing " + entries.size() + " entries ");
+		long current = System.currentTimeMillis();
+		ThreadContext tc = ThreadContext.get();
+		for (Map.Entry<String, DataSerializable> entry : entries.entrySet()) {
+			OperationStatus os = db.put(null, new DatabaseEntry(tc.toByteArray(entry.getKey())),
+					new DatabaseEntry(tc.toByteArray(entry.getValue())));
+			if (os != OperationStatus.SUCCESS) {
+				throw new RuntimeException("No Success");
+
+			}
+		}
+		logger.info(Thread.currentThread().getId() + ": Stored " + entries.size() + " entries in "
+				+ (System.currentTimeMillis() - current) + " ms");
+	}
+
+	@Override
+	public void delete(String key) {
+	}
+
+	@Override
+	public void deleteAll(Collection<String> keys) {
+	}
+
+	@Override
+	public DataSerializable load(String key) {
 		return null;
 	}
+
+	@Override
+	public Map<String, DataSerializable> loadAll(Collection<String> keys) {
+		return null;
+	}
+
 }

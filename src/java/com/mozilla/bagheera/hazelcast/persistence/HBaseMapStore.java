@@ -19,15 +19,17 @@
  */
 package com.mozilla.bagheera.hazelcast.persistence;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
@@ -39,7 +41,7 @@ import com.mozilla.bagheera.dao.HBaseTableDao;
 
 public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLifecycleSupport {
 
-	private static final Logger logger = Logger.getLogger(HBaseMapStore.class);
+	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 	private HTablePool pool;
 	private HBaseTableDao table;
 
@@ -59,7 +61,7 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 			pool = new HTablePool(conf, hbasePoolSize);
 			table = new HBaseTableDao(pool, tableName, family, qualifier);
 		} catch (Exception e) {
-			logger.error("Error during init", e);
+			LOG.error("Error during init", e);
 		}
 	}
 
@@ -90,30 +92,35 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		try {
 			table.put(Bytes.toBytes(key), value.getValue());
 		} catch (Exception e) {
-			logger.error("Error during put", e);
+			LOG.error("Error during put", e);
 		}
 	}
 
 	@Override
 	public void storeAll(Map<String, RestValue> pairs) {
-		logger.info(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
+		if (LOG.isDebugEnabled()) {
+			LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
+		}
+		
 		long current = System.currentTimeMillis();
-		Map<byte[], byte[]> byteMap = new HashMap<byte[], byte[]>();
-		for (Map.Entry<String, RestValue> p : pairs.entrySet()) {
-			byteMap.put(Bytes.toBytes(p.getKey()), p.getValue().getValue());
+		List<Put> puts = new ArrayList<Put>();
+		for (Map.Entry<String, RestValue> pair : pairs.entrySet()) {
+			//byteMap.put(Bytes.toBytes(p.getKey()), p.getValue().getValue());
+			Put p = new Put(Bytes.toBytes(pair.getKey()));
+			p.add(table.getColumnFamily(), table.getColumnQualifier(), pair.getValue().getValue());
+			puts.add(p);
 		}
 
 		try {
-			table.putByteMap(byteMap);
-		} catch (Exception e) {
-			logger.error("Error during put", e);
+			table.putList(puts);
+		} catch (IOException e) {
+			LOG.error("Error during put", e);
 		}
-		logger.info(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
+		
+		if (LOG.isDebugEnabled()) {
+			LOG.info(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
 				(System.currentTimeMillis() - current)));
+		}
 	}
 
-	@Override
-	public Set<String> loadAllKeys() {
-		return null;
-	}
 }

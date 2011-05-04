@@ -20,10 +20,10 @@
 package com.mozilla.bagheera.hazelcast;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -34,6 +34,10 @@ import com.mozilla.bagheera.dao.HBaseTableDao;
 
 public class HazelQueuePoller {
 
+	private static final int DEFAULT_HBASE_BATCH_PUT_SIZE = 100;
+	private static final int DEFAULT_SLEEP_TIMEOUT = 5000;
+	private static final String VALUE_DELIMITER = "\u0001";
+	private static final Pattern VALUE_DELIMITER_PATTERN = Pattern.compile(VALUE_DELIMITER);
 	private BlockingQueue<String> queue;
 	private HBaseTableDao hbaseDao;
 	
@@ -42,23 +46,40 @@ public class HazelQueuePoller {
 		this.hbaseDao = hbaseDao;
 	}
 	
-	public void run() {
+	public void run() throws IOException {		
 		try {
 			while(true) {
-				List<String> values = new ArrayList<String>();
-				for (int i=0; i < 100 && queue.size() > 0; i++) {
-					String v = queue.poll(5, TimeUnit.SECONDS);
-					values.add(v);
-				}
-				try {
-					hbaseDao.putStringList(values);
-				} catch (IOException e) {
-					// TODO: Log an error
-					// Something bad here so put these values back in the queue
-					for (String v : values) {
-						queue.put(v);
+				Map<String,String> values = new HashMap<String,String>();
+				long qsize = queue.size();
+				long batch_size = qsize > DEFAULT_HBASE_BATCH_PUT_SIZE ? DEFAULT_HBASE_BATCH_PUT_SIZE : qsize;
+				for (long i=0; i < batch_size; i++) {
+					String item = queue.poll();
+					if (item == null) {
+						break;
 					}
+					
+					String[] splits = VALUE_DELIMITER_PATTERN.split(item);
+					values.put(splits[0], splits[1]);
 				}
+				
+				if (values.size() > 0) {
+					try {
+						hbaseDao.putStringMap(values);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						// Something bad here so put these values back in the queue
+						for (Map.Entry<String, String> v : values.entrySet()) {
+							this.queue.put(v.getKey() + VALUE_DELIMITER + v.getValue());
+						}
+						
+						throw e;
+					}
+				} else {
+					Thread.sleep(DEFAULT_SLEEP_TIMEOUT);
+				}
+				
+				System.out.println("metrics_ping list size: " + queue.size());
 			}
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
@@ -66,7 +87,7 @@ public class HazelQueuePoller {
 		}
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		Configuration conf = HBaseConfiguration.create();
 		String tableName = "metrics_ping";
 		int hbasePoolSize = Integer.parseInt(System.getProperty("hbase.pool.size", "10"));
