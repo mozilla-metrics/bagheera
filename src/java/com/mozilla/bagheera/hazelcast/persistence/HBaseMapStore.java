@@ -42,27 +42,26 @@ import com.mozilla.bagheera.dao.HBaseTableDao;
 public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLifecycleSupport {
 
 	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
+	
 	private HTablePool pool;
 	private HBaseTableDao table;
 
 	public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
-		try {
-			Configuration conf = HBaseConfiguration.create();
-			for (String name : properties.stringPropertyNames()) {
-				if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
-					conf.set(name, properties.getProperty(name));
-				}
+		Configuration conf = HBaseConfiguration.create();
+		for (String name : properties.stringPropertyNames()) {
+			if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
+				conf.set(name, properties.getProperty(name));
 			}
-			int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-			String tableName = properties.getProperty("hazelcast.hbase.table", "default");
-			String family = properties.getProperty("hazelcast.hbase.column.family", "json");
-			String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
-			String qualifier = columnQualifier == null ? "" : columnQualifier;
-			pool = new HTablePool(conf, hbasePoolSize);
-			table = new HBaseTableDao(pool, tableName, family, qualifier);
-		} catch (Exception e) {
-			LOG.error("Error during init", e);
 		}
+		
+		int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
+		String tableName = properties.getProperty("hazelcast.hbase.table", "default");
+		String family = properties.getProperty("hazelcast.hbase.column.family", "json");
+		String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
+		String qualifier = columnQualifier == null ? "" : columnQualifier;
+		
+		pool = new HTablePool(conf, hbasePoolSize);
+		table = new HBaseTableDao(pool, tableName, family, qualifier);
 	}
 
 	public void destroy() {
@@ -91,7 +90,7 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 	public void store(String key, RestValue value) {
 		try {
 			table.put(Bytes.toBytes(key), value.getValue());
-		} catch (Exception e) {
+		} catch (IOException e) {
 			LOG.error("Error during put", e);
 		}
 	}
