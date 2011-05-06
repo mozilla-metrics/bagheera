@@ -54,4 +54,32 @@
 		</jar>
 	</target>
 	
+	<target name="deploy" depends="jar">
+		<exec executable="ssh">
+			<arg value="${hostname}"/>
+			<arg value="test ! -d ./${project.name} &amp;&amp; mkdir ./${project.name}"/>
+		</exec>
+		<exec executable="scp">
+			<arg value="${build.lib}/${project.name}-${project.version}.jar"/>
+			<arg value="${hostname}:./${project.name}/"/>
+		</exec>
+		<exec executable="scp">
+			<arg value="${src.dir}/hazelcast.xml"/>
+			<arg value="${hostname}:./${project.name}/"/>
+		</exec>
+		<exec executable="scp">
+			<arg value="-r"/>
+			<arg value="${bin.dir}"/>
+			<arg value="${hostname}:./${project.name}/"/>
+		</exec>
+	</target>
+	
+	<target name="deploy-fresh" depends="deploy">
+		<exec executable="scp">
+			<arg value="-r"/>
+			<arg value="${lib.dir}"/>
+			<arg value="${hostname}:./${project.name}/"/>
+		</exec>
+	</target>
+	
 </project>
