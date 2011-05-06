@@ -40,12 +40,12 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.impl.ascii.rest.RestValue;
 import com.mozilla.bagheera.util.IdUtil;
 
-@Path("/ping")
-public class PingResource extends ResourceBase {
+@Path("/submit")
+public class HazelcastMapResource extends ResourceBase {
 
-	private static final Logger LOG = Logger.getLogger(PingResource.class);
+	private static final Logger LOG = Logger.getLogger(HazelcastMapResource.class);
 	
-	public PingResource() throws IOException {
+	public HazelcastMapResource() throws IOException {
 		super();
 	}
 	

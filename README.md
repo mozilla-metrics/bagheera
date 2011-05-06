@@ -5,8 +5,8 @@ REST service for Mozilla Metrics. This service currently uses Hazelcast as a dis
 ## Requirements ##
 This code is built with the following assumptions.  You may get mixed results if you deviate from these versions.
 
-[Hadoop](http://hadoop.apache.org) 0.20.2+
-[HBase](http://hbase.apache.org) 0.90+
+[Hadoop](http://hadoop.apache.org) 0.20.2+  
+[HBase](http://hbase.apache.org) 0.90+  
 
 ## Building ##
 To make a jar you can do:  

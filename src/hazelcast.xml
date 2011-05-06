@@ -26,6 +26,23 @@
         <max-pool-size>64</max-pool-size>
         <keep-alive-seconds>60</keep-alive-seconds>
     </executor-service>
+	<map name="telemetry">
+        <time-to-live-seconds>20</time-to-live-seconds>
+        <backup-count>1</backup-count>
+        <eviction-policy>NONE</eviction-policy>
+        <max-size>0</max-size>
+        <eviction-percentage>25</eviction-percentage>
+        <merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+	    <!-- HBaseMapStore -->
+        <map-store enabled="true">
+            <class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
+            <write-delay-seconds>5</write-delay-seconds>
+            <property name="hazelcast.hbase.pool.size">50</property>
+            <property name="hazelcast.hbase.table">telemetry</property>
+            <property name="hazelcast.hbase.column.family">data</property>
+			<property name="hazelcast.hbase.column.qualifier">json</property>
+        </map-store>
+    </map>
 	<map name="metrics_ping">
         <time-to-live-seconds>20</time-to-live-seconds>
         <backup-count>1</backup-count>
