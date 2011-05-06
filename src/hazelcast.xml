@@ -26,7 +26,7 @@
         <max-pool-size>64</max-pool-size>
         <keep-alive-seconds>60</keep-alive-seconds>
     </executor-service>
-    <map name="default">
+	<map name="metrics_ping">
         <time-to-live-seconds>20</time-to-live-seconds>
         <backup-count>1</backup-count>
         <eviction-policy>NONE</eviction-policy>
@@ -50,12 +50,10 @@
         <map-store enabled="true">
             <class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
             <write-delay-seconds>5</write-delay-seconds>
-            <property name="hbase.cluster.distributed">false</property>
-            <property name="hbase.zookeeper.quorum">localhost</property>
-            <property name="zookeeper.znode.parent">/hbase</property>
-            <property name="hazelcast.hbase.pool.size">3</property>
-            <property name="hazelcast.hbase.table">bagheera</property>
-            <property name="hazelcast.hbase.column.family">json</property>
+            <property name="hazelcast.hbase.pool.size">50</property>
+            <property name="hazelcast.hbase.table">metrics_ping</property>
+            <property name="hazelcast.hbase.column.family">ping</property>
+			<property name="hazelcast.hbase.column.qualifier">json</property>
         </map-store>
     </map>
 </hazelcast>
