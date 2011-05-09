@@ -26,39 +26,63 @@ import org.apache.log4j.Logger;
 
 import com.hazelcast.core.MapStore;
 
+/**
+ * An implementation of Hazelcast's MapStore interface that only logs when
+ * methods are called with parameter values. This is only used for debugging and
+ * testing.
+ */
 public class NoOpMapStore implements MapStore<String, String> {
-    private static final Logger logger = Logger.getLogger(HBaseMapStore.class);
+    
+	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
+	 */
 	@Override
 	public String load(String key) {
-		logger.info(String.format("load called\nkey: %s", key));
+		LOG.info(String.format("load called\nkey: %s", key));
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
+	 */
 	@Override
 	public Map<String, String> loadAll(Collection<String> keys) {
-		logger.info(String.format("loadAll called with %d keys", keys.size()));
+		LOG.info(String.format("loadAll called with %d keys", keys.size()));
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
+	 */
 	@Override
 	public void store(String key, String value) {
-		logger.info(String.format("store called\nkey: %s\nvalue: %s", key, value));
+		LOG.info(String.format("store called\nkey: %s\nvalue: %s", key, value));
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
+	 */
 	@Override
 	public void storeAll(Map<String, String> map) {
-		logger.info(String.format("storeAll called with %d entries", map.size()));
+		LOG.info(String.format("storeAll called with %d entries", map.size()));
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
+	 */
 	@Override
 	public void delete(String key) {
-		logger.info(String.format("delete called\nkey: %s", key));
+		LOG.info(String.format("delete called\nkey: %s", key));
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
+	 */
 	@Override
 	public void deleteAll(Collection<String> keys) {
-		logger.info(String.format("storeAll called with %d entries", keys.size()));
+		LOG.info(String.format("storeAll called with %d entries", keys.size()));
 	}
 
 }

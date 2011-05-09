@@ -39,6 +39,12 @@ import com.hazelcast.core.MapStore;
 import com.hazelcast.impl.ascii.rest.RestValue;
 import com.mozilla.bagheera.dao.HBaseTableDao;
 
+/**
+ * An implementation of Hazelcast's MapStore interface that persists
+ * map data to HBase. Due to the general size of data in HBase there is 
+ * no interest for this particular implementation to ever load keys. Therefore
+ * only the store and storeAll methods are implemented.
+ */
 public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLifecycleSupport {
 
 	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
@@ -46,6 +52,9 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 	private HTablePool pool;
 	private HBaseTableDao table;
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.HazelcastInstance, java.util.Properties, java.lang.String)
+	 */
 	public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
 		Configuration conf = HBaseConfiguration.create();
 		for (String name : properties.stringPropertyNames()) {
@@ -64,28 +73,46 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		table = new HBaseTableDao(pool, tableName, family, qualifier);
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
+	 */
 	public void destroy() {
 		pool.closeTablePool(table.getTableName());
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
+	 */
 	@Override
 	public RestValue load(String key) {
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
+	 */
 	@Override
 	public Map<String, RestValue> loadAll(Collection<String> keys) {
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
+	 */
 	@Override
 	public void delete(String key) {
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
+	 */
 	@Override
 	public void deleteAll(Collection<String> keys) {
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
+	 */
 	@Override
 	public void store(String key, RestValue value) {
 		try {
@@ -95,6 +122,9 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
+	 */
 	@Override
 	public void storeAll(Map<String, RestValue> pairs) {
 		if (LOG.isDebugEnabled()) {

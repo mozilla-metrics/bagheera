@@ -32,6 +32,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.mozilla.bagheera.util.IdUtil;
 
+/**
+ * HBaseTableDao is designed to be a thin class that encapsulates some
+ * of most commonly used byte conversion and try/finally logic associated 
+ * with doing puts into HBase.
+ */
 public class HBaseTableDao {
 
 	private final HTablePool pool;
@@ -46,26 +51,49 @@ public class HBaseTableDao {
 		this.qualifier = Bytes.toBytes(qualifier);
 	}
 
+	/**
+	 * @return
+	 */
 	public byte[] getTableName() {
 		return tableName;
 	}
 
+	/**
+	 * @return
+	 */
 	public byte[] getColumnFamily() {
 		return family;
 	}
 	
+	/**
+	 * @return
+	 */
 	public byte[] getColumnQualifier() {
 		return qualifier;
 	}
 	
+	/**
+	 * @param value
+	 * @throws IOException
+	 */
 	public void put(String value) throws IOException {
 		put(IdUtil.generateBucketizedId(), Bytes.toBytes(value));
 	}
 
+	/**
+	 * @param key
+	 * @param value
+	 * @throws IOException
+	 */
 	public void put(String key, String value) throws IOException {
 		put(Bytes.toBytes(key), Bytes.toBytes(value));
 	}
 
+	/**
+	 * @param key
+	 * @param value
+	 * @throws IOException
+	 */
 	public void put(byte[] key, byte[] value) throws IOException {
 		HTableInterface table = null;
 		try {
@@ -80,6 +108,10 @@ public class HBaseTableDao {
 		}
 	}
 
+	/**
+	 * @param values
+	 * @throws IOException
+	 */
 	public void putStringList(List<String> values) throws IOException {
 		List<Put> puts = new ArrayList<Put>();
 		for (String value : values) {
@@ -91,6 +123,10 @@ public class HBaseTableDao {
 		putList(puts);
 	}
 
+	/**
+	 * @param values
+	 * @throws IOException
+	 */
 	public void putStringMap(Map<String, String> values) throws IOException {
 		List<Put> puts = new ArrayList<Put>();
 		for (Map.Entry<String, String> entry : values.entrySet()) {
@@ -101,6 +137,10 @@ public class HBaseTableDao {
 		putList(puts);
 	}
 
+	/**
+	 * @param values
+	 * @throws IOException
+	 */
 	public void putByteMap(Map<byte[], byte[]> values) throws IOException {
 		List<Put> puts = new ArrayList<Put>();
 		for (Map.Entry<byte[], byte[]> entry : values.entrySet()) {
@@ -111,6 +151,10 @@ public class HBaseTableDao {
 		putList(puts);
 	}
 
+	/**
+	 * @param puts
+	 * @throws IOException
+	 */
 	public void putList(List<Put> puts) throws IOException {
 		HTable table = null;
 		try {

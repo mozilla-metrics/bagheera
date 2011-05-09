@@ -29,6 +29,9 @@ import java.util.UUID;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
+/**
+ * Utility class for id generation and bucketing
+ */
 public class IdUtil {
 
 	public static final int DEFAULT_NUM_BUCKETS = Byte.MAX_VALUE;
@@ -37,17 +40,27 @@ public class IdUtil {
 	public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyyMMdd");
 	private static final Random RAND = new Random();
 
+	/**
+	 * Generates a bucket/date prefixed random id
+	 * @return
+	 * @throws IOException
+	 */
 	public static byte[] generateBucketizedId() throws IOException {
 		return byteBucketizeId(UUID.randomUUID().toString(), Calendar.getInstance().getTime());
 	}
 
+	/**
+	 * Adds a bucket/date prefix to an given string id
+	 * @param id
+	 * @return
+	 * @throws IOException
+	 */
 	public static byte[] bucketizeId(String id) throws IOException {
 		return byteBucketizeId(id, Calendar.getInstance().getTime());
 	}
 
 	/**
 	 * Takes a given id and prefixes it with a byte character and the date
-	 * 
 	 * @param id
 	 * @param d
 	 * @return
@@ -66,7 +79,6 @@ public class IdUtil {
 
 	/**
 	 * Takes a given id and prefixes it with a hex character and the date
-	 * 
 	 * @param id
 	 * @param d
 	 * @return

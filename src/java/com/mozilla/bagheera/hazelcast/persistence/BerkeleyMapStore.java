@@ -37,11 +37,20 @@ import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.OperationStatus;
 import com.sleepycat.je.Transaction;
 
+/**
+ * An implementation of Hazelcast's MapStore interface that persists
+ * map data to BerkeleyDB. Currently we have no interest for this particular 
+ * implementation to ever load keys. Therefore only the store and storeAll 
+ * methods are implemented.
+ */
 public class BerkeleyMapStore implements MapStore<String, DataSerializable>, MapLoaderLifecycleSupport {
 
-	private static final Logger logger = Logger.getLogger(BerkeleyMapStore.class);
-	volatile Database db = null;
+	private static final Logger LOG = Logger.getLogger(BerkeleyMapStore.class);
+	private volatile Database db = null;
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.HazelcastInstance, java.util.Properties, java.lang.String)
+	 */
 	@Override
 	public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
 		EnvironmentConfig envConfig = new EnvironmentConfig();
@@ -57,20 +66,29 @@ public class BerkeleyMapStore implements MapStore<String, DataSerializable>, Map
 		txn.commit();
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
+	 */
 	@Override
 	public void destroy() {
 		db.close();
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
+	 */
 	@Override
 	public void store(String key, DataSerializable value) {
 		ThreadContext tc = ThreadContext.get();
 		db.put(null, new DatabaseEntry(tc.toByteArray(key)), new DatabaseEntry(tc.toByteArray(value)));
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
+	 */
 	@Override
 	public void storeAll(Map<String, DataSerializable> entries) {
-		logger.info(Thread.currentThread().getId() + ": Storing " + entries.size() + " entries ");
+		LOG.info(Thread.currentThread().getId() + ": Storing " + entries.size() + " entries ");
 		long current = System.currentTimeMillis();
 		ThreadContext tc = ThreadContext.get();
 		for (Map.Entry<String, DataSerializable> entry : entries.entrySet()) {
@@ -81,23 +99,35 @@ public class BerkeleyMapStore implements MapStore<String, DataSerializable>, Map
 
 			}
 		}
-		logger.info(Thread.currentThread().getId() + ": Stored " + entries.size() + " entries in "
+		LOG.info(Thread.currentThread().getId() + ": Stored " + entries.size() + " entries in "
 				+ (System.currentTimeMillis() - current) + " ms");
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
+	 */
 	@Override
 	public void delete(String key) {
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
+	 */
 	@Override
 	public void deleteAll(Collection<String> keys) {
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
+	 */
 	@Override
 	public DataSerializable load(String key) {
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
+	 */
 	@Override
 	public Map<String, DataSerializable> loadAll(Collection<String> keys) {
 		return null;

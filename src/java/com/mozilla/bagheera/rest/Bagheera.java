@@ -26,6 +26,9 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
+/**
+ * The main server class.
+ */
 public class Bagheera {
 
 	public static void main(String[] args) throws Exception {

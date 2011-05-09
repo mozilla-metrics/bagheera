@@ -40,6 +40,9 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.impl.ascii.rest.RestValue;
 import com.mozilla.bagheera.util.IdUtil;
 
+/**
+ * A REST resource that inserts data into Hazelcast maps.
+ */
 @Path("/submit")
 public class HazelcastMapResource extends ResourceBase {
 
@@ -49,6 +52,13 @@ public class HazelcastMapResource extends ResourceBase {
 		super();
 	}
 	
+	/**
+	 * A REST POST that generates an id and put the id,data pair into a map with the given name.
+	 * @param name
+	 * @param request
+	 * @return
+	 * @throws IOException
+	 */
 	@POST
 	@Path("{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -56,6 +66,14 @@ public class HazelcastMapResource extends ResourceBase {
 		return mapPut(name, new String(IdUtil.generateBucketizedId()), request);
 	}
 	
+	/**
+	 * A REST POST that puts the id,data pair into the map with the given name.
+	 * @param name
+	 * @param id
+	 * @param request
+	 * @return
+	 * @throws IOException
+	 */
 	@POST
 	@Path("{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
@@ -72,7 +90,7 @@ public class HazelcastMapResource extends ResourceBase {
 		Map<String,RestValue> m = Hazelcast.getMap(name);
 		RestValue rv = new RestValue();
 		rv.setValue(Bytes.toBytes(sb.toString()));
-		m.put(id, rv);
+		m.put(new String(IdUtil.bucketizeId(id)), rv);
 		
 		return Response.ok().build();
 	}
