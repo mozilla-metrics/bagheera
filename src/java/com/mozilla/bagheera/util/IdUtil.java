@@ -46,7 +46,7 @@ public class IdUtil {
 	 * @throws IOException
 	 */
 	public static byte[] generateBucketizedId() throws IOException {
-		return byteBucketizeId(UUID.randomUUID().toString(), Calendar.getInstance().getTime());
+		return nonRandByteBucketizeId(UUID.randomUUID().toString(), Calendar.getInstance().getTime());
 	}
 
 	/**
@@ -56,7 +56,7 @@ public class IdUtil {
 	 * @throws IOException
 	 */
 	public static byte[] bucketizeId(String id) throws IOException {
-		return byteBucketizeId(id, Calendar.getInstance().getTime());
+		return nonRandByteBucketizeId(id, Calendar.getInstance().getTime());
 	}
 
 	/**
@@ -66,7 +66,7 @@ public class IdUtil {
 	 * @return
 	 * @throws IOException
 	 */
-	public static byte[] byteBucketizeId(String id, Date d) throws IOException {
+	public static byte[] randByteBucketizeId(String id, Date d) throws IOException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		byte[] randByte = new byte[1];
 		RAND.nextBytes(randByte);
@@ -76,7 +76,31 @@ public class IdUtil {
 
 		return baos.toByteArray();
 	}
+	
+	/**
+	 * Takes a given id and prefixes it with a byte character and the date in a non-random fashion
+	 * This method expects id to be something like a UUID consisting only of hex characters.  If id 
+	 * is something else this will produce unpredictable results.
+	 * @param id
+	 * @param d
+	 * @return
+	 * @throws IOException
+	 */
+	public static byte[] nonRandByteBucketizeId(String id, Date d) throws IOException {
+		if (id == null || id.length() < 2) {
+			throw new IllegalArgumentException("id cannot be null or less that 2 characters in length");
+		}
+		
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		// Munge two hex characters into the range of a single byte
+		int bucket = Integer.parseInt(id.substring(0, 2), 16) - 128;
+		baos.write(bucket);
+		baos.write(Bytes.toBytes(SDF.format(d)));
+		baos.write(Bytes.toBytes(id));
 
+		return baos.toByteArray();
+	}
+	
 	/**
 	 * Takes a given id and prefixes it with a hex character and the date
 	 * @param id
@@ -84,7 +108,7 @@ public class IdUtil {
 	 * @return
 	 * @throws IOException
 	 */
-	public static byte[] hexBucketizeId(String id, Date d) throws IOException {
+	public static byte[] randHexBucketizeId(String id, Date d) throws IOException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		int bucket = RAND.nextInt(HEX_BUCKETS);
 		baos.write(Bytes.toBytes(Integer.toHexString(bucket)));
@@ -93,5 +117,28 @@ public class IdUtil {
 
 		return baos.toByteArray();
 	}
+	
+	/**
+	 * Takes a given id and prefixes it with a hex character and the date in a non-random fashion
+	 * @param id
+	 * @param d
+	 * @return
+	 * @throws IOException
+	 */
+	public static byte[] nonRandHexBucketizeId(String id, Date d) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		baos.write(id.charAt(0));
+		baos.write(Bytes.toBytes(SDF.format(d)));
+		baos.write(Bytes.toBytes(id));
 
+		return baos.toByteArray();
+	}
+
+	public static void  main(String[] args) throws IOException {
+		for (int i=0; i < 1000; i++) {
+			String id = UUID.randomUUID().toString();
+			String newId = new String(bucketizeId(id));
+			System.out.println(id + " => " + newId);
+		}
+	}
 }

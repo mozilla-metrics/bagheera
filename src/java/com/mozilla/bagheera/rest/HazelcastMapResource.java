@@ -32,7 +32,6 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
@@ -40,7 +39,6 @@ import org.apache.log4j.Logger;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.impl.ascii.rest.RestValue;
 import com.mozilla.bagheera.util.IdUtil;
-import com.sun.jersey.api.client.ClientResponse.Status;
 
 /**
  * A REST resource that inserts data into Hazelcast maps.
@@ -81,7 +79,6 @@ public class HazelcastMapResource extends ResourceBase {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
 		// Read in the JSON data straight from the request
-		// TODO: Should we consider using a model or not here?
 		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
 		String line = null;
 		StringBuilder sb = new StringBuilder();
@@ -94,10 +91,7 @@ public class HazelcastMapResource extends ResourceBase {
 		rv.setValue(Bytes.toBytes(sb.toString()));
 		m.put(new String(IdUtil.bucketizeId(id)), rv);
 		
-		ResponseBuilder response = Response.ok();
-		response.status(Status.NO_CONTENT);
-		
-		return response.build();
+		return Response.noContent().build();
 	}
 	
 }

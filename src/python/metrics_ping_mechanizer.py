@@ -44,7 +44,7 @@ class Transaction:
     def __init__(self):
         self.custom_timers = {}
         self.servers = ["localhost"]
-        self.url = "http://%s:5701/ping/metrics_ping"
+        self.url = "http://%s:5701/submit/metrics_ping"
         self.content_type = "application/json"
         self.post_headers = { "Content-Type": self.content_type }
         
