@@ -65,7 +65,7 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		
 		int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
 		String tableName = properties.getProperty("hazelcast.hbase.table", "default");
-		String family = properties.getProperty("hazelcast.hbase.column.family", "json");
+		String family = properties.getProperty("hazelcast.hbase.column.family", "data");
 		String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
 		String qualifier = columnQualifier == null ? "" : columnQualifier;
 		
@@ -134,7 +134,6 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		long current = System.currentTimeMillis();
 		List<Put> puts = new ArrayList<Put>();
 		for (Map.Entry<String, RestValue> pair : pairs.entrySet()) {
-			//byteMap.put(Bytes.toBytes(p.getKey()), p.getValue().getValue());
 			Put p = new Put(Bytes.toBytes(pair.getKey()));
 			p.add(table.getColumnFamily(), table.getColumnQualifier(), pair.getValue().getValue());
 			puts.add(p);
@@ -147,7 +146,7 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 		}
 		
 		if (LOG.isDebugEnabled()) {
-			LOG.info(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
+			LOG.debug(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
 				(System.currentTimeMillis() - current)));
 		}
 	}
