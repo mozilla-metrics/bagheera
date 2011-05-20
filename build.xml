@@ -51,6 +51,9 @@
 	<target name="jar" depends="compile">
 		<jar destfile="${build.lib}/${project.name}-${project.version}.jar">
 			<fileset dir="${build.classes}"/>
+			<fileset dir="${conf.dir}">
+				<include name="*.properties"/>
+			</fileset>
 		</jar>
 	</target>
 	

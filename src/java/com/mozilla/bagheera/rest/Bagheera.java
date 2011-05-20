@@ -31,6 +31,8 @@ import com.sun.jersey.spi.container.servlet.ServletContainer;
  */
 public class Bagheera {
 
+	public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
+	
 	public static void main(String[] args) throws Exception {
 		Configuration conf = HBaseConfiguration.create();
 		

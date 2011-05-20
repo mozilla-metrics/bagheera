@@ -21,8 +21,10 @@ package com.mozilla.bagheera.rest;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Map;
+import java.util.Properties;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -44,6 +46,7 @@ import org.codehaus.jackson.JsonToken;
 import com.hazelcast.core.Hazelcast;
 import com.mozilla.bagheera.model.RequestData;
 import com.mozilla.bagheera.util.IdUtil;
+import static com.mozilla.bagheera.rest.Bagheera.PROPERTIES_RESOURCE_NAME;
 
 /**
  * A REST resource that inserts data into Hazelcast maps.
@@ -53,12 +56,27 @@ public class HazelcastMapResource extends ResourceBase {
 
 	private static final Logger LOG = Logger.getLogger(HazelcastMapResource.class);
 	
-	private static int MAX_BYTES = 10485760; // 10 MB
+	private static final String MAX_BYTES_POSTFIX = ".max.bytes";
+	
 	private final JsonFactory jsonFactory;
+	private Properties props;
 	
 	public HazelcastMapResource() throws IOException {
 		super();
 		jsonFactory = new JsonFactory();
+		props = new Properties();
+		InputStream in = null;
+		try {
+			in = getClass().getResource(PROPERTIES_RESOURCE_NAME).openStream();
+			if (in == null) {
+				throw new IllegalArgumentException("Could not find the properites file: " + PROPERTIES_RESOURCE_NAME);
+			}
+			props.load(in);
+		} finally {
+			if (in != null) {
+				in.close();
+			}
+		}
 	}
 	
 	/**
@@ -87,8 +105,8 @@ public class HazelcastMapResource extends ResourceBase {
 	@Path("{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
-		
-		if (request.getContentLength() > MAX_BYTES) {
+		int maxByteSize = Integer.parseInt(props.getProperty(name + MAX_BYTES_POSTFIX, "0"));
+		if (maxByteSize > 0 && request.getContentLength() > maxByteSize) {
 			return Response.status(Status.NOT_ACCEPTABLE).build();
 		}
 		
