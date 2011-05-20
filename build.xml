@@ -64,7 +64,7 @@
 			<arg value="${hostname}:./${project.name}/"/>
 		</exec>
 		<exec executable="scp">
-			<arg value="${src.dir}/hazelcast.xml"/>
+			<arg value="${conf.dir}/hazelcast.xml"/>
 			<arg value="${hostname}:./${project.name}/"/>
 		</exec>
 		<exec executable="scp">
