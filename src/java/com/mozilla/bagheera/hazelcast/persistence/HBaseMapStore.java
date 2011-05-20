@@ -36,8 +36,8 @@ import org.apache.log4j.Logger;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
-import com.hazelcast.impl.ascii.rest.RestValue;
 import com.mozilla.bagheera.dao.HBaseTableDao;
+import com.mozilla.bagheera.model.RequestData;
 
 /**
  * An implementation of Hazelcast's MapStore interface that persists
@@ -45,7 +45,7 @@ import com.mozilla.bagheera.dao.HBaseTableDao;
  * no interest for this particular implementation to ever load keys. Therefore
  * only the store and storeAll methods are implemented.
  */
-public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLifecycleSupport {
+public class HBaseMapStore implements MapStore<String, RequestData>, MapLoaderLifecycleSupport {
 
 	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 	
@@ -84,7 +84,7 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
 	 */
 	@Override
-	public RestValue load(String key) {
+	public RequestData load(String key) {
 		return null;
 	}
 
@@ -92,7 +92,7 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
 	 */
 	@Override
-	public Map<String, RestValue> loadAll(Collection<String> keys) {
+	public Map<String, RequestData> loadAll(Collection<String> keys) {
 		return null;
 	}
 
@@ -114,9 +114,9 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
 	 */
 	@Override
-	public void store(String key, RestValue value) {
+	public void store(String key, RequestData value) {
 		try {
-			table.put(Bytes.toBytes(key), value.getValue());
+			table.put(Bytes.toBytes(key), value.getPayload());
 		} catch (IOException e) {
 			LOG.error("Error during put", e);
 		}
@@ -126,16 +126,19 @@ public class HBaseMapStore implements MapStore<String, RestValue>, MapLoaderLife
 	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
 	 */
 	@Override
-	public void storeAll(Map<String, RestValue> pairs) {
+	public void storeAll(Map<String, RequestData> pairs) {
 		if (LOG.isDebugEnabled()) {
 			LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
 		}
 		
 		long current = System.currentTimeMillis();
 		List<Put> puts = new ArrayList<Put>();
-		for (Map.Entry<String, RestValue> pair : pairs.entrySet()) {
+		for (Map.Entry<String, RequestData> pair : pairs.entrySet()) {
 			Put p = new Put(Bytes.toBytes(pair.getKey()));
-			p.add(table.getColumnFamily(), table.getColumnQualifier(), pair.getValue().getValue());
+			// For privacy reasons we should never store IP address or user-agent string directly, but
+			// we could possibly store a derivative of that information such as GeoIP results or user-agent
+			// platform for statistical purposes. Currently we are only storing the actual payload.
+			p.add(table.getColumnFamily(), table.getColumnQualifier(), pair.getValue().getPayload());
 			puts.add(p);
 		}
 

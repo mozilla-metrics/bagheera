@@ -2,6 +2,7 @@
 
 function usage() {
   echo "Usage: $0 <jar> <server-port> <hazelcast-config-path>"
+  exit 1
 }
 
 # Print usage if incorrect number of args

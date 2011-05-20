@@ -32,12 +32,17 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonParseException;
+import org.codehaus.jackson.JsonParser;
+import org.codehaus.jackson.JsonToken;
 
 import com.hazelcast.core.Hazelcast;
-import com.hazelcast.impl.ascii.rest.RestValue;
+import com.mozilla.bagheera.model.RequestData;
 import com.mozilla.bagheera.util.IdUtil;
 
 /**
@@ -48,8 +53,12 @@ public class HazelcastMapResource extends ResourceBase {
 
 	private static final Logger LOG = Logger.getLogger(HazelcastMapResource.class);
 	
+	private static int MAX_BYTES = 10485760; // 10 MB
+	private final JsonFactory jsonFactory;
+	
 	public HazelcastMapResource() throws IOException {
 		super();
+		jsonFactory = new JsonFactory();
 	}
 	
 	/**
@@ -78,6 +87,15 @@ public class HazelcastMapResource extends ResourceBase {
 	@Path("{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
+		
+		if (request.getContentLength() > MAX_BYTES) {
+			return Response.status(Status.NOT_ACCEPTABLE).build();
+		}
+		
+		// Get the user-agent and IP address
+		String userAgent = request.getHeader("User-Agent");
+		String remoteIpAddress = request.getRemoteAddr();
+		
 		// Read in the JSON data straight from the request
 		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
 		String line = null;
@@ -85,11 +103,28 @@ public class HazelcastMapResource extends ResourceBase {
 		while ((line = reader.readLine()) != null) {
 			sb.append(line);
 		}
-
-		Map<String,RestValue> m = Hazelcast.getMap(name);
-		RestValue rv = new RestValue();
-		rv.setValue(Bytes.toBytes(sb.toString()));
-		m.put(new String(IdUtil.bucketizeId(id)), rv);
+		
+		// Validate JSON (open schema)
+		JsonParser parser = jsonFactory.createJsonParser(sb.toString());
+		JsonToken token = null;
+		boolean parseSucceeded = false;
+		try {
+			while ((token = parser.nextToken()) != null) {
+				// noop
+			}
+			parseSucceeded = true;
+		} catch (JsonParseException e) {
+			// if this was hit we'll return below
+			LOG.error("Error parsing JSON", e);
+		}
+		
+		if (!parseSucceeded) {
+			return Response.status(Status.NOT_ACCEPTABLE).build();
+		}
+		
+		Map<String,RequestData> m = Hazelcast.getMap(name);
+		RequestData rd = new RequestData(userAgent, remoteIpAddress, Bytes.toBytes(sb.toString()));
+		m.put(new String(IdUtil.bucketizeId(id)), rd);
 		
 		return Response.noContent().build();
 	}
