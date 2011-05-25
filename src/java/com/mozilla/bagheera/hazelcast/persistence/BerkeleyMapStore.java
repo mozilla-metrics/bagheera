@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -132,5 +133,11 @@ public class BerkeleyMapStore implements MapStore<String, RequestData>, MapLoade
 	public Map<String, RequestData> loadAll(Collection<String> keys) {
 		return null;
 	}
+
+  @Override
+  public Set<String> loadAllKeys() {
+    // TODO Auto-generated method stub
+    return null;
+  }
 
 }
