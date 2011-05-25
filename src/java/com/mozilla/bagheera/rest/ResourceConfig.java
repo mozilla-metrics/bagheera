@@ -22,7 +22,9 @@ package com.mozilla.bagheera.rest;
 import com.sun.jersey.api.core.PackagesResourceConfig;
 
 public class ResourceConfig extends PackagesResourceConfig {
+	
 	public ResourceConfig() {
-		super("com.mozilla.bagheera.rest");
+		super("com.mozilla");
 	}
+	
 }
