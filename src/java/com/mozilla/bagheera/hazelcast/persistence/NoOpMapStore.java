@@ -25,13 +25,14 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import com.hazelcast.core.MapStore;
+import com.mozilla.bagheera.model.RequestData;
 
 /**
  * An implementation of Hazelcast's MapStore interface that only logs when
  * methods are called with parameter values. This is only used for debugging and
  * testing.
  */
-public class NoOpMapStore implements MapStore<String, String> {
+public class NoOpMapStore implements MapStore<String, RequestData> {
     
 	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 
@@ -39,7 +40,7 @@ public class NoOpMapStore implements MapStore<String, String> {
 	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
 	 */
 	@Override
-	public String load(String key) {
+	public RequestData load(String key) {
 		LOG.info(String.format("load called\nkey: %s", key));
 		return null;
 	}
@@ -48,7 +49,7 @@ public class NoOpMapStore implements MapStore<String, String> {
 	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
 	 */
 	@Override
-	public Map<String, String> loadAll(Collection<String> keys) {
+	public Map<String, RequestData> loadAll(Collection<String> keys) {
 		LOG.info(String.format("loadAll called with %d keys", keys.size()));
 		return null;
 	}
@@ -57,15 +58,15 @@ public class NoOpMapStore implements MapStore<String, String> {
 	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
 	 */
 	@Override
-	public void store(String key, String value) {
-		LOG.info(String.format("store called\nkey: %s\nvalue: %s", key, value));
+	public void store(String key, RequestData value) {
+		LOG.info(String.format("store called\nkey: %s\nvalue: %s", key, new String(value.getPayload())));
 	}
 
 	/* (non-Javadoc)
 	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
 	 */
 	@Override
-	public void storeAll(Map<String, String> map) {
+	public void storeAll(Map<String, RequestData> map) {
 		LOG.info(String.format("storeAll called with %d entries", map.size()));
 	}
 

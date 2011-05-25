@@ -28,7 +28,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
 import com.hazelcast.impl.ThreadContext;
-import com.hazelcast.nio.DataSerializable;
+import com.mozilla.bagheera.model.RequestData;
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseConfig;
 import com.sleepycat.je.DatabaseEntry;
@@ -43,7 +43,7 @@ import com.sleepycat.je.Transaction;
  * implementation to ever load keys. Therefore only the store and storeAll 
  * methods are implemented.
  */
-public class BerkeleyMapStore implements MapStore<String, DataSerializable>, MapLoaderLifecycleSupport {
+public class BerkeleyMapStore implements MapStore<String, RequestData>, MapLoaderLifecycleSupport {
 
 	private static final Logger LOG = Logger.getLogger(BerkeleyMapStore.class);
 	private volatile Database db = null;
@@ -78,22 +78,22 @@ public class BerkeleyMapStore implements MapStore<String, DataSerializable>, Map
 	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
 	 */
 	@Override
-	public void store(String key, DataSerializable value) {
+	public void store(String key, RequestData value) {
 		ThreadContext tc = ThreadContext.get();
-		db.put(null, new DatabaseEntry(tc.toByteArray(key)), new DatabaseEntry(tc.toByteArray(value)));
+		db.put(null, new DatabaseEntry(tc.toByteArray(key)), new DatabaseEntry(value.getPayload()));
 	}
 
 	/* (non-Javadoc)
 	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
 	 */
 	@Override
-	public void storeAll(Map<String, DataSerializable> entries) {
+	public void storeAll(Map<String, RequestData> entries) {
 		LOG.info(Thread.currentThread().getId() + ": Storing " + entries.size() + " entries ");
 		long current = System.currentTimeMillis();
 		ThreadContext tc = ThreadContext.get();
-		for (Map.Entry<String, DataSerializable> entry : entries.entrySet()) {
+		for (Map.Entry<String, RequestData> entry : entries.entrySet()) {
 			OperationStatus os = db.put(null, new DatabaseEntry(tc.toByteArray(entry.getKey())),
-					new DatabaseEntry(tc.toByteArray(entry.getValue())));
+					new DatabaseEntry(entry.getValue().getPayload()));
 			if (os != OperationStatus.SUCCESS) {
 				throw new RuntimeException("No Success");
 
@@ -121,7 +121,7 @@ public class BerkeleyMapStore implements MapStore<String, DataSerializable>, Map
 	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
 	 */
 	@Override
-	public DataSerializable load(String key) {
+	public RequestData load(String key) {
 		return null;
 	}
 
@@ -129,7 +129,7 @@ public class BerkeleyMapStore implements MapStore<String, DataSerializable>, Map
 	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
 	 */
 	@Override
-	public Map<String, DataSerializable> loadAll(Collection<String> keys) {
+	public Map<String, RequestData> loadAll(Collection<String> keys) {
 		return null;
 	}
 
