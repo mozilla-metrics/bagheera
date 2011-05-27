@@ -22,7 +22,7 @@ import com.mozilla.bagheera.elasticsearch.ElasticSearchNode;
 public class QueueMapStore implements MapStore<Long, String>, MapLoaderLifecycleSupport {
   ElasticSearchNode esn;
   private static final Logger LOG = Logger.getLogger(QueueMapStore.class);
-  
+
   private HTablePool pool;
   private HBaseTableDao table;
   private static final String HBASE_XML_CONFIG = "conf/hbase-site.xml";
@@ -39,13 +39,13 @@ public class QueueMapStore implements MapStore<Long, String>, MapLoaderLifecycle
         conf.set(name, properties.getProperty(name));
       }
     }
-    
+
     int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
     String tableName = properties.getProperty("hazelcast.hbase.table", "default");
     String family = properties.getProperty("hazelcast.hbase.column.family", "data");
     String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
     String qualifier = columnQualifier == null ? "" : columnQualifier;
-    
+
     pool = new HTablePool(conf, hbasePoolSize);
     table = new HBaseTableDao(pool, tableName, family, qualifier);
     esn = new ElasticSearchNode();
@@ -81,24 +81,29 @@ public class QueueMapStore implements MapStore<Long, String>, MapLoaderLifecycle
     Map<String, String> ooidJsonPair = new HashMap<String, String>();
 
     for (Map.Entry<Long, String> pair : pairs.entrySet()) {
-      LOG.debug("HC key: " + pair.getKey() + " value: " + pair.getValue());
+      LOG.debug("HazelCast key: " + pair.getKey() + " value: " + pair.getValue());
       if (StringUtils.isNotBlank(pair.getValue())) {
         //lets fetch the item from hbase
         String json = table.getJson(pair.getValue());
         if (StringUtils.isNotBlank(json)) {
           LOG.debug("ooid: " + pair.getValue() + "JSON: " + json);
-          
           ooidJsonPair.put(pair.getValue(), json);
-        }      
+        } else {
+          LOG.error("received blank json for ooid:" + pair.getValue());
+        }
       }
     }
     if (esn == null) {
       esn = new ElasticSearchNode();
     }
-    if (esn.indexBulkDocument(ooidJsonPair)) {
-      LOG.info("success indexing jsons inside ES, total count: " + pairs.size());
+    LOG.debug("Trying to index some docs inside ElasticSearch");
+    if (ooidJsonPair.size() > 0) {
+      if (esn.indexBulkDocument(ooidJsonPair)) {
+        LOG.info("success indexing jsons inside ES, total count: " + pairs.size());
+      }
+    } else {
+      LOG.info("nothing to index");
     }
-    
     LOG.info("exiting storeAll");
 
 

@@ -111,28 +111,29 @@ public class HBaseTableDao {
   }
 
   //0110216000605a4-6640-4576-be23-b76e32110216
-  public byte[] get(String row) {
+  public String get(String row) {
     HTableInterface table = null;
-
     table = pool.getTable(tableName);
     Get g = new Get(Bytes.toBytes(row));
     Result r;
     try {
       r = table.get(g);
       byte [] value = r.getValue(family, qualifier);
-      return value;
+      if (value == null) {
+        return null;
+      }
+      return new String(value);
     } catch (IOException e) {
       e.printStackTrace();
+      
     }
-
 
     return null;
 
   }
 
   public String getJson(String ooid) {
-    String json = new String(get(ooid));
-
+    String json = get(ooid);
     return json;
   }
   /**

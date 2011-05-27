@@ -13,6 +13,8 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.ImmutableSettings.Builder;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 
@@ -29,7 +31,10 @@ public class ElasticSearchNode {
   Node node;
   public  ElasticSearchNode () {
     // Set up a simple configuration that logs on the console.
-    node = nodeBuilder().loadConfigSettings(true).node().start();
+    //node = nodeBuilder().loadConfigSettings(true).node().start();
+    
+    node = nodeBuilder().loadConfigSettings(false).settings(ImmutableSettings.settingsBuilder().loadFromSource("conf/adasd")).node().start();
+    
     client = node.client();
     LOG.info("ES started");
   }
