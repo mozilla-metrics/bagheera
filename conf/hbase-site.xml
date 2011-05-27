@@ -1,0 +1,143 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+/**
+ * Copyright 2009 The Apache Software Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+-->
+<configuration>
+	<property>
+		<name>hbase.tmp.dir</name>
+		<value>/data01/hbase-hadoop</value>
+	</property>
+	<property>
+		<name>hbase.cluster.distributed</name>
+		<value>true</value>
+		<description>The mode the cluster will be in. Possible values are
+      false: standalone and pseudo-distributed setups with managed Zookeeper
+      true: fully-distributed with unmanaged Zookeeper Quorum (see hbase-env.sh)
+    </description>
+	</property>
+	<property>
+		<name>hbase.rootdir</name>
+		<value>hdfs://admin1.generic.metrics.sjc1.mozilla.com:8020/hbase</value>
+		<description>The directory shared by region servers.
+    </description>
+	</property>
+	<property>
+		<name>hbase.zookeeper.quorum</name>
+		<value>node11.generic.metrics.sjc1.mozilla.com,node12.generic.metrics.sjc1.mozilla.com,node13.generic.metrics.sjc1.mozilla.com</value>
+	</property>
+	<property>
+		<name>zookeeper.znode.parent</name>
+		<value>/stg-hbase</value>
+		<description>Root ZNode for HBase in ZooKeeper. All of HBase's ZooKeeper
+	      files that are configured with a relative path will go under this node.
+	      By default, all of HBase's ZooKeeper file path are configured with a
+	      relative path, so they will all go under this directory unless changed.</description>
+	</property>
+	<property>
+		<name>hbase.hregion.memstore.flush.size</name>
+		<value>134217728</value>
+		<description>
+	      Memstore will be flushed to disk if size of the memstore
+	      exceeds this number of bytes.  Value is checked by a thread that runs
+	      every hbase.server.thread.wakefrequency.
+	    </description>
+	</property>
+	<property>
+		<name>hbase.hregion.memstore.block.multiplier</name>
+		<value>8</value>
+		<description>
+    Block updates if memstore has hbase.hregion.block.memstore
+    time hbase.hregion.flush.size bytes.  Useful preventing
+    runaway memstore during spikes in update traffic.  Without an
+    upper-bound, memstore fills such that when it flushes the
+    resultant flush files take a long time to compact or split, or
+    worse, we OOME.
+    </description>
+	</property>
+	<property>
+		<name>hbase.hregion.max.filesize</name>
+		<value>1073741824</value>
+		<description>
+    Maximum HStoreFile size. If any one of a column families' HStoreFiles has
+    grown to exceed this value, the hosting HRegion is split in two.
+    Default: 256M.
+    </description>
+	</property>
+	<property>
+		<name>hbase.regionserver.maxlogs</name>
+		<value>16</value>
+		<description>
+	     jdcryans @ 2010-06-10 1:58:
+	     also if you really which to have faster insert speed while preserving some level
+	     of durability, set hbase.regionserver.maxlogs to something higher than 32 at
+	     the expense of slower log splitting (128 is what we run with IIRC)
+	    </description>
+	</property>
+	<property>
+		<name>hbase.hstore.compactionThreshold</name>
+		<value>4</value>
+		<description>
+	    If more than this number of HStoreFiles in any one HStore
+	    (one HStoreFile is written per flush of memstore) then a compaction
+	    is run to rewrite all HStoreFiles files as one.  Larger numbers
+	    put off compaction but when it runs, it takes longer to complete.
+	    During a compaction, updates cannot be flushed to disk.  Long
+	    compactions require memory sufficient to carry the logging of
+	    all updates across the duration of the compaction.
+
+	    If too large, clients timeout during compaction.
+	    </description>
+	</property>
+	<property>
+		<name>hbase.hstore.blockingStoreFiles</name>
+		<value>15</value>
+		<description>
+    If more than this number of StoreFiles in any one Store
+    (one StoreFile is written per flush of MemStore) then updates are
+    blocked for this HRegion until a compaction is completed, or
+    until hbase.hstore.blockingWaitTime has been exceeded.
+    </description>
+	</property>
+	<!-- Enable append support for HBase -->
+	<property>
+		<name>dfs.support.append</name>
+		<value>true</value>
+	</property>
+	<!-- For Socorro Dumps (25MB which is slightly higher than their max) -->
+	<property>
+	    <name>hbase.client.keyvalue.maxsize</name>
+	    <value>26214400</value>
+	    <description>Specifies the combined maximum allowed size of a KeyValue
+	    instance. This is to set an upper boundary for a single entry saved in a
+	    storage file. Since they cannot be split it helps avoiding that a region
+	    cannot be split any further because the data is too large. It seems wise
+	    to set this to a fraction of the maximum region size. Setting it to zero
+	    or less disables the check.
+	    </description>
+	</property>
+	<!-- Enable MSLAB Allocator to avoid long GC pauses -->
+	<!-- tune later if needed using hbase.hregion.memstore.mslab.* settings -->
+	<property>
+		<name>hbase.region.memstore.mslab.enabled</name>
+		<value>true</value>
+	</property>
+</configuration>
