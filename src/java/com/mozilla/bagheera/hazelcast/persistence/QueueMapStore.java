@@ -84,7 +84,7 @@ public class QueueMapStore implements MapStore<Long, String>, MapLoaderLifecycle
       LOG.debug("HazelCast key: " + pair.getKey() + " value: " + pair.getValue());
       if (StringUtils.isNotBlank(pair.getValue())) {
         //lets fetch the item from hbase
-        String json = table.getJson(pair.getValue());
+        String json = table.get(pair.getValue());
         if (StringUtils.isNotBlank(json)) {
           LOG.debug("ooid: " + pair.getValue() + "JSON: " + json);
           ooidJsonPair.put(pair.getValue(), json);

@@ -35,166 +35,166 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.mozilla.bagheera.util.IdUtil;
 
 /**
- * HBaseTableDao is designed to be a thin class that encapsulates some
- * of most commonly used byte conversion and try/finally logic associated 
- * with doing puts into HBase.
+ * HBaseTableDao is designed to be a thin class that encapsulates some of most
+ * commonly used byte conversion and try/finally logic associated with doing
+ * puts into HBase.
  */
 public class HBaseTableDao {
 
-  private final HTablePool pool;
-  private final byte[] tableName;
-  private final byte[] family;
-  private final byte[] qualifier;
+	private final HTablePool pool;
+	private final byte[] tableName;
+	private final byte[] family;
+	private final byte[] qualifier;
 
-  public HBaseTableDao(HTablePool pool, String tableName, String family, String qualifier) {
-    this.pool = pool;
-    this.tableName = Bytes.toBytes(tableName);
-    this.family = Bytes.toBytes(family);
-    this.qualifier = Bytes.toBytes(qualifier);
-  }
+	public HBaseTableDao(HTablePool pool, String tableName, String family, String qualifier) {
+		this.pool = pool;
+		this.tableName = Bytes.toBytes(tableName);
+		this.family = Bytes.toBytes(family);
+		this.qualifier = Bytes.toBytes(qualifier);
+	}
 
-  /**
-   * @return
-   */
-  public byte[] getTableName() {
-    return tableName;
-  }
+	/**
+	 * @return
+	 */
+	public byte[] getTableName() {
+		return tableName;
+	}
 
-  /**
-   * @return
-   */
-  public byte[] getColumnFamily() {
-    return family;
-  }
+	/**
+	 * @return
+	 */
+	public byte[] getColumnFamily() {
+		return family;
+	}
 
-  /**
-   * @return
-   */
-  public byte[] getColumnQualifier() {
-    return qualifier;
-  }
+	/**
+	 * @return
+	 */
+	public byte[] getColumnQualifier() {
+		return qualifier;
+	}
 
-  /**
-   * @param value
-   * @throws IOException
-   */
-  public void put(String value) throws IOException {
-    put(IdUtil.generateBucketizedId(), Bytes.toBytes(value));
-  }
+	/**
+	 * @param value
+	 * @throws IOException
+	 */
+	public void put(String value) throws IOException {
+		put(IdUtil.generateBucketizedId(), Bytes.toBytes(value));
+	}
 
-  /**
-   * @param key
-   * @param value
-   * @throws IOException
-   */
-  public void put(String key, String value) throws IOException {
-    put(Bytes.toBytes(key), Bytes.toBytes(value));
-  }
+	/**
+	 * @param key
+	 * @param value
+	 * @throws IOException
+	 */
+	public void put(String key, String value) throws IOException {
+		put(Bytes.toBytes(key), Bytes.toBytes(value));
+	}
 
-  /**
-   * @param key
-   * @param value
-   * @throws IOException
-   */
-  public void put(byte[] key, byte[] value) throws IOException {
-    HTableInterface table = null;
-    try {
-      table = pool.getTable(tableName);
-      Put p = new Put(key);
-      p.add(family, qualifier, value);
-      table.put(p);
-    } finally {
-      if (table != null) {
-        pool.putTable(table);
-      }
-    }
-  }
+	/**
+	 * @param key
+	 * @param value
+	 * @throws IOException
+	 */
+	public void put(byte[] key, byte[] value) throws IOException {
+		HTableInterface table = null;
+		try {
+			table = pool.getTable(tableName);
+			Put p = new Put(key);
+			p.add(family, qualifier, value);
+			table.put(p);
+		} finally {
+			if (table != null) {
+				pool.putTable(table);
+			}
+		}
+	}
 
-  //0110216000605a4-6640-4576-be23-b76e32110216
-  public String get(String row) {
-    HTableInterface table = null;
-    table = pool.getTable(tableName);
-    Get g = new Get(Bytes.toBytes(row));
-    Result r;
-    try {
-      r = table.get(g);
-      byte [] value = r.getValue(family, qualifier);
-      if (value == null) {
-        return null;
-      }
-      return new String(value);
-    } catch (IOException e) {
-      e.printStackTrace();
-      
-    }
+	/**
+	 * @param values
+	 * @throws IOException
+	 */
+	public void putStringList(List<String> values) throws IOException {
+		List<Put> puts = new ArrayList<Put>();
+		for (String value : values) {
+			byte[] id = IdUtil.generateBucketizedId();
+			Put p = new Put(id);
+			p.add(family, qualifier, Bytes.toBytes(value));
+			puts.add(p);
+		}
+		putList(puts);
+	}
 
-    return null;
+	/**
+	 * @param values
+	 * @throws IOException
+	 */
+	public void putStringMap(Map<String, String> values) throws IOException {
+		List<Put> puts = new ArrayList<Put>();
+		for (Map.Entry<String, String> entry : values.entrySet()) {
+			Put p = new Put(Bytes.toBytes(entry.getKey()));
+			p.add(family, qualifier, Bytes.toBytes(entry.getValue()));
+			puts.add(p);
+		}
+		putList(puts);
+	}
 
-  }
+	/**
+	 * @param values
+	 * @throws IOException
+	 */
+	public void putByteMap(Map<byte[], byte[]> values) throws IOException {
+		List<Put> puts = new ArrayList<Put>();
+		for (Map.Entry<byte[], byte[]> entry : values.entrySet()) {
+			Put p = new Put(entry.getKey());
+			p.add(family, qualifier, entry.getValue());
+			puts.add(p);
+		}
+		putList(puts);
+	}
 
-  public String getJson(String ooid) {
-    String json = get(ooid);
-    return json;
-  }
-  /**
-   * @param values
-   * @throws IOException
-   */
-  public void putStringList(List<String> values) throws IOException {
-    List<Put> puts = new ArrayList<Put>();
-    for (String value : values) {
-      byte[] id = IdUtil.generateBucketizedId();
-      Put p = new Put(id);
-      p.add(family, qualifier, Bytes.toBytes(value));
-      puts.add(p);
-    }
-    putList(puts);
-  }
+	/**
+	 * @param puts
+	 * @throws IOException
+	 */
+	public void putList(List<Put> puts) throws IOException {
+		HTable table = null;
+		try {
+			table = (HTable) pool.getTable(tableName);
+			table.setAutoFlush(false);
+			table.put(puts);
+			table.flushCommits();
+		} finally {
+			if (table != null) {
+				pool.putTable(table);
+			}
+		}
+	}
 
-  /**
-   * @param values
-   * @throws IOException
-   */
-  public void putStringMap(Map<String, String> values) throws IOException {
-    List<Put> puts = new ArrayList<Put>();
-    for (Map.Entry<String, String> entry : values.entrySet()) {
-      Put p = new Put(Bytes.toBytes(entry.getKey()));
-      p.add(family, qualifier, Bytes.toBytes(entry.getValue()));
-      puts.add(p);
-    }
-    putList(puts);
-  }
+	/**
+	 * Example Row: 0110216000605a4-6640-4576-be23-b76e32110216
+	 * @param row
+	 * @return
+	 */
+	public String get(String row) {
+		HTableInterface table = null;
+		table = pool.getTable(tableName);
+		Get g = new Get(Bytes.toBytes(row));
+		Result r;
+		try {
+			r = table.get(g);
+			byte[] value = r.getValue(family, qualifier);
+			if (value == null) {
+				return null;
+			}
+			return new String(value);
+		} catch (IOException e) {
+			e.printStackTrace();
 
-  /**
-   * @param values
-   * @throws IOException
-   */
-  public void putByteMap(Map<byte[], byte[]> values) throws IOException {
-    List<Put> puts = new ArrayList<Put>();
-    for (Map.Entry<byte[], byte[]> entry : values.entrySet()) {
-      Put p = new Put(entry.getKey());
-      p.add(family, qualifier, entry.getValue());
-      puts.add(p);
-    }
-    putList(puts);
-  }
+		}
 
-  /**
-   * @param puts
-   * @throws IOException
-   */
-  public void putList(List<Put> puts) throws IOException {
-    HTable table = null;
-    try {
-      table = (HTable) pool.getTable(tableName);
-      table.setAutoFlush(false);
-      table.put(puts);
-      table.flushCommits();
-    } finally {
-      if (table != null) {
-        pool.putTable(table);
-      }
-    }
-  }
+		return null;
+
+	}
 
 }
