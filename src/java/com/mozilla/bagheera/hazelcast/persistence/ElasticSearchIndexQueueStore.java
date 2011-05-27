@@ -86,6 +86,28 @@ public class ElasticSearchIndexQueueStore implements MapStore<Long, String>, Map
 	@Override
 	public void store(Long ooid, String restValue) {
 		LOG.info("received something in queue for store: " + ooid + "\tValue: " + restValue);
+    Map<String, String> idDataPair = new HashMap<String, String>();
+    if (StringUtils.isNotBlank(restValue)) {
+      String json = table.get(restValue);
+      if (StringUtils.isNotBlank(json)) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("id: " + restValue + "json: " + json);
+        }        
+        idDataPair.put(restValue, json);
+      } else {
+        LOG.error("No data for id:" + restValue);
+      }
+    }
+    LOG.debug("Trying to index single document inside ElasticSearch");
+    if (idDataPair.size() > 0) {
+      if (nodeClient.indexBulkDocument(idDataPair)) {
+        LOG.debug("success indexing jsons inside ES, total count: " + idDataPair.size());
+      }
+    } else {
+      LOG.debug("nothing to index");
+    }
+    
+
 	}
 
 	@Override

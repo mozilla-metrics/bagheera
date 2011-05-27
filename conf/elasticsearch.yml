@@ -1,7 +1,6 @@
 # Cluster Settings
 cluster:
   name: socorro
-sdfsdf
 # Gateway Settings
 #gateway:
 #  recover_after_nodes: 1

@@ -28,7 +28,7 @@ public class NodeClient {
 		this.indexName = indexName;
 		this.typeName = typeName;
 		
-		node = nodeBuilder().client(true).node();
+    node = nodeBuilder().loadConfigSettings(true).node().start();
 		client = node.client();
 	}
 

@@ -78,7 +78,7 @@ public class HazelcastQueueResource extends ResourceBase {
 	 */
 	@POST
 	@Path("{name}/{id}")
-	@Consumes(MediaType.APPLICATION_JSON)
+	//@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("HTTP request params, queue name: " + name + "\tid: " + id);
