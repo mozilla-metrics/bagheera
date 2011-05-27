@@ -1,0 +1,91 @@
+#!/bin/bash
+# 
+# (c) Copyright 2011 Mozilla Foundation
+# 
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+# 
+#       http://www.apache.org/licenses/LICENSE-2.0
+# 
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+# 
+# Starts a bagheera server
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+RETVAL_SUCCESS=0
+RETVAL=0
+BAGHEERA_HOME="/usr/lib/bagheera"
+PIDFILE="/var/run/bagheera/bagheera.pid"
+LOCKFILE="/var/lock/subsys/bagheera"
+NAME="bagheera"
+if [ "$BAGHEERA_USER" = "" ]; then
+    BAGHEERA_USER="hbase"
+fi
+
+# create PID dir if it doesn't exist already
+PIDDIR=`dirname "$PIDFILE"`
+if [ ! -d "$PIDDIR" ]; then
+    mkdir -p "$PIDDIR"
+    chown -R "$BAGHEERA_USER"."$BAGHEERA_USER" "$PIDDIR"
+fi
+
+start() {
+  echo -n $"Starting $NAME: "
+  daemon --user="$BAGHEERA_USER" $BAGHEERA_HOME/bin/bagheera 8080 $BAGHEERA_HOME/conf/hazelcast.xml
+  RETVAL=$?
+  echo
+  [ $RETVAL -eq $RETVAL_SUCCESS ] && touch $LOCKFILE
+}
+
+stop() {
+  echo -n $"Stopping $NAME: "
+  killproc -p "$PIDFILE"
+  RETVAL=$?
+  echo
+  [ $RETVAL -eq $RETVAL_SUCCESS ] && rm -f $LOCKFILE $PIDFILE
+}
+
+restart() {
+  stop
+  start
+}
+
+checkstatus() {
+  status -p $PIDFILE
+  RETVAL=$?
+}
+
+condrestart() {
+  [ -e $LOCKFILE ] && restart || :
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        checkstatus
+        ;;
+    restart)
+        restart
+        ;;
+    condrestart)
+        condrestart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|condrestart|restart}"
+        RETVAL=3
+        ;;
+esac
+
+exit $RETVAL
