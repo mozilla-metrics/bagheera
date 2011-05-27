@@ -10,6 +10,13 @@
 		<fileset dir="${lib.dir}">
 			<include name="*.jar"/>
 		</fileset>
+		<fileset dir="${lib.dir}/elasticsearch/">
+			<include name="*.jar"/>
+		</fileset>
+		<fileset dir="${lib.dir}/elasticsearch/sigar/">
+			<include name="*.jar"/>
+		</fileset>
+							
 	</path>
 	
 	<target name="clean">

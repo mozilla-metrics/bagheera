@@ -1,0 +1,9 @@
+# Cluster Settings
+cluster:
+  name: socorro
+sdfsdf
+# Gateway Settings
+#gateway:
+#  recover_after_nodes: 1
+#  recover_after_time: 5m
+#  expected_nodes: 2
