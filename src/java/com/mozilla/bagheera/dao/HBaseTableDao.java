@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.util.IdUtil;
 
@@ -41,6 +42,8 @@ import com.mozilla.bagheera.util.IdUtil;
  */
 public class HBaseTableDao {
 
+	private static final Logger LOG = Logger.getLogger(HBaseTableDao.class);
+	
 	private final HTablePool pool;
 	private final byte[] tableName;
 	private final byte[] family;
@@ -175,25 +178,28 @@ public class HBaseTableDao {
 	 * Example Row: 0110216000605a4-6640-4576-be23-b76e32110216
 	 * @param row
 	 * @return
+	 * @throws IOException 
 	 */
 	public String get(String row) {
 		HTableInterface table = null;
-		table = pool.getTable(tableName);
-		Get g = new Get(Bytes.toBytes(row));
-		Result r;
+		String retval = null;
 		try {
-			r = table.get(g);
+			Get g = new Get(Bytes.toBytes(row));
+			table = pool.getTable(tableName);
+			Result r = table.get(g);
 			byte[] value = r.getValue(family, qualifier);
-			if (value == null) {
-				return null;
+			if (value != null) {
+				retval = new String(value);
 			}
-			return new String(value);
 		} catch (IOException e) {
-			e.printStackTrace();
-
+			LOG.error("Value did not exist for row: " + row, e);
+		} finally {
+			if (table != null) {
+				pool.putTable(table);
+			}
 		}
 
-		return null;
+		return retval;
 
 	}
 
