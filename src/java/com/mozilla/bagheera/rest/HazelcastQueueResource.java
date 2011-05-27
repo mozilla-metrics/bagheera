@@ -37,7 +37,6 @@ import javax.ws.rs.core.Response;
 import org.apache.log4j.Logger;
 
 import com.hazelcast.core.Hazelcast;
-import com.mozilla.bagheera.util.IdUtil;
 import com.sun.jersey.api.client.ClientResponse.Status;
 
 /**
@@ -47,9 +46,9 @@ import com.sun.jersey.api.client.ClientResponse.Status;
 public class HazelcastQueueResource extends ResourceBase {
 
 	private static final Logger LOG = Logger.getLogger(HazelcastQueueResource.class);
-	
+
 	private Properties props;
-	
+
 	public HazelcastQueueResource() throws IOException {
 		super();
 		props = new Properties();
@@ -66,31 +65,35 @@ public class HazelcastQueueResource extends ResourceBase {
 			}
 		}
 	}
-	
-	
-  /**
-   * A REST POST that puts the id,data pair into the map with the given name.
-   * @param queue
-   * @param name
-   * @param id
-   * @param request
-   * @return
-   * @throws IOException
-   */
-  @POST
-  @Path("{name}/{id}")
-//  @Consumes(MediaType.APPLICATION_JSON)
-  public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
-    LOG.debug("HTTP request params, queue name: " + name + "\tid: " + id );
-    
-    boolean insertQueueStatus = Hazelcast.getQueue(name).add(id);
-    if (insertQueueStatus) {
-     return Response.status(Status.OK).build();
-    } else {
-      LOG.error("error inserting elements: queueName: " + name + "\tid: " + id);
-    }
-    return Response.status(Status.SERVICE_UNAVAILABLE).build();
 
-  }
-	
+	/**
+	 * A REST POST that puts the id,data pair into the map with the given name.
+	 * 
+	 * @param queue
+	 * @param name
+	 * @param id
+	 * @param request
+	 * @return
+	 * @throws IOException
+	 */
+	@POST
+	@Path("{name}/{id}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("HTTP request params, queue name: " + name + "\tid: " + id);
+		}
+
+		boolean success = Hazelcast.getQueue(name).add(id);
+		Response response = null;
+		if (success) {
+			response = Response.status(Status.OK).build();
+		} else {
+			LOG.error("error inserting elements: queueName: " + name + "\tid: " + id);
+			response = Response.status(Status.SERVICE_UNAVAILABLE).build();
+		}
+		
+		return response;
+	}
+
 }
