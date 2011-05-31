@@ -23,7 +23,6 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
-import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
@@ -43,16 +42,16 @@ public class Bagheera {
 		jerseyHolder.setInitParameter("com.sun.jersey.config.property.resourceConfigClass", 
 									  ResourceConfig.class.getCanonicalName());
 		jerseyHolder.setInitParameter("com.sun.jersey.config.property.packages", "jetty");
-		
+		// Init jersey on startup
+		jerseyHolder.setInitOrder(1);
 		root.addServlet(jerseyHolder, "/*");
 		
 		server.setSendServerVersion(false);
 	    server.setSendDateHeader(false);
 	    server.setStopAtShutdown(true);
-	    
-	    // Initialize Hazelcast
-		//Config hazelcastConfig = new Config();
-		//Hazelcast.newHazelcastInstance(hazelcastConfig);
+
+	    // Initialize Hazelcast now rather than waiting for the first request
+		Hazelcast.getDefaultInstance();
 		
 		server.start();
 		server.join();
