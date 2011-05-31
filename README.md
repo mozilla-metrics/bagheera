@@ -10,7 +10,8 @@ This code is built with the following assumptions.  You may get mixed results if
 
 * [Hadoop](http://hadoop.apache.org) 0.20.2+
 * [HBase](http://hbase.apache.org) 0.90+
-* [Hazelcast](http://www.hazelcast.com/) 1.9.2
+* [Hazelcast](http://www.hazelcast.com/) 1.9.3
+* [Elastic Search](http://www.elasticsearch.org/) 0.16.1
 
 ### Building ###
 To make a jar you can do:  
@@ -28,8 +29,8 @@ In order to run bagheera on another machine you need to deploy the following to 
 		<th>Destination</th>
 	</tr>
 	<tr>
-		<td>bin/run-jetty.sh</td>
-		<td>$BAGHEERA_HOME/bin/run-jetty.sh</td>
+		<td>bin/bagheera</td>
+		<td>$BAGHEERA_HOME/bin/bagheera</td>
 	</tr>
 	<tr>
 		<td>lib/*</td>
@@ -51,9 +52,9 @@ If you have the ability to scp to the remote host you can use the deploy/deploy-
 
 The deploy target does everything that deploy-fresh does except copy the lib directory. This can save a lot of copy time if you don't have any library updates.
  
-To run bagheera you can use bin/run-jetty.sh for now. We plan on adding some actual init scripts soon.
+To run bagheera you can use bin/bagheera or the init.d script by the same name under bin/init.d. The init script assumes an installation of bagheera at /usr/lib/bagheera, but this can be modified by changing the BAGHEERA_HOME variable. Here is an example of using the regular bagheera script:
 
-`bin/run-jetty.sh bagheera-0.1.jar 8080 conf/hazelcast.xml.example`
+`bin/bagheera 8080 conf/hazelcast.xml.example`
 
 If you start up multiple instances Hazelcast will auto-discover other instances assuming your network and hazelcast.xml are setup to do so.
 
@@ -93,3 +94,4 @@ All aspects of this software written in Python are distributed under the [Mozill
 
 * Xavier Stevens ([@xstevens](http://twitter.com/xstevens))
 * Daniel Einspanjer ([@deinspanjer](http://twitter/deinspanjer))
+* Anurag Phadke ([@anuragphadke](http://twitter.com/anuragphadke))
