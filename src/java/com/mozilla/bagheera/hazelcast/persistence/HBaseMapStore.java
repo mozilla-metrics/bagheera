@@ -78,7 +78,9 @@ public class HBaseMapStore implements MapStore<String, RequestData>, MapLoaderLi
 	 * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
 	 */
 	public void destroy() {
-		pool.closeTablePool(table.getTableName());
+		if (pool != null) {
+			pool.closeTablePool(table.getTableName());
+		}
 	}
 
 	/* (non-Javadoc)

@@ -19,11 +19,12 @@
  */
 package com.mozilla.bagheera.rest;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+
+import com.hazelcast.config.Config;
+import com.hazelcast.core.Hazelcast;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 /**
@@ -33,13 +34,7 @@ public class Bagheera {
 
 	public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
 	
-	public static void main(String[] args) throws Exception {
-		Configuration conf = HBaseConfiguration.create();
-		
-		// Call this here to initialize it once
-		int hbasePoolSize = Integer.parseInt(System.getProperty("hbase.pool.size", "10"));
-		RESTServlet servlet = RESTServlet.getInstance(conf, hbasePoolSize);
-		    
+	public static void main(String[] args) throws Exception {		
 		int port = Integer.parseInt(System.getProperty("server.port", "8080"));
 		Server server = new Server(port);
 		ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.SESSIONS);
@@ -55,6 +50,10 @@ public class Bagheera {
 	    server.setSendDateHeader(false);
 	    server.setStopAtShutdown(true);
 	    
+	    // Initialize Hazelcast
+		//Config hazelcastConfig = new Config();
+		//Hazelcast.newHazelcastInstance(hazelcastConfig);
+		
 		server.start();
 		server.join();
 	}

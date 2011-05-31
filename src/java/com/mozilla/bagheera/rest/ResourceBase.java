@@ -19,8 +19,6 @@
  */
 package com.mozilla.bagheera.rest;
 
-import java.io.IOException;
-
 import javax.ws.rs.core.CacheControl;
 
 public class ResourceBase {
@@ -31,11 +29,5 @@ public class ResourceBase {
 		cacheControl.setNoCache(true);
 		cacheControl.setNoTransform(false);
 	}
-	
-	protected RESTServlet servlet;
 
-	public ResourceBase() throws IOException {
-		servlet = RESTServlet.getInstance();
-	}
-	
 }

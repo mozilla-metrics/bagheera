@@ -17,9 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.elasticsearch;
-
-import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+package com.mozilla.bagheera.dao;
 
 import java.util.Map;
 
@@ -32,33 +30,19 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
-import org.elasticsearch.node.Node;
 
-public class NodeClient {
+public class ElasticSearchDao {
 
-	private static final Logger LOG = Logger.getLogger(NodeClient.class);
-
-	private Client client;
-	private Node node;
+	private static final Logger LOG = Logger.getLogger(ElasticSearchDao.class);
+	
+	private final Client client;
 	private final String indexName;
 	private final String typeName;
 	
-	public NodeClient(String indexName, String typeName) {
+	public ElasticSearchDao(Client client, String indexName, String typeName) {
+		this.client = client;
 		this.indexName = indexName;
 		this.typeName = typeName;
-		
-    node = nodeBuilder().loadConfigSettings(true).node().start();
-		client = node.client();
-	}
-
-	public void close() {
-		if (client != null) {
-			client.close();
-		}
-		
-		if (node != null) {
-			node.close();
-		}
 	}
 	
 	public boolean indexBulkDocument(Map<String, String> dataMap) {
@@ -84,7 +68,8 @@ public class NodeClient {
 		boolean success = true;
 		try {
 			IndexResponse response = client.prepareIndex(indexName, typeName, documentId)
-					.setSource(indexString).execute().actionGet();
+										.setSource(indexString)
+										.execute().actionGet();
 			if (!StringUtils.equals(documentId, response.getId())) {
 				LOG.error("error indexing documentId: " + documentId);
 				success = false;
@@ -98,7 +83,8 @@ public class NodeClient {
 			success = false;
 			LOG.error("ElasticSearchException while indexing document: " + e.getMessage(), e);
 		}
-		
+
 		return success;
 	}
+	
 }
