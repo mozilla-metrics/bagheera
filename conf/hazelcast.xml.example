@@ -2,7 +2,7 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hazelcast.com/schema/config hazelcast-basic.xsd">
 	<group>
 		<name>bagheera</name>
-		<password>pass</password>
+		<password>test</password>
 	</group>
 	<network>
 		<port auto-increment="true">5701</port>
@@ -24,6 +24,19 @@
 		<max-pool-size>64</max-pool-size>
 		<keep-alive-seconds>60</keep-alive-seconds>
 	</executor-service>
+	<map name="default">
+		<time-to-live-seconds>5</time-to-live-seconds>
+		<backup-count>1</backup-count>
+		<eviction-policy>NONE</eviction-policy>
+		<max-size>0</max-size>
+		<eviction-percentage>25</eviction-percentage>
+		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+		<!-- NoOpMapStore -->
+		<map-store enabled="true">
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.NoOpMapStore</class-name>
+			<write-delay-seconds>5</write-delay-seconds>
+		</map-store>
+	</map>
 	<map name="telemetry">
 		<time-to-live-seconds>20</time-to-live-seconds>
 		<backup-count>1</backup-count>
@@ -41,23 +54,6 @@
 			<property name="hazelcast.hbase.column.qualifier">json</property>
 		</map-store>
 	</map>
-	<map name="metrics_ping">
-		<time-to-live-seconds>20</time-to-live-seconds>
-		<backup-count>1</backup-count>
-		<eviction-policy>NONE</eviction-policy>
-		<max-size>0</max-size>
-		<eviction-percentage>25</eviction-percentage>
-		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<!-- HBaseMapStore -->
-		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
-			<write-delay-seconds>5</write-delay-seconds>
-			<property name="hazelcast.hbase.pool.size">20</property>
-			<property name="hazelcast.hbase.table">metrics_ping</property>
-			<property name="hazelcast.hbase.column.family">data</property>
-			<property name="hazelcast.hbase.column.qualifier">json</property>
-		</map-store>
-	</map>
 	<map name="testpilot">
 		<time-to-live-seconds>20</time-to-live-seconds>
 		<backup-count>1</backup-count>
@@ -65,45 +61,26 @@
 		<max-size>0</max-size>
 		<eviction-percentage>25</eviction-percentage>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<!-- HBaseMapStore -->
+		<!-- HdfsMapStore -->
 		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.HdfsMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
-			<property name="hazelcast.hbase.pool.size">20</property>
-			<property name="hazelcast.hbase.table">testpilot</property>
-			<property name="hazelcast.hbase.column.family">data</property>
-			<property name="hazelcast.hbase.column.qualifier">json</property>
+			<property name="hazelcast.hdfs.basedir">/bagheera</property>
+			<property name="hazelcast.hdfs.dateformat">yyyy-MM-dd</property>
+			<property name="hazelcast.hdfs.max.filesize">1073741824</property>
 		</map-store>
 	</map>
-    <queue name="tasks">
-        <!--
-            Maximum size of the queue. When a JVM's local queue size reaches the maximum,
-            all put/offer operations will get blocked until the queue size
-            of the JVM goes down below the maximum.
-            Any integer between 0 and Integer.MAX_VALUE. 0 means Integer.MAX_VALUE. Default is 0.
-        -->
-        <max-size-per-jvm>10000</max-size-per-jvm>
-        
-        <!--
-            Name of the map configuration that will be used for the backing distributed
-            map for this queue.
-        -->
-        <backing-map-ref>socorrosearch</backing-map-ref>
-    </queue>    
-	
 	<map name="socorrosearch">
-		<backup-count>1</backup-count>	
-<!--
 		<time-to-live-seconds>20</time-to-live-seconds>
+		<backup-count>1</backup-count>
 		<eviction-policy>NONE</eviction-policy>
 		<max-size>0</max-size>
 		<eviction-percentage>25</eviction-percentage>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
--->		
-		<!-- HBaseMapStore -->
+		<!-- ElasticSearchIndexQueueStore -->
 		<map-store enabled="true">
 			<class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchIndexQueueStore</class-name>
-			<write-delay-seconds>2</write-delay-seconds>
+			<write-delay-seconds>5</write-delay-seconds>
 			<property name="hazelcast.elasticsearch.index">socorro</property>
 			<property name="hazelcast.elasticsearch.type.name">crash_reports</property>
 			<property name="hazelcast.hbase.pool.size">20</property>

@@ -38,128 +38,134 @@ import com.mozilla.bagheera.dao.ElasticSearchDao;
 import com.mozilla.bagheera.dao.HBaseTableDao;
 import com.mozilla.bagheera.elasticsearch.NodeClientSingleton;
 
+/**
+ * An implementation of Hazelcast's MapStore interface that takes an ID from a Hazelcast
+ * queue, gets the ID's value in HBase and then adds that value to an ElasticSearch index. 
+ * Currently we have no interest for this particular implementation to ever load keys. 
+ * Therefore only the store and storeAll methods are implemented.
+ */
 public class ElasticSearchIndexQueueStore implements MapStore<Long, String>, MapLoaderLifecycleSupport {
 
-	private static final Logger LOG = Logger.getLogger(ElasticSearchIndexQueueStore.class);
+    private static final Logger LOG = Logger.getLogger(ElasticSearchIndexQueueStore.class);
 
-	private HTablePool pool;
-	private HBaseTableDao table;
-	private ElasticSearchDao es;
+    private HTablePool pool;
+    private HBaseTableDao table;
+    private ElasticSearchDao es;
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.
-	 * HazelcastInstance, java.util.Properties, java.lang.String)
-	 */
-	public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
-		Configuration conf = HBaseConfiguration.create();
-		for (String name : properties.stringPropertyNames()) {
-			if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
-				conf.set(name, properties.getProperty(name));
-			}
-		}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.
+     * HazelcastInstance, java.util.Properties, java.lang.String)
+     */
+    public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+        Configuration conf = HBaseConfiguration.create();
+        for (String name : properties.stringPropertyNames()) {
+            if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
+                conf.set(name, properties.getProperty(name));
+            }
+        }
 
-		int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-		String tableName = properties.getProperty("hazelcast.hbase.table", "default");
-		String family = properties.getProperty("hazelcast.hbase.column.family", "data");
-		String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
-		String qualifier = columnQualifier == null ? "" : columnQualifier;
+        int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
+        String tableName = properties.getProperty("hazelcast.hbase.table", "default");
+        String family = properties.getProperty("hazelcast.hbase.column.family", "data");
+        String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
+        String qualifier = columnQualifier == null ? "" : columnQualifier;
 
-		pool = new HTablePool(conf, hbasePoolSize);
-		table = new HBaseTableDao(pool, tableName, family, qualifier);
+        pool = new HTablePool(conf, hbasePoolSize);
+        table = new HBaseTableDao(pool, tableName, family, qualifier);
 
-		String indexName = properties.getProperty("hazelcast.elasticsearch.index", "default");
-		String typeName = properties.getProperty("hazelcast.elasticsearch.type.name", "data");
-		es = new ElasticSearchDao(NodeClientSingleton.getInstance().getClient(), indexName, typeName);
-	}
+        String indexName = properties.getProperty("hazelcast.elasticsearch.index", "default");
+        String typeName = properties.getProperty("hazelcast.elasticsearch.type.name", "data");
+        es = new ElasticSearchDao(NodeClientSingleton.getInstance().getClient(), indexName, typeName);
+    }
 
-	@Override
-	public String load(Long arg0) {
-		return null;
-	}
+    @Override
+    public String load(Long arg0) {
+        return null;
+    }
 
-	@Override
-	public Map<Long, String> loadAll(Collection<Long> arg0) {
-		return null;
-	}
+    @Override
+    public Map<Long, String> loadAll(Collection<Long> arg0) {
+        return null;
+    }
 
-	@Override
-	public Set<Long> loadAllKeys() {
-		return null;
-	}
+    @Override
+    public Set<Long> loadAllKeys() {
+        return null;
+    }
 
-	@Override
-	public void destroy() {
-		if (pool != null) {
-			pool.closeTablePool(table.getTableName());
-		}
-	}
+    @Override
+    public void destroy() {
+        if (pool != null) {
+            pool.closeTablePool(table.getTableName());
+        }
+    }
 
-	@Override
-	public void delete(Long arg0) {
-	}
+    @Override
+    public void delete(Long arg0) {
+    }
 
-	@Override
-	public void deleteAll(Collection<Long> arg0) {
-	}
+    @Override
+    public void deleteAll(Collection<Long> arg0) {
+    }
 
-	@Override
-	public void store(Long queueId, String valueId) {
-		LOG.info("received something in queue for store: " + queueId + "\tValue: " + valueId);
-		Map<String, String> idDataPair = new HashMap<String, String>();
-		if (StringUtils.isNotBlank(valueId)) {
-			String json = table.get(valueId);
-			if (StringUtils.isNotBlank(json)) {
-				if (LOG.isDebugEnabled()) {
-					LOG.debug("id: " + valueId + "json: " + json);
-				}
-				idDataPair.put(valueId, json);
-			} else {
-				LOG.error("No data for id:" + valueId);
-			}
-		}
-		LOG.debug("Trying to index single document inside ElasticSearch");
-		if (idDataPair.size() > 0) {
-			if (es.indexBulkDocument(idDataPair)) {
-				LOG.debug("success indexing jsons inside ES, total count: " + idDataPair.size());
-			}
-		} else {
-			LOG.debug("nothing to index");
-		}
+    @Override
+    public void store(Long queueId, String valueId) {
+        LOG.info("received something in queue for store: " + queueId + "\tValue: " + valueId);
+        Map<String, String> idDataPair = new HashMap<String, String>();
+        if (StringUtils.isNotBlank(valueId)) {
+            String json = table.get(valueId);
+            if (StringUtils.isNotBlank(json)) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("id: " + valueId + "json: " + json);
+                }
+                idDataPair.put(valueId, json);
+            } else {
+                LOG.error("No data for id:" + valueId);
+            }
+        }
+        LOG.debug("Trying to index single document inside ElasticSearch");
+        if (idDataPair.size() > 0) {
+            if (es.indexBulkDocument(idDataPair)) {
+                LOG.debug("success indexing jsons inside ES, total count: " + idDataPair.size());
+            }
+        } else {
+            LOG.debug("nothing to index");
+        }
 
-	}
+    }
 
-	@Override
-	public void storeAll(Map<Long, String> pairs) {
-		LOG.debug("QMS: received something in queue for storeAll:" + pairs.size());
-		Map<String, String> idDataPair = new HashMap<String, String>();
+    @Override
+    public void storeAll(Map<Long, String> pairs) {
+        LOG.debug("QMS: received something in queue for storeAll:" + pairs.size());
+        Map<String, String> idDataPair = new HashMap<String, String>();
 
-		for (Map.Entry<Long, String> pair : pairs.entrySet()) {
-			LOG.debug("Hazelcast key: " + pair.getKey() + " value: " + pair.getValue());
-			if (StringUtils.isNotBlank(pair.getValue())) {
-				// lets fetch the item from hbase
-				String json = table.get(pair.getValue());
-				if (StringUtils.isNotBlank(json)) {
-					if (LOG.isDebugEnabled()) {
-						LOG.debug("id: " + pair.getValue() + "json: " + json);
-					}
-					idDataPair.put(pair.getValue(), json);
-				} else {
-					LOG.error("No data for id:" + pair.getValue());
-				}
-			}
-		}
+        for (Map.Entry<Long, String> pair : pairs.entrySet()) {
+            LOG.debug("Hazelcast key: " + pair.getKey() + " value: " + pair.getValue());
+            if (StringUtils.isNotBlank(pair.getValue())) {
+                // lets fetch the item from hbase
+                String json = table.get(pair.getValue());
+                if (StringUtils.isNotBlank(json)) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("id: " + pair.getValue() + "json: " + json);
+                    }
+                    idDataPair.put(pair.getValue(), json);
+                } else {
+                    LOG.error("No data for id:" + pair.getValue());
+                }
+            }
+        }
 
-		LOG.debug("Trying to index some docs inside ElasticSearch");
-		if (idDataPair.size() > 0) {
-			if (es.indexBulkDocument(idDataPair)) {
-				LOG.debug("success indexing jsons inside ES, total count: " + pairs.size());
-			}
-		} else {
-			LOG.debug("nothing to index");
-		}
-	}
+        LOG.debug("Trying to index some docs inside ElasticSearch");
+        if (idDataPair.size() > 0) {
+            if (es.indexBulkDocument(idDataPair)) {
+                LOG.debug("success indexing jsons inside ES, total count: " + pairs.size());
+            }
+        } else {
+            LOG.debug("nothing to index");
+        }
+    }
 
 }

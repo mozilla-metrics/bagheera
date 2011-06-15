@@ -41,126 +41,148 @@ import com.mozilla.bagheera.dao.HBaseTableDao;
 import com.mozilla.bagheera.model.RequestData;
 
 /**
- * An implementation of Hazelcast's MapStore interface that persists
- * map data to HBase. Due to the general size of data in HBase there is 
- * no interest for this particular implementation to ever load keys. Therefore
- * only the store and storeAll methods are implemented.
+ * An implementation of Hazelcast's MapStore interface that persists map data to
+ * HBase. Due to the general size of data in HBase there is no interest for this
+ * particular implementation to ever load keys. Therefore only the store and
+ * storeAll methods are implemented.
  */
 public class HBaseMapStore implements MapStore<String, RequestData>, MapLoaderLifecycleSupport {
 
-	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
-	
-	private HTablePool pool;
-	private HBaseTableDao table;
+    private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.HazelcastInstance, java.util.Properties, java.lang.String)
-	 */
-	public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
-		Configuration conf = HBaseConfiguration.create();
-		for (String name : properties.stringPropertyNames()) {
-			if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
-				conf.set(name, properties.getProperty(name));
-			}
-		}
-		
-		int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-		String tableName = properties.getProperty("hazelcast.hbase.table", "default");
-		String family = properties.getProperty("hazelcast.hbase.column.family", "data");
-		String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
-		String qualifier = columnQualifier == null ? "" : columnQualifier;
-		
-		pool = new HTablePool(conf, hbasePoolSize);
-		table = new HBaseTableDao(pool, tableName, family, qualifier);
-	}
+    private HTablePool pool;
+    private HBaseTableDao table;
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
-	 */
-	public void destroy() {
-		if (pool != null) {
-			pool.closeTablePool(table.getTableName());
-		}
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.
+     * HazelcastInstance, java.util.Properties, java.lang.String)
+     */
+    public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+        Configuration conf = HBaseConfiguration.create();
+        for (String name : properties.stringPropertyNames()) {
+            if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
+                conf.set(name, properties.getProperty(name));
+            }
+        }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
-	 */
-	@Override
-	public RequestData load(String key) {
-		return null;
-	}
+        int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
+        String tableName = properties.getProperty("hazelcast.hbase.table", "default");
+        String family = properties.getProperty("hazelcast.hbase.column.family", "data");
+        String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
+        String qualifier = columnQualifier == null ? "" : columnQualifier;
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
-	 */
-	@Override
-	public Map<String, RequestData> loadAll(Collection<String> keys) {
-		return null;
-	}
+        pool = new HTablePool(conf, hbasePoolSize);
+        table = new HBaseTableDao(pool, tableName, family, qualifier);
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
-	 */
-	@Override
-	public void delete(String key) {
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
+     */
+    public void destroy() {
+        if (pool != null) {
+            pool.closeTablePool(table.getTableName());
+        }
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
-	 */
-	@Override
-	public void deleteAll(Collection<String> keys) {
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
+     */
+    @Override
+    public RequestData load(String key) {
+        return null;
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
-	 */
-	@Override
-	public void store(String key, RequestData value) {
-		try {
-			table.put(Bytes.toBytes(key), value.getPayload());
-		} catch (IOException e) {
-			LOG.error("Error during put", e);
-		}
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
+     */
+    @Override
+    public Map<String, RequestData> loadAll(Collection<String> keys) {
+        return null;
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
-	 */
-	@Override
-	public void storeAll(Map<String, RequestData> pairs) {
-		if (LOG.isDebugEnabled()) {
-			LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
-		}
-		
-		long current = System.currentTimeMillis();
-		List<Put> puts = new ArrayList<Put>();
-		for (Map.Entry<String, RequestData> pair : pairs.entrySet()) {
-			Put p = new Put(Bytes.toBytes(pair.getKey()));
-			// For privacy reasons we should never store IP address or user-agent string directly, but
-			// we could possibly store a derivative of that information such as GeoIP results or user-agent
-			// platform for statistical purposes. Currently we are only storing the actual payload.
-			p.add(table.getColumnFamily(), table.getColumnQualifier(), pair.getValue().getPayload());
-			puts.add(p);
-		}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
+     */
+    @Override
+    public void delete(String key) {
+    }
 
-		try {
-			table.putList(puts);
-		} catch (IOException e) {
-			LOG.error("Error during put", e);
-		}
-		
-		if (LOG.isDebugEnabled()) {
-			LOG.debug(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
-				(System.currentTimeMillis() - current)));
-		}
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
+     */
+    @Override
+    public void deleteAll(Collection<String> keys) {
+    }
 
-  @Override
-  public Set<String> loadAllKeys() {
-    // TODO Auto-generated method stub
-    return null;
-  }
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#store(java.lang.Object,
+     * java.lang.Object)
+     */
+    @Override
+    public void store(String key, RequestData value) {
+        try {
+            table.put(Bytes.toBytes(key), value.getPayload());
+        } catch (IOException e) {
+            LOG.error("Error during put", e);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
+     */
+    @Override
+    public void storeAll(Map<String, RequestData> pairs) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
+        }
+
+        long current = System.currentTimeMillis();
+        List<Put> puts = new ArrayList<Put>();
+        for (Map.Entry<String, RequestData> pair : pairs.entrySet()) {
+            Put p = new Put(Bytes.toBytes(pair.getKey()));
+            // For privacy reasons we should never store IP address or
+            // user-agent string directly, but
+            // we could possibly store a derivative of that information such as
+            // GeoIP results or user-agent
+            // platform for statistical purposes. Currently we are only storing
+            // the actual payload.
+            p.add(table.getColumnFamily(), table.getColumnQualifier(), pair.getValue().getPayload());
+            puts.add(p);
+        }
+
+        try {
+            table.putList(puts);
+        } catch (IOException e) {
+            LOG.error("Error during put", e);
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
+                    (System.currentTimeMillis() - current)));
+        }
+    }
+
+    @Override
+    public Set<String> loadAllKeys() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
 }
