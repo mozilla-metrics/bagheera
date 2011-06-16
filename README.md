@@ -21,38 +21,13 @@ To make a jar you can do:
 The jar file is then located under build/lib.
 
 ### Running an instance ###
-In order to run bagheera on another machine you need to deploy the following to your deployment target which I'll call _BAGHEERA_HOME_.
+In order to run bagheera on another machine you will probably want to use the _dist_ build target like so: need to deploy the following to your deployment target which I'll call `BAGHEERA_HOME`.
 
-<table border="1">
-	<tr>
-		<th>Source</th>
-		<th>Destination</th>
-	</tr>
-	<tr>
-		<td>bin/bagheera</td>
-		<td>$BAGHEERA_HOME/bin/bagheera</td>
-	</tr>
-	<tr>
-		<td>lib/*</td>
-		<td>$BAGHEERA_HOME/lib/</td>
-	</tr>
-	<tr>
-		<td>build/lib/bagheera-*.jar</td>
-		<td>$BAGHEERA_HOME/</td>
-	</tr>
-	<tr>
-		<td>conf/hazelcast.xml</td>
-		<td>$BAGHEERA_HOME/conf/</td>
-	</tr>
-</table> 
+`ant dist`
 
-If you have the ability to scp to the remote host you can use the deploy/deploy-fresh build target to do these steps for you:
+The zip file now under the `dist` directory should be deployed to `BAGHEERA_HOME` on the remote server.
 
-`ant -Dhostname=targethostname deploy-fresh`
-
-The deploy target does everything that deploy-fresh does except copy the lib directory. This can save a lot of copy time if you don't have any library updates.
- 
-To run bagheera you can use bin/bagheera or the init.d script by the same name under bin/init.d. The init script assumes an installation of bagheera at /usr/lib/bagheera, but this can be modified by changing the _BAGHEERA_HOME_ variable. Here is an example of using the regular bagheera script:
+To run Bagheera you can use `bin/bagheera` or copy the init.d script by the same name from `bin/init.d` to `/etc/init.d`. The init script assumes an installation of bagheera at `/usr/lib/bagheera`, but this can be modified by changing the `BAGHEERA_HOME` variable near the top of that script. Here is an example of using the regular bagheera script:
 
 `bin/bagheera 8080 conf/hazelcast.xml.example`
 
@@ -61,6 +36,12 @@ If you start up multiple instances Hazelcast will auto-discover other instances 
 ### REST Request Format ###
 
 Bagheera takes POST data on _/submit/mymapname/unique-id_. Depending on how _mymapname_ is configured in the Hazelcast configuration file, it may write to different sources. That is explained further below.
+
+Here's a quick rundown of HTTP return codes that Bagheera could send back (this isn't comprehensive but rather the most common ones):
+
+* 204 No Content - returned if everything was submitted successfully
+* 406 Not Acceptable - returned if the POST failed validation in some manner
+
 
 ### Hazelcast HBaseMapStore Configuration ###
 
