@@ -47,7 +47,7 @@ else
     fi
 fi
 
-CLASSPATH="$HADOOP_CONF":"$HBASE_CONF"
+CLASSPATH="$bin/../conf":"$HADOOP_CONF":"$HBASE_CONF"
 # add main jar
 for lib in `ls $MAIN_JAR_PATH`; do
     CLASSPATH=${CLASSPATH}:$lib
