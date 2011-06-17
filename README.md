@@ -42,7 +42,6 @@ Here's a quick rundown of HTTP return codes that Bagheera could send back (this 
 * 204 No Content - returned if everything was submitted successfully
 * 406 Not Acceptable - returned if the POST failed validation in some manner
 
-
 ### Hazelcast HBaseMapStore Configuration ###
 
 Suppose you've created a table called 'mytable' in HBase like so:
