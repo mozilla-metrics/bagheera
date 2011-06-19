@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.log4j.Logger;
 
+import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
@@ -45,7 +46,7 @@ public class ElasticSearchIndexQueueStore implements MapStore<Long, String>, Map
 	private HTablePool pool;
 	private HBaseTableDao table;
 	private ElasticSearchDao es;
-
+	private String QUEUE_NAME;
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -62,7 +63,8 @@ public class ElasticSearchIndexQueueStore implements MapStore<Long, String>, Map
 		}
 
 		int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-		String tableName = properties.getProperty("hazelcast.hbase.table", "default");
+		QUEUE_NAME = properties.getProperty("hazelcast.queue.name", "tasks");
+    String tableName = properties.getProperty("hazelcast.hbase.table", "default");
 		String family = properties.getProperty("hazelcast.hbase.column.family", "data");
 		String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
 		String qualifier = columnQualifier == null ? "" : columnQualifier;
@@ -135,7 +137,6 @@ public class ElasticSearchIndexQueueStore implements MapStore<Long, String>, Map
 	public void storeAll(Map<Long, String> pairs) {
 		LOG.debug("QMS: received something in queue for storeAll:" + pairs.size());
 		Map<String, String> idDataPair = new HashMap<String, String>();
-
 		for (Map.Entry<Long, String> pair : pairs.entrySet()) {
 			LOG.debug("Hazelcast key: " + pair.getKey() + " value: " + pair.getValue());
 			if (StringUtils.isNotBlank(pair.getValue())) {
@@ -150,7 +151,15 @@ public class ElasticSearchIndexQueueStore implements MapStore<Long, String>, Map
 					LOG.error("No data for id:" + pair.getValue());
 				}
 			}
+      if (Hazelcast.getQueue(QUEUE_NAME).remove(pair.getValue())) {
+        LOG.debug("successfully removed item from queue:\t" + QUEUE_NAME + "\t" + pair.getValue());
+      } else {
+        LOG.error("error removing item from queue:\t" + QUEUE_NAME + "\t" + pair.getValue());
+      }
+      
+			
 		}
+		
 
 		LOG.debug("Trying to index some docs inside ElasticSearch");
 		if (idDataPair.size() > 0) {

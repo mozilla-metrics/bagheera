@@ -104,6 +104,7 @@
 		<map-store enabled="true">
 			<class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchIndexQueueStore</class-name>
 			<write-delay-seconds>2</write-delay-seconds>
+			<property name="hazelcast.queue.name">tasks</property>
 			<property name="hazelcast.elasticsearch.index">socorro</property>
 			<property name="hazelcast.elasticsearch.type.name">crash_reports</property>
 			<property name="hazelcast.hbase.pool.size">20</property>

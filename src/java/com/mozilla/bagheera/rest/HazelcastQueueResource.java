@@ -83,6 +83,7 @@ public class HazelcastQueueResource extends ResourceBase {
 		}
 
 		boolean success = Hazelcast.getQueue(name).add(id);
+		LOG.info("Queue size: " + Hazelcast.getQueue(name).size());
 		Response response = null;
 		if (success) {
 			response = Response.status(Status.OK).build();
