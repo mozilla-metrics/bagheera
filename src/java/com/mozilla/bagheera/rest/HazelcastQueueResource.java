@@ -23,6 +23,7 @@ import static com.mozilla.bagheera.rest.Bagheera.PROPERTIES_RESOURCE_NAME;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.Properties;
 
 import javax.servlet.http.HttpServletRequest;
@@ -77,13 +78,20 @@ public class HazelcastQueueResource extends ResourceBase {
 	@POST
 	@Path("{name}/{id}")
 	//@Consumes(MediaType.APPLICATION_JSON)
-	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
+	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request)  {
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("HTTP request params, queue name: " + name + "\tid: " + id);
 		}
+		boolean success = true;
 
-		boolean success = Hazelcast.getQueue(name).add(id);
-		LOG.info("Queue size: " + Hazelcast.getQueue(name).size());
+		Map<String,String> m = Hazelcast.getMap(name);
+    try {
+      m.put(id, "");
+    } catch (Exception e) {
+      success = false;
+      LOG.error("Error adding object to map: " + e.getMessage());
+    }
+
 		Response response = null;
 		if (success) {
 			response = Response.status(Status.OK).build();

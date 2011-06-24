@@ -1,6 +1,9 @@
 # Cluster Settings
 cluster:
   name: socorro
+  
+path:
+  data: s-data  
 # Gateway Settings
 #gateway:
 #  recover_after_nodes: 1

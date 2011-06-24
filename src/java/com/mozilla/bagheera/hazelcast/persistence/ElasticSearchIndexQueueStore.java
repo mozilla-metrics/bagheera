@@ -19,6 +19,7 @@
  */
 package com.mozilla.bagheera.hazelcast.persistence;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -74,7 +75,12 @@ public class ElasticSearchIndexQueueStore implements MapStore<Long, String>, Map
 
 		String indexName = properties.getProperty("hazelcast.elasticsearch.index", "default");
 		String typeName = properties.getProperty("hazelcast.elasticsearch.type.name", "data");
-		es = new ElasticSearchDao(NodeClientSingleton.getInstance().getClient(), indexName, typeName);
+		try {
+      es = new ElasticSearchDao(NodeClientSingleton.getInstance().getClient(), indexName, typeName);
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      LOG.error("error invoking ES instance: " + e.getMessage());
+    }
 	}
 
 	@Override

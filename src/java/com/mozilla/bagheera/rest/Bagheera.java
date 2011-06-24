@@ -22,11 +22,8 @@ package com.mozilla.bagheera.rest;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.elasticsearch.ElasticSearchNullPointerException;
-import org.elasticsearch.bootstrap.ElasticSearch;
 
 import com.hazelcast.core.Hazelcast;
-import com.mozilla.bagheera.dao.ElasticSearchDao;
 import com.mozilla.bagheera.elasticsearch.NodeClientSingleton;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
@@ -35,8 +32,9 @@ import com.sun.jersey.spi.container.servlet.ServletContainer;
  */
 public class Bagheera {
 
-	public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
-	
+  public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
+  public static final String ES_PROPERTIES_RESOURCE_NAME = "/elasticsearch.properties";
+  
 	public static void main(String[] args) throws Exception {		
 		int port = Integer.parseInt(System.getProperty("server.port", "8080"));
 		Server server = new Server(port);
@@ -57,6 +55,7 @@ public class Bagheera {
 	    // Initialize Hazelcast now rather than waiting for the first request
 		Hazelcast.getDefaultInstance();
 		
+
 		NodeClientSingleton.getInstance();
 		server.start();
 		server.join();
