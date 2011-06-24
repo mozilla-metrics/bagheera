@@ -72,10 +72,10 @@
 	</map>
 	
 		<map name="tasks">
-		<time-to-live-seconds>0</time-to-live-seconds>
+		<time-to-live-seconds>20</time-to-live-seconds>
 		<backup-count>1</backup-count>
 		<eviction-policy>NONE</eviction-policy>
-		<max-size>2000000</max-size>
+		<max-size>1000000</max-size>
 		<eviction-percentage>25</eviction-percentage>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
 		<!-- HdfsMapStore -->

@@ -3,9 +3,11 @@ cluster:
   name: socorro
   
 path:
-  data: s-data  
+  data: /data1/es-data/
+  
 # Gateway Settings
-#gateway:
-#  recover_after_nodes: 1
-#  recover_after_time: 5m
-#  expected_nodes: 2
+gateway:
+  type: local
+  recover_after_nodes: 2
+  recover_after_time: 5m
+  expected_nodes: 2
