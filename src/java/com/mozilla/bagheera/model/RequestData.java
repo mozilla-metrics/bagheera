@@ -60,4 +60,11 @@ public class RequestData implements Serializable {
 		return payload;
 	}
 	
+	/**
+	 * @return
+	 */
+	public int getPayloadSize() {
+	    return payload.length;
+	}
+	
 }

@@ -47,7 +47,7 @@ else
     fi
 fi
 
-CLASSPATH="$HADOOP_CONF":"$HBASE_CONF"
+CLASSPATH="$bin/../conf":"$HADOOP_CONF":"$HBASE_CONF"
 # add main jar
 for lib in `ls $MAIN_JAR_PATH`; do
     CLASSPATH=${CLASSPATH}:$lib
@@ -64,10 +64,10 @@ if [ ! -d $bin/../logs ]; then
 fi
 
 if [ "$DAEMON_DETACHED" = false ]; then
-    java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
+    java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
     RETVAL=$?
 else
-    nohup java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME > $bin/../logs/bagheera.out 2>&1 < /dev/null &
+    nohup java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME > $bin/../logs/bagheera.out 2>&1 < /dev/null &
     PID=$!
     RETVAL=$?
 

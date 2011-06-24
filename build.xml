@@ -64,33 +64,16 @@
 		</jar>
 	</target>
 	
-	<target name="deploy" depends="jar">
-		<exec executable="ssh">
-			<arg value="${hostname}"/>
-			<arg value="test ! -d ./${project.name} &amp;&amp; mkdir ./${project.name}"/>
-		</exec>
-		<exec executable="scp">
-			<arg value="${build.lib}/${project.name}-${project.version}.jar"/>
-			<arg value="${hostname}:./${project.name}/"/>
-		</exec>
-		<exec executable="scp">
-			<arg value="-r"/>
-			<arg value="${conf.dir}"/>
-			<arg value="${hostname}:./${project.name}/"/>
-		</exec>
-		<exec executable="scp">
-			<arg value="-r"/>
-			<arg value="${bin.dir}"/>
-			<arg value="${hostname}:./${project.name}/"/>
-		</exec>
-	</target>
-	
-	<target name="deploy-fresh" depends="deploy">
-		<exec executable="scp">
-			<arg value="-r"/>
-			<arg value="${lib.dir}"/>
-			<arg value="${hostname}:./${project.name}/"/>
-		</exec>
+	<target name="dist" depends="jar">
+		<mkdir dir="./dist" />
+		<zip destfile="./dist/${project.name}-${project.version}.zip">
+			<zipfileset dir="${build.lib}" includes="${project.name}-${project.version}.jar" prefix="${project.name}"/>
+			<zipfileset dir="." prefix="${project.name}">
+				<include name="bin/**"/>
+				<include name="conf/**"/>
+				<include name="lib/**"/>
+			</zipfileset>
+		</zip>
 	</target>
 	
 </project>

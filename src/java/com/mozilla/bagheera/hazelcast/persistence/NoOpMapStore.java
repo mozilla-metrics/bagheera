@@ -34,63 +34,84 @@ import com.mozilla.bagheera.model.RequestData;
  * testing.
  */
 public class NoOpMapStore implements MapStore<String, RequestData> {
-    
-	private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
-	 */
-	@Override
-	public RequestData load(String key) {
-		LOG.info(String.format("load called\nkey: %s", key));
-		return null;
-	}
+    private static final Logger LOG = Logger.getLogger(NoOpMapStore.class);
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
-	 */
-	@Override
-	public Map<String, RequestData> loadAll(Collection<String> keys) {
-		LOG.info(String.format("loadAll called with %d keys", keys.size()));
-		return null;
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
+     */
+    @Override
+    public RequestData load(String key) {
+        LOG.info(String.format("load called\nkey: %s", key));
+        return null;
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#store(java.lang.Object, java.lang.Object)
-	 */
-	@Override
-	public void store(String key, RequestData value) {
-		LOG.info(String.format("store called\nkey: %s\nvalue: %s", key, new String(value.getPayload())));
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
+     */
+    @Override
+    public Map<String, RequestData> loadAll(Collection<String> keys) {
+        LOG.info(String.format("loadAll called with %d keys", keys.size()));
+        return null;
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
-	 */
-	@Override
-	public void storeAll(Map<String, RequestData> map) {
-		LOG.info(String.format("storeAll called with %d entries", map.size()));
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#store(java.lang.Object,
+     * java.lang.Object)
+     */
+    @Override
+    public void store(String key, RequestData value) {
+        byte[] payload = value.getPayload();
+        if (payload != null) {
+            LOG.info(String.format("%s %d \"%s\"",
+                    new Object[] { value.getIpAddress(), payload.length, value.getUserAgent() }));
+        } else {
+            LOG.info(String.format("%s 0 \"%s\"", new Object[] { value.getIpAddress(), value.getUserAgent() }));
+        }
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
-	 */
-	@Override
-	public void delete(String key) {
-		LOG.info(String.format("delete called\nkey: %s", key));
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
+     */
+    @Override
+    public void storeAll(Map<String, RequestData> map) {
+        LOG.info(String.format("storeAll called with %d entries", map.size()));
+        for (Map.Entry<String, RequestData> entry : map.entrySet()) {
+            store(entry.getKey(), entry.getValue());
+        }
+    }
 
-	/* (non-Javadoc)
-	 * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
-	 */
-	@Override
-	public void deleteAll(Collection<String> keys) {
-		LOG.info(String.format("storeAll called with %d entries", keys.size()));
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
+     */
+    @Override
+    public void delete(String key) {
+        LOG.info(String.format("delete called\nkey: %s", key));
+    }
 
-  @Override
-  public Set<String> loadAllKeys() {
-    // TODO Auto-generated method stub
-    return null;
-  }
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
+     */
+    @Override
+    public void deleteAll(Collection<String> keys) {
+        LOG.info(String.format("storeAll called with %d entries", keys.size()));
+    }
+
+    @Override
+    public Set<String> loadAllKeys() {
+        return null;
+    }
 
 }
