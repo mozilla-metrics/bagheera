@@ -35,8 +35,8 @@ else
 fi
 
 # if this is a developer then use the main jar in the build directory
-if [ -d $bin/../build/lib ]; then
-    MAIN_JAR_PATH="$bin/../build/lib/bagheera-*.jar"
+if [ -d $bin/../target ]; then
+    MAIN_JAR_PATH="$bin/../target/bagheera-*.jar"
     if [ "$DAEMON_DETACHED" = "" ]; then
         DAEMON_DETACHED=false
     fi
@@ -64,6 +64,7 @@ if [ ! -d $bin/../logs ]; then
 fi
 
 if [ "$DAEMON_DETACHED" = false ]; then
+    echo $CLASSPATH
     java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
     RETVAL=$?
 else
