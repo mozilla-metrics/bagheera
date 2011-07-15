@@ -27,8 +27,6 @@ import java.util.Date;
 import java.util.Random;
 import java.util.UUID;
 
-import org.apache.hadoop.hbase.util.Bytes;
-
 /**
  * Utility class for id generation and bucketing
  */
@@ -56,6 +54,10 @@ public class IdUtil {
 	 * @throws IOException
 	 */
 	public static byte[] bucketizeId(String id) throws IOException {
+	    if (id == null) {
+            throw new IllegalArgumentException("id cannot be null");
+        }
+	    
 		return nonRandByteBucketizeId(id, Calendar.getInstance().getTime());
 	}
 
@@ -67,12 +69,19 @@ public class IdUtil {
 	 * @throws IOException
 	 */
 	public static byte[] randByteBucketizeId(String id, Date d) throws IOException {
+	    if (id == null) {
+	        throw new IllegalArgumentException("id cannot be null");
+	    }
+	    if (d == null) {
+            throw new IllegalArgumentException("date cannot be null");
+        }
+	    
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		byte[] randByte = new byte[1];
 		RAND.nextBytes(randByte);
 		baos.write(randByte);
-		baos.write(Bytes.toBytes(SDF.format(d)));
-		baos.write(Bytes.toBytes(id));
+		baos.write(SDF.format(d).getBytes());
+		baos.write(id.getBytes());
 
 		return baos.toByteArray();
 	}
@@ -90,13 +99,16 @@ public class IdUtil {
 		if (id == null || id.length() < 2) {
 			throw new IllegalArgumentException("id cannot be null or less that 2 characters in length");
 		}
-		
+        if (d == null) {
+            throw new IllegalArgumentException("date cannot be null");
+        }
+        
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		// Munge two hex characters into the range of a single byte
 		int bucket = Integer.parseInt(id.substring(0, 2), 16) - 128;
 		baos.write(bucket);
-		baos.write(Bytes.toBytes(SDF.format(d)));
-		baos.write(Bytes.toBytes(id));
+		baos.write(SDF.format(d).getBytes());
+		baos.write(id.getBytes());
 
 		return baos.toByteArray();
 	}
@@ -111,9 +123,9 @@ public class IdUtil {
 	public static byte[] randHexBucketizeId(String id, Date d) throws IOException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		int bucket = RAND.nextInt(HEX_BUCKETS);
-		baos.write(Bytes.toBytes(Integer.toHexString(bucket)));
-		baos.write(Bytes.toBytes(SDF.format(d)));
-		baos.write(Bytes.toBytes(id));
+		baos.write(Integer.toHexString(bucket).getBytes());
+		baos.write(SDF.format(d).getBytes());
+		baos.write(id.getBytes());
 
 		return baos.toByteArray();
 	}
@@ -128,8 +140,8 @@ public class IdUtil {
 	public static byte[] nonRandHexBucketizeId(String id, Date d) throws IOException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		baos.write(id.charAt(0));
-		baos.write(Bytes.toBytes(SDF.format(d)));
-		baos.write(Bytes.toBytes(id));
+		baos.write(SDF.format(d).getBytes());
+		baos.write(id.getBytes());
 
 		return baos.toByteArray();
 	}
