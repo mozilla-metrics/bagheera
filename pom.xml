@@ -2,7 +2,7 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.mozilla.metrics</groupId>
+  <groupId>com.mozilla</groupId>
   <artifactId>bagheera</artifactId>
   <version>0.3-SNAPSHOT</version>
 
@@ -85,7 +85,13 @@
       <artifactId>jersey-multipart</artifactId>
       <version>1.8</version>
     </dependency>
-
+    <dependency>
+        <groupId>asm</groupId>
+        <artifactId>asm</artifactId>
+        <version>3.3.1</version>
+        <scope>runtime</scope>
+    </dependency>
+    
 	<!-- Jetty -->
 	<dependency>
       <groupId>org.eclipse.jetty</groupId>
@@ -145,10 +151,6 @@
       		<groupId>com.cloudera.cdh</groupId>
       	</exclusion>
       	<exclusion>
-      		<artifactId>jetty-util</artifactId>
-      		<groupId>org.mortbay.jetty</groupId>
-      	</exclusion>
-      	<exclusion>
       		<artifactId>commons-net</artifactId>
       		<groupId>commons-net</groupId>
       	</exclusion>
@@ -159,10 +161,6 @@
       	<exclusion>
       		<artifactId>commons-el</artifactId>
       		<groupId>commons-el</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>servlet-api</artifactId>
-      		<groupId>org.mortbay.jetty</groupId>
       	</exclusion>
       	<exclusion>
       		<artifactId>ant</artifactId>
@@ -183,10 +181,6 @@
       	<exclusion>
       		<artifactId>commons-codec</artifactId>
       		<groupId>commons-codec</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>jetty</artifactId>
-      		<groupId>org.mortbay.jetty</groupId>
       	</exclusion>
       	<exclusion>
       		<artifactId>oro</artifactId>
@@ -216,24 +210,12 @@
       		<groupId>commons-cli</groupId>
       	</exclusion>
       	<exclusion>
-      		<artifactId>zookeeper</artifactId>
-      		<groupId>org.apache.zookeeper</groupId>
-      	</exclusion>
-      	<exclusion>
       		<artifactId>jruby-complete</artifactId>
       		<groupId>org.jruby</groupId>
       	</exclusion>
       	<exclusion>
-      		<artifactId>jetty-util</artifactId>
-      		<groupId>org.mortbay.jetty</groupId>
-      	</exclusion>
-      	<exclusion>
       		<artifactId>thrift</artifactId>
       		<groupId>org.apache.thrift</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>servlet-api-2.5</artifactId>
-      		<groupId>org.mortbay.jetty</groupId>
       	</exclusion>
       	<exclusion>
       		<artifactId>slf4j-log4j12</artifactId>
@@ -242,10 +224,6 @@
       	<exclusion>
       		<artifactId>jasper-compiler</artifactId>
       		<groupId>tomcat</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>activation</artifactId>
-      		<groupId>javax.activation</groupId>
       	</exclusion>
       	<exclusion>
       		<artifactId>core</artifactId>
@@ -264,20 +242,8 @@
       		<groupId>org.slf4j</groupId>
       	</exclusion>
       	<exclusion>
-      		<artifactId>jersey-server</artifactId>
-      		<groupId>com.sun.jersey</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>jackson-jaxrs</artifactId>
-      		<groupId>org.codehaus.jackson</groupId>
-      	</exclusion>
-      	<exclusion>
       		<artifactId>avro</artifactId>
       		<groupId>org.apache.hadoop</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>commons-logging</artifactId>
-      		<groupId>commons-logging</groupId>
       	</exclusion>
       	<exclusion>
       		<artifactId>jsp-2.1</artifactId>
@@ -300,16 +266,8 @@
       		<groupId>commons-lang</groupId>
       	</exclusion>
       	<exclusion>
-      		<artifactId>jaxb-api</artifactId>
-      		<groupId>javax.xml.bind</groupId>
-      	</exclusion>
-      	<exclusion>
       		<artifactId>jsp-api-2.1</artifactId>
       		<groupId>org.mortbay.jetty</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>jaxb-impl</artifactId>
-      		<groupId>com.sun.xml.bind</groupId>
       	</exclusion>
       	<exclusion>
       		<artifactId>jersey-json</artifactId>
@@ -318,10 +276,6 @@
       	<exclusion>
       		<artifactId>zookeeper-ant</artifactId>
       		<groupId>com.cloudera.cdh</groupId>
-      	</exclusion>
-      	<exclusion>
-      		<artifactId>jetty</artifactId>
-      		<groupId>org.mortbay.jetty</groupId>
       	</exclusion>
       	<exclusion>
       		<artifactId>protobuf-java</artifactId>
@@ -343,7 +297,7 @@
       <artifactId>je</artifactId>
       <version>4.1.10</version>
     </dependency>
-
+    
   </dependencies>
 
   <build>
@@ -366,14 +320,6 @@
         <version>2.3.1</version>
         <configuration>
           <finalName>${project.name}-${project.version}</finalName>
-          <archive>
-            <manifest>
-              <addClasspath>true</addClasspath>
-              <classpathPrefix>${settings.localRepository}</classpathPrefix>
-              <classpathLayoutType>repository</classpathLayoutType>
-              <mainClass>com.mozilla.bagheera.rest.Bagheera</mainClass>
-            </manifest>
-          </archive>
         </configuration>
       </plugin>
        

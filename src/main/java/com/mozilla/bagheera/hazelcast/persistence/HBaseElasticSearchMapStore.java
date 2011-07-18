@@ -22,79 +22,44 @@ package com.mozilla.bagheera.hazelcast.persistence;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.log4j.Logger;
 
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
-import com.mozilla.bagheera.dao.ElasticSearchDao;
-import com.mozilla.bagheera.dao.HBaseTableDao;
-import com.mozilla.bagheera.elasticsearch.NodeClientSingleton;
 
-public class HBaseElasticSearchMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class HBaseElasticSearchMapStore extends ComplexMapStoreBase implements MapStore<String, String> {
     
     private static final Logger LOG = Logger.getLogger(HBaseElasticSearchMapStore.class);
 
-    private HTablePool pool;
-    private HBaseTableDao table;
-    private ElasticSearchDao es;
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.
-     * HazelcastInstance, java.util.Properties, java.lang.String)
-     */
-    public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
-        Configuration conf = HBaseConfiguration.create();
-        for (String name : properties.stringPropertyNames()) {
-            if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
-                conf.set(name, properties.getProperty(name));
-            }
-        }
-
-        int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-        String tableName = properties.getProperty("hazelcast.hbase.table", "default");
-        String family = properties.getProperty("hazelcast.hbase.column.family", "data");
-        String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
-        String qualifier = columnQualifier == null ? "" : columnQualifier;
-
-        pool = new HTablePool(conf, hbasePoolSize);
-        table = new HBaseTableDao(pool, tableName, family, qualifier);
-
-        String indexName = properties.getProperty("hazelcast.elasticsearch.index", "default");
-        String typeName = properties.getProperty("hazelcast.elasticsearch.type.name", "data");
-        es = new ElasticSearchDao(NodeClientSingleton.getInstance(properties).getClient(), indexName, typeName);
+    @Override
+    public String load(String arg0) {
+        // TODO Auto-generated method stub
+        return null;
     }
 
-    public void destroy() {
-        if (pool != null) {
-            pool.closeTablePool(table.getTableName());
-        }
-        try {
-            NodeClientSingleton.getInstance().close();
-        } catch (IOException e) {
-            LOG.error("Error closing ElasticSearch client", e);
-        }
+    @Override
+    public Map<String, String> loadAll(Collection<String> arg0) {
+        // TODO Auto-generated method stub
+        return null;
     }
-    
+
+    @Override
+    public Set<String> loadAllKeys() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
     @Override
     public void delete(String arg0) {
         // TODO Auto-generated method stub
-
+        
     }
 
     @Override
     public void deleteAll(Collection<String> arg0) {
         // TODO Auto-generated method stub
-
+        
     }
 
     @Override
@@ -123,26 +88,8 @@ public class HBaseElasticSearchMapStore implements MapStore<String, String>, Map
 
         if (LOG.isDebugEnabled()) {
             LOG.debug(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
-                    (System.currentTimeMillis() - current)));
+                      (System.currentTimeMillis() - current)));
         }
-    }
-
-    @Override
-    public String load(String arg0) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Map<String, String> loadAll(Collection<String> arg0) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Set<String> loadAllKeys() {
-        // TODO Auto-generated method stub
-        return null;
     }
 
 }

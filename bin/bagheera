@@ -64,7 +64,6 @@ if [ ! -d $bin/../logs ]; then
 fi
 
 if [ "$DAEMON_DETACHED" = false ]; then
-    echo $CLASSPATH
     java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
     RETVAL=$?
 else

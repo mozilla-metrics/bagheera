@@ -36,75 +36,65 @@ public class NoOpMapStore implements MapStore<String, String> {
 
     private static final Logger LOG = Logger.getLogger(NoOpMapStore.class);
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
-     */
     @Override
     public String load(String key) {
-        LOG.info(String.format("load called with key: %s", key));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("load(%s)", key));
+        }
         return null;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
-     */
     @Override
     public Map<String, String> loadAll(Collection<String> keys) {
-        LOG.info(String.format("loadAll called with %d keys", keys.size()));
-        return null;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#store(java.lang.Object,
-     * java.lang.Object)
-     */
-    @Override
-    public void store(String key, String value) {
-        LOG.info(String.format("store called with key: %s", key));
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
-     */
-    @Override
-    public void storeAll(Map<String, String> map) {
-        LOG.info(String.format("storeAll called with %d entries", map.size()));
-        for (Map.Entry<String, String> entry : map.entrySet()) {
-            store(entry.getKey(), entry.getValue());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("loadAll called with %d values", keys.size()));
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
-     */
-    @Override
-    public void delete(String key) {
-        LOG.info(String.format("delete called with key: %s", key));
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
-     */
-    @Override
-    public void deleteAll(Collection<String> keys) {
-        LOG.info(String.format("storeAll called with %d entries", keys.size()));
+        for (String k : keys) {
+            load(k);
+        }
+        return null;
     }
 
     @Override
     public Set<String> loadAllKeys() {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("loadAllKeys called");
+        }
         return null;
+    }
+
+    @Override
+    public void delete(String key) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("delete(%s)", key));
+        }
+    }
+
+    @Override
+    public void deleteAll(Collection<String> keys) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("deleteAll called with %d values", keys.size()));
+        }
+        for (String k : keys) {
+            delete(k);
+        }
+    }
+
+    @Override
+    public void store(String key, String value) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("store(%s, %s)", key, value));
+        }
+    }
+
+    @Override
+    public void storeAll(Map<String, String> pairs) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("storeAll called with %d values", pairs.size()));
+        }
+        for (Map.Entry<String, String> entry : pairs.entrySet()) {
+            store(entry.getKey(), entry.getValue());
+        }
     }
 
 }

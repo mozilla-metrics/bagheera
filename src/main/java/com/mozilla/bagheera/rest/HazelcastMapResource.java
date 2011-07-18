@@ -52,6 +52,7 @@ import com.mozilla.bagheera.util.IdUtil;
 /**
  * A REST resource that inserts data into Hazelcast maps.
  */
+@Path("/map")
 public class HazelcastMapResource extends ResourceBase {
 
 	private static final Logger LOG = Logger.getLogger(HazelcastMapResource.class);
@@ -88,7 +89,7 @@ public class HazelcastMapResource extends ResourceBase {
 	 * @throws IOException
 	 */
 	@POST
-	@Path("/submit/{name}")
+	@Path("{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @Context HttpServletRequest request) throws IOException {	
 		return mapPut(name, new String(IdUtil.generateBucketizedId()), request);
@@ -103,7 +104,7 @@ public class HazelcastMapResource extends ResourceBase {
 	 * @throws IOException
 	 */
 	@POST
-	@Path("/submit/{name}/{id}")
+	@Path("{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
 		int maxByteSize = Integer.parseInt(props.getProperty(name + MAX_BYTES_POSTFIX, "0"));
@@ -148,9 +149,9 @@ public class HazelcastMapResource extends ResourceBase {
 	}
 
 	@GET
-	@Path("/{name}/{id}")
+	@Path("{name}/{id}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response mapGet(@PathParam("name") String name, @PathParam("id") String id) {
+	public Response mapGet(@PathParam("name") String name, @PathParam("id") String id) throws IOException {
 	    boolean allowGetAccess = Boolean.parseBoolean(props.getProperty(name + ALLOW_GET_ACCESS, "false"));
 	    if (!allowGetAccess) {
 	        return Response.status(Status.FORBIDDEN).build();
@@ -158,7 +159,7 @@ public class HazelcastMapResource extends ResourceBase {
 	    
 	    Map<String,String> m = Hazelcast.getMap(name);
 	    // This won't have any fields filled out other than the payload
-	    String data = m.get(id);
+	    String data = m.get(new String(IdUtil.bucketizeId(id)));
 	    Response resp = null;
 	    if (data != null) {
 	        resp = Response.ok(data, MediaType.APPLICATION_JSON).build();

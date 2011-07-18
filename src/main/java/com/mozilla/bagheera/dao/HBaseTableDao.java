@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -193,8 +194,11 @@ public class HBaseTableDao {
         return retval;
     }
     
-    public Map<String, String> multipleGets(Collection<String> rows) {
-        LOG.debug("inside multiple gets");
+    /**
+     * @param rows
+     * @return
+     */
+    public Map<String, String> getAll(Collection<String> rows) {
         HTableInterface table = null;
         Map<String, String> idJsonMap = new HashMap<String, String>();
 
@@ -228,13 +232,53 @@ public class HBaseTableDao {
 
             }
         } catch (IOException e) {
-            LOG.error("Value did not exist for row: " + e.getMessage());
+            LOG.error("IOException while getting values", e);
         } finally {
             for (String row : rowSet) {
-                LOG.error("Error fetching row: " + row);
+                LOG.error("Was not able to fetch row: " + row);
             }
         }
 
         return idJsonMap;
+    }
+    
+    /**
+     * @param row
+     */
+    public void delete(String row) {
+        HTableInterface table = null;
+        try {
+            Delete d = new Delete(Bytes.toBytes(row));
+            table = pool.getTable(tableName);
+            table.delete(d);
+        } catch (IOException e) {
+            LOG.error("IOException while deleting value: " + row, e);
+        } finally {
+            if (table != null) {
+                pool.putTable(table);
+            }
+        }
+    }
+    
+    /**
+     * @param rows
+     */
+    public void deleteAll(Collection<String> rows) {
+        HTableInterface table = null;
+        try {
+            List<Delete> deletes = new ArrayList<Delete>();
+            for (String row : rows) {
+                Delete d = new Delete(Bytes.toBytes(row));
+                deletes.add(d);
+            }
+            table = pool.getTable(tableName);
+            table.delete(deletes);
+        } catch (IOException e) {
+            LOG.error("IOException while deleting values", e);
+        } finally {
+            if (table != null) {
+                pool.putTable(table);
+            }
+        }
     }
 }

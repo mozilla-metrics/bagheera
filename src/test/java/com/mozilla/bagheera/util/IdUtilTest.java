@@ -35,7 +35,18 @@ public class IdUtilTest {
     }
     
     @Test
-    public void testBucketizeId() throws IOException {
+    public void testBucketizeId1() throws IOException {
+        boolean caughtException = false;
+        try {
+            byte[] idBytes = IdUtil.bucketizeId(null);
+        } catch (IllegalArgumentException e) {
+            caughtException = true;
+        }
+        assertTrue(caughtException);
+    }
+    
+    @Test
+    public void testBucketizeId2() throws IOException {
         UUID uuid = UUID.randomUUID();
         byte[] idBytes = IdUtil.bucketizeId(uuid.toString());
         assertNotNull(idBytes);

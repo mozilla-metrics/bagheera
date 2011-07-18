@@ -51,24 +51,29 @@ public class ElasticSearchDao {
      * @return
      */
     public boolean indexDocument(String id, String source) {
-        boolean success = true;
+        if (StringUtils.isBlank(id) || StringUtils.isBlank(source)) {
+            return false;
+        }
+        
+        boolean success = false;
         try {
-            IndexResponse response = client.prepareIndex(indexName, typeName, id).setSource(source).execute()
-                    .actionGet();
-            if (!StringUtils.equals(id, response.getId())) {
-                LOG.error("error indexing id: " + id);
-                success = false;
-            } else {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("successfully indexed id: " + id);
-                }
+            IndexResponse response = client.prepareIndex(indexName, typeName, id).setSource(source).execute().actionGet();
+            if (StringUtils.equals(id, response.getId())) {
+                success = true;
             }
-
         } catch (ElasticSearchException e) {
             success = false;
-            LOG.error("ElasticSearchException while indexing document: " + e.getMessage(), e);
+            LOG.error("ElasticSearchException while indexing document", e);
         }
 
+        if (LOG.isDebugEnabled()) {
+            if (success) {
+                LOG.debug("Successfully indexed id: " + id);
+            } else {
+                LOG.debug("Failed to index id: " + id);
+            }
+        }
+        
         return success;
     }
     
@@ -81,13 +86,17 @@ public class ElasticSearchDao {
 
         BulkRequestBuilder brb = client.prepareBulk();
         for (Map.Entry<String, String> entry : dataMap.entrySet()) {
-            brb.add(Requests.indexRequest(indexName).type(typeName).id(entry.getKey()).source(entry.getValue()));
+            if (StringUtils.isNotBlank(entry.getKey()) && StringUtils.isNotBlank(entry.getValue())) {
+                brb.add(Requests.indexRequest(indexName).type(typeName).id(entry.getKey()).source(entry.getValue()));
+            } else {
+                LOG.error("Received bad key or value for key: " + entry.getKey());
+            }
         }
         BulkResponse br = brb.execute().actionGet();
         if (br.hasFailures()) {
             success = false;
             for (BulkItemResponse b : br) {
-                LOG.error("Error inserting id: " + b.getId());
+                LOG.error("Failed to index id: " + b.getId());
                 LOG.error("Failure message: " + b.getFailureMessage());
             }
         }
