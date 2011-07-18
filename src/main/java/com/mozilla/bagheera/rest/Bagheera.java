@@ -39,8 +39,7 @@ import com.sun.jersey.spi.container.servlet.ServletContainer;
  */
 public class Bagheera {
 
-  public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
-  public static final String ES_PROPERTIES_RESOURCE_NAME = "/elasticsearch.properties";
+    public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
   
 	public static void main(String[] args) throws Exception {		
 		int port = Integer.parseInt(System.getProperty("server.port", "8080"));
