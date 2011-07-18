@@ -2,6 +2,7 @@ build
 target
 .project
 .classpath
+.settings
 
 # Compiled source #
 ###################
