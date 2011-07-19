@@ -28,8 +28,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -38,7 +41,9 @@ import org.apache.log4j.Logger;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
+import com.mozilla.bagheera.dao.HBaseTableDao;
 
 /**
  * An implementation of Hazelcast's MapStore interface that persists map data to
@@ -46,17 +51,47 @@ import com.hazelcast.core.MapStore;
  * particular implementation to ever load keys. Therefore only the store and
  * storeAll methods are implemented.
  */
-public class HBaseMapStore extends ComplexMapStoreBase implements MapStore<String, String> {
+public class HBaseMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport {
 
     private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
+
+    protected HTablePool pool;
+    protected HBaseTableDao table;
 
     /* (non-Javadoc)
      * @see com.mozilla.bagheera.hazelcast.persistence.MapStoreBase#init(com.hazelcast.core.HazelcastInstance, java.util.Properties, java.lang.String)
      */
+    @Override
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
-        super.initHBase(hazelcastInstance, properties, mapName);
+        super.init(hazelcastInstance, properties, mapName);
+        
+        Configuration conf = HBaseConfiguration.create();
+        for (String name : properties.stringPropertyNames()) {
+            if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
+                conf.set(name, properties.getProperty(name));
+            }
+        }
+
+        int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
+        String tableName = properties.getProperty("hazelcast.hbase.table", "default");
+        String family = properties.getProperty("hazelcast.hbase.column.family", "data");
+        String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
+        String qualifier = columnQualifier == null ? "" : columnQualifier;
+
+        pool = new HTablePool(conf, hbasePoolSize);
+        table = new HBaseTableDao(pool, tableName, family, qualifier);
     }
 
+    /* (non-Javadoc)
+     * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
+     */
+    @Override
+    public void destroy() {
+        if (pool != null) {
+            pool.closeTablePool(table.getTableName());
+        }
+    }
+    
     /*
      * (non-Javadoc)
      * 
@@ -74,13 +109,17 @@ public class HBaseMapStore extends ComplexMapStoreBase implements MapStore<Strin
      */
     @Override
     public Map<String, String> loadAll(Collection<String> keys) {
-        List<Get> gets = new ArrayList<Get>(keys.size());
-        for (String k : keys) {
-            Get g = new Get(Bytes.toBytes(k));
-            gets.add(g);
+        if (allowLoadAll) {
+            List<Get> gets = new ArrayList<Get>(keys.size());
+            for (String k : keys) {
+                Get g = new Get(Bytes.toBytes(k));
+                gets.add(g);
+            }
+            
+            return table.getAll(keys);
         }
         
-        return table.getAll(keys);
+        return null;
     }
 
     /* (non-Javadoc)

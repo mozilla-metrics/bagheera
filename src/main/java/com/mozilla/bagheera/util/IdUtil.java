@@ -121,6 +121,13 @@ public class IdUtil {
 	 * @throws IOException
 	 */
 	public static byte[] randHexBucketizeId(String id, Date d) throws IOException {
+	    if (id == null) {
+            throw new IllegalArgumentException("id cannot be null");
+        }
+        if (d == null) {
+            throw new IllegalArgumentException("date cannot be null");
+        }
+        
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		int bucket = RAND.nextInt(HEX_BUCKETS);
 		baos.write(Integer.toHexString(bucket).getBytes());
@@ -138,6 +145,13 @@ public class IdUtil {
 	 * @throws IOException
 	 */
 	public static byte[] nonRandHexBucketizeId(String id, Date d) throws IOException {
+	    if (id == null) {
+            throw new IllegalArgumentException("id cannot be null");
+        }
+        if (d == null) {
+            throw new IllegalArgumentException("date cannot be null");
+        }
+        
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		baos.write(id.charAt(0));
 		baos.write(SDF.format(d).getBytes());

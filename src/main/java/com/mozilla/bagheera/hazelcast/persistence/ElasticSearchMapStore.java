@@ -21,32 +21,45 @@ package com.mozilla.bagheera.hazelcast.persistence;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
+import org.elasticsearch.client.Client;
 
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
+import com.mozilla.bagheera.dao.ElasticSearchDao;
+import com.mozilla.bagheera.elasticsearch.ClientFactory;
 
-/**
- * An implementation of Hazelcast's MapStore interface that takes an ID from a
- * Hazelcast queue, gets the ID's value in HBase and then adds that value to an
- * ElasticSearch index. Currently we have no interest for this particular
- * implementation to ever load keys. Therefore only the store and storeAll
- * methods are implemented.
- */
-public class ElasticSearchIndexMapStore extends ComplexMapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class ElasticSearchMapStore extends MapStoreBase implements MapStore<String,String>, MapLoaderLifecycleSupport {
 
-    private static final Logger LOG = Logger.getLogger(ElasticSearchIndexMapStore.class);
+    protected Client esClient;
+    protected ElasticSearchDao es;
 
     @Override
-    public String load(String arg0) {
+    public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+        super.init(hazelcastInstance, properties, mapName);
+        
+        String indexName = properties.getProperty("hazelcast.elasticsearch.index", "default");
+        String typeName = properties.getProperty("hazelcast.elasticsearch.type.name", "data");
+        esClient = ClientFactory.getInstance().getNodeClient(mapName, properties, true);
+        es = new ElasticSearchDao(esClient, indexName, typeName);
+    }
+    
+    @Override
+    public void destroy() {
+        ClientFactory.getInstance().close(mapName);
+    }
+    
+    @Override
+    public String load(String key) {
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public Map<String, String> loadAll(Collection<String> arg0) {
+    public Map<String, String> loadAll(Collection<String> keys) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -56,27 +69,25 @@ public class ElasticSearchIndexMapStore extends ComplexMapStoreBase implements M
         // TODO Auto-generated method stub
         return null;
     }
-
+    
     @Override
-    public void delete(String arg0) {
+    public void delete(String key) {
         // TODO Auto-generated method stub
-        
     }
 
     @Override
-    public void deleteAll(Collection<String> arg0) {
+    public void deleteAll(Collection<String> keys) {
         // TODO Auto-generated method stub
-        
     }
 
     @Override
     public void store(String key, String value) {
-        fetchAndIndex(key);
+        es.indexDocument(key, value);
     }
 
     @Override
     public void storeAll(Map<String, String> pairs) {
-        fetchAndIndex(pairs.keySet());
+        es.indexDocuments(pairs);
     }
 
 }

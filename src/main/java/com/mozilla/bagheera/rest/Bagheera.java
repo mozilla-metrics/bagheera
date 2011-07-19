@@ -73,7 +73,7 @@ public class Bagheera {
         		        Enumeration<?> propEnum = props.propertyNames();
         		        while (propEnum.hasMoreElements()) {
         		            String propKey = (String)propEnum.nextElement();
-        		            if (propKey.contains("hazelcast.es")) {
+        		            if (propKey.contains("hazelcast.elasticsearch")) {
         		                ClientFactory.getInstance().getNodeClient(entry.getKey(), props, true);
         		                break;
         		            }

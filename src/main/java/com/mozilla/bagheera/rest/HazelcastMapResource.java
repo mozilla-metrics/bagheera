@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -47,7 +48,6 @@ import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
 
 import com.hazelcast.core.Hazelcast;
-import com.mozilla.bagheera.util.IdUtil;
 
 /**
  * A REST resource that inserts data into Hazelcast maps.
@@ -92,7 +92,7 @@ public class HazelcastMapResource extends ResourceBase {
 	@Path("{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @Context HttpServletRequest request) throws IOException {	
-		return mapPut(name, new String(IdUtil.generateBucketizedId()), request);
+		return mapPut(name, UUID.randomUUID().toString(), request);
 	}
 	
 	/**
@@ -143,7 +143,7 @@ public class HazelcastMapResource extends ResourceBase {
 		}
 		
 		Map<String,String> m = Hazelcast.getMap(name);
-		m.put(new String(IdUtil.bucketizeId(id)), sb.toString());
+		m.put(id, sb.toString());
 		
 		return Response.noContent().build();
 	}
@@ -159,7 +159,7 @@ public class HazelcastMapResource extends ResourceBase {
 	    
 	    Map<String,String> m = Hazelcast.getMap(name);
 	    // This won't have any fields filled out other than the payload
-	    String data = m.get(new String(IdUtil.bucketizeId(id)));
+	    String data = m.get(id);
 	    Response resp = null;
 	    if (data != null) {
 	        resp = Response.ok(data, MediaType.APPLICATION_JSON).build();

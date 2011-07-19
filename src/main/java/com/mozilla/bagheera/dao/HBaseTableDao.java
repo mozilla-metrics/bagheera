@@ -96,7 +96,7 @@ public class HBaseTableDao {
      * @throws IOException
      */
     public void put(String key, String value) throws IOException {
-        put(Bytes.toBytes(key), Bytes.toBytes(value));
+        put(IdUtil.bucketizeId(key), Bytes.toBytes(value));
     }
 
     /**
@@ -140,7 +140,7 @@ public class HBaseTableDao {
     public void putStringMap(Map<String, String> values) throws IOException {
         List<Put> puts = new ArrayList<Put>();
         for (Map.Entry<String, String> entry : values.entrySet()) {
-            Put p = new Put(Bytes.toBytes(entry.getKey()));
+            Put p = new Put(IdUtil.bucketizeId(entry.getKey()));
             p.add(family, qualifier, Bytes.toBytes(entry.getValue()));
             puts.add(p);
         }
@@ -176,7 +176,7 @@ public class HBaseTableDao {
         HTableInterface table = null;
         String retval = null;
         try {
-            Get g = new Get(Bytes.toBytes(row));
+            Get g = new Get(IdUtil.bucketizeId(row));
             table = pool.getTable(tableName);
             Result r = table.get(g);
             byte[] value = r.getValue(family, qualifier);
@@ -201,19 +201,18 @@ public class HBaseTableDao {
     public Map<String, String> getAll(Collection<String> rows) {
         HTableInterface table = null;
         Map<String, String> idJsonMap = new HashMap<String, String>();
-
         Set<String> rowSet = new HashSet<String>();
-        List<Get> gets = new ArrayList<Get>(rows.size());
-        for (String r : rows) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("adding: " + r);
-            }
-            gets.add(new Get(Bytes.toBytes(r)));
-            rowSet.add(r);
-        }
-
         table = pool.getTable(tableName);
-        try {
+        try { 
+            List<Get> gets = new ArrayList<Get>(rows.size());
+            for (String r : rows) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("adding: " + r);
+                }
+                gets.add(new Get(IdUtil.bucketizeId(r)));
+                rowSet.add(r);
+            }
+            
             Result[] result = table.get(gets);
             if (LOG.isDebugEnabled()) {
                 LOG.debug("got result for multiple gets, size: " + result.length);

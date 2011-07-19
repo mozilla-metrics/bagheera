@@ -30,16 +30,18 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.node.Node;
+import org.elasticsearch.node.NodeBuilder;
 
 public class ClientFactory {
 
     public static final String ES_CONFIG_PATH = "hazelcast.elasticsearch.config.path";
     public static final String ES_CLUSTER_NAME = "hazelcast.elasticsearch.cluster.name";
+    public static final String ES_LOCAL = "hazelcast.elasticsearch.local";
     public static final String ES_STORE_DATA = "hazelcast.elasticsearch.store.data";
     public static final String ES_TRANSPORT_AUTO_DISCOVER = "hazelcast.elasticsearch.transport.autodiscover";
     public static final String ES_SERVER_LIST = "hazelcast.elasticsearch.server.list";
     
-    public static final String ES_CONFIG_PATH_DEFAULT = "conf/elasticsearch.yml";
+    public static final String ES_LOCAL_DEFAULT = "false";
     public static final String ES_STORE_DATA_DEFAULT = "false";
     public static final String ES_TRANSPORT_AUTO_DISCOVER_DEFAULT = "false";
     
@@ -57,14 +59,29 @@ public class ClientFactory {
      * @return
      */
     private static Client createNodeClient(Properties props) {
+        NodeBuilder nodeBuilder = nodeBuilder();
         ImmutableSettings.Builder settingsBuilder = ImmutableSettings.settingsBuilder();
-        String configFile = props.getProperty(ES_CONFIG_PATH, ES_CONFIG_PATH_DEFAULT);
+        String configFile = props.getProperty(ES_CONFIG_PATH);
         boolean storeData = Boolean.parseBoolean(props.getProperty(ES_STORE_DATA, ES_STORE_DATA_DEFAULT));
         if (configFile != null) {
+            nodeBuilder.loadConfigSettings(false);
             settingsBuilder.loadFromClasspath(configFile);
+        } else {
+            nodeBuilder.loadConfigSettings(true);
+            
+            String clusterName = props.getProperty(ES_CLUSTER_NAME);
+            if (clusterName != null) {
+                nodeBuilder.clusterName(clusterName);
+            }
+            
+            boolean localMode = Boolean.parseBoolean(props.getProperty(ES_LOCAL, ES_LOCAL_DEFAULT));
+            nodeBuilder.local(localMode);
         }
         
-        Node node = nodeBuilder().loadConfigSettings(true).settings(settingsBuilder.build()).data(storeData).node().start();
+        Node node = nodeBuilder.settings(settingsBuilder).client(!storeData).data(storeData).node();
+        if (storeData) {
+            node.start();
+        }
         
         return node.client();
     }
