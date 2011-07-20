@@ -35,7 +35,7 @@ If you start up multiple instances Hazelcast will auto-discover other instances 
 
 ### REST Request Format ###
 
-Bagheera takes POST data on _/submit/mymapname/unique-id_. Depending on how _mymapname_ is configured in the Hazelcast configuration file, it may write to different sources. That is explained further below.
+Bagheera takes POST data on _/map/mymapname/unique-id_. Depending on how _mymapname_ is configured in the Hazelcast configuration file, it may write to different sources. That is explained further below.
 
 Here's a quick rundown of HTTP return codes that Bagheera could send back (this isn't comprehensive but rather the most common ones):
 
@@ -91,9 +91,29 @@ If you want to configure a Hazelcast Map to persist data to HDFS you can use the
 		</map-store>
 	</map>
 
-### Hazelcast ElasticSearchIndexQueueStore Configuration ###
+### Hazelcast ElasticSearchMapStore Configuration ###
+If you want to configure a Hazelcast Map to persist data to ElasticSearch you can use the ElasticSearchMapStore. It will start a Node using the specified ElasticSearch config and index the data submitted to this map. This is probably of limited use if you're only using ElasticSearch as you could just use their interface directly.  Here's an example configuration:
 
-The ElasticSearchIndexQueueStore is our first MapStore that takes advantage of Hazelcast's distributed queues. Hazelcast added persistence for distributed queues in version 1.9.3. The idea behind this store is that if you have data being inserted into HBase already you could post a row ID via REST to a queue. Once the ID is received and the MapStore persistence is triggered we then want to take a column value from a HBase column and send that value to ElasticSearch for indexing. Here is an example section using this MapStore from hazelcast.xml configuration:
+  <map name="mymapname">
+	  <time-to-live-seconds>20</time-to-live-seconds>
+	  <backup-count>1</backup-count>
+	  <eviction-policy>NONE</eviction-policy>
+	  <max-size>0</max-size>
+	  <eviction-percentage>25</eviction-percentage>
+	  <merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+	  <!-- ElasticSearchIndexQueueStore -->
+	  <map-store enabled="true">
+		  <class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</class-name>
+		  <write-delay-seconds>5</write-delay-seconds>
+		  <property name="hazelcast.elasticsearch.config.path">elasticsearch-socorro.yml</property>
+		  <property name="hazelcast.elasticsearch.index">socorro</property>
+		  <property name="hazelcast.elasticsearch.type.name">crash_reports</property>
+	  </map-store>
+  </map>
+
+### Hazelcast CompositeMapStore Configuration ###
+
+The idea behind this store is that if you have data being inserted into HBase already you could post a row ID via REST to a map. Once the ID is received and the MapStore persistence is triggered we then want to take a column value from a HBase column and send that value to ElasticSearch for indexing. Here is an example section using this MapStore from hazelcast.xml configuration:
 
 	<map name="mymapname">
 		<time-to-live-seconds>20</time-to-live-seconds>
@@ -104,8 +124,11 @@ The ElasticSearchIndexQueueStore is our first MapStore that takes advantage of H
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
 		<!-- ElasticSearchIndexQueueStore -->
 		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchIndexQueueStore</class-name>
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.CompositeMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
+			<property name="hazelcast.composite.load.class.name">com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</property>
+			<property name="hazelcast.composite.store.class.name">com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</property>
+			<property name="hazelcast.elasticsearch.config.path">elasticsearch-socorro.yml</property>
 			<property name="hazelcast.elasticsearch.index">socorro</property>
 			<property name="hazelcast.elasticsearch.type.name">crash_reports</property>
 			<property name="hazelcast.hbase.pool.size">20</property>
@@ -114,6 +137,36 @@ The ElasticSearchIndexQueueStore is our first MapStore that takes advantage of H
 			<property name="hazelcast.hbase.column.qualifier">json</property>
 		</map-store>
 	</map>
+
+Unfortunately for now you cannot use the same type of MapStore as both the load MapStore and store MapStore (i.e. two HBaseMapStore(s)), because the configuration parameters don't allow for it. We hope to find a somewhat clean solution for this in the future.
+
+### Hazelcast MultipleMapStore Configuration ###
+This store is for when you have data you want to store in multiple data stores. Unlike CompositeMapStore this doesn't retrieve anything it only stores to all configured MapStore(s). Here is an example configuration using ElasticSearch and HBase:
+
+  <map name="mymapname">
+	  <time-to-live-seconds>20</time-to-live-seconds>
+	  <backup-count>1</backup-count>
+	  <eviction-policy>NONE</eviction-policy>
+	  <max-size>0</max-size>
+	  <eviction-percentage>25</eviction-percentage>
+	  <merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+	  <!-- ElasticSearchIndexQueueStore -->
+	  <map-store enabled="true">
+		  <class-name>com.mozilla.bagheera.hazelcast.persistence.MultiMapStore</class-name>
+		  <write-delay-seconds>5</write-delay-seconds>
+		  <property name="hazelcast.multi.store.class.name.1">com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</property>
+		  <property name="hazelcast.multi.store.class.name.2">com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</property>
+		  <property name="hazelcast.elasticsearch.config.path">elasticsearch-socorro.yml</property>
+		  <property name="hazelcast.elasticsearch.index">socorro</property>
+		  <property name="hazelcast.elasticsearch.type.name">crash_reports</property>
+		  <property name="hazelcast.hbase.pool.size">20</property>
+		  <property name="hazelcast.hbase.table">crash_reports</property>
+		  <property name="hazelcast.hbase.column.family">processed_data</property>
+		  <property name="hazelcast.hbase.column.qualifier">json</property>
+	  </map-store>
+  </map>
+
+Unfortunately for now you cannot use the same type of MapStore more than once, because the configuration parameters don't allow for it. We hope to find a somewhat clean solution for this in the future.
 
 To read more on Hazelcast configuration in general [check out their documentation](http://www.hazelcast.com/).
 

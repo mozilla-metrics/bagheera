@@ -2,7 +2,7 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hazelcast.com/schema/config hazelcast-basic.xsd">
 	<group>
 		<name>bagheera</name>
-		<password>test</password>
+		<password>IwUICWtuK7fzR4nrmY0b5afef1NABDLY5</password>
 	</group>
 	<network>
 		<port auto-increment="true">5701</port>
@@ -24,19 +24,6 @@
 		<max-pool-size>64</max-pool-size>
 		<keep-alive-seconds>60</keep-alive-seconds>
 	</executor-service>
-	<map name="default">
-		<time-to-live-seconds>5</time-to-live-seconds>
-		<backup-count>1</backup-count>
-		<eviction-policy>NONE</eviction-policy>
-		<max-size>0</max-size>
-		<eviction-percentage>25</eviction-percentage>
-		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<!-- NoOpMapStore -->
-		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.NoOpMapStore</class-name>
-			<write-delay-seconds>5</write-delay-seconds>
-		</map-store>
-	</map>
 	<map name="telemetry">
 		<time-to-live-seconds>20</time-to-live-seconds>
 		<backup-count>1</backup-count>
@@ -70,62 +57,25 @@
 			<property name="hazelcast.hdfs.max.filesize">1073741824</property>
 		</map-store>
 	</map>
-	
-		<map name="tasks">
-		<time-to-live-seconds>0</time-to-live-seconds>
+	<map name="release">
+		<time-to-live-seconds>5</time-to-live-seconds>
 		<backup-count>1</backup-count>
 		<eviction-policy>NONE</eviction-policy>
-		<max-size>2000000</max-size>
+		<max-size>0</max-size>
 		<eviction-percentage>25</eviction-percentage>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<!-- HdfsMapStore -->
+		<!-- HBaseElasticSearchMapStore -->
 		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchIndexMapStore</class-name>
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.MultiMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
-			<property name="hazelcast.elasticsearch.index">socorro</property>
-			<property name="hazelcast.elasticsearch.type.name">crash_reports</property>
+			<property name="hazelcast.multi.store.class.name.1">com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</property>
+			<property name="hazelcast.multi.store.class.name.2">com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</property>
+			<property name="hazelcast.elasticsearch.config.path">elasticsearch-release.yml</property>
+			<property name="hazelcast.elasticsearch.index">release</property>
+			<property name="hazelcast.elasticsearch.type.name">data</property>
 			<property name="hazelcast.hbase.pool.size">20</property>
-			<property name="hazelcast.hbase.table">crash_reports</property>
-			<property name="hazelcast.hbase.column.family">processed_data</property>
-			<property name="hazelcast.hbase.column.qualifier">json</property>
-		</map-store>
-	</map>
-	
-
-    <queue name="random">
-        <!--
-            Maximum size of the queue. When a JVM's local queue size reaches the maximum,
-            all put/offer operations will get blocked until the queue size
-            of the JVM goes down below the maximum.
-            Any integer between 0 and Integer.MAX_VALUE. 0 means
-            Integer.MAX_VALUE. Default is 0.
-        -->
-        <max-size-per-jvm>10000</max-size-per-jvm>
-        <backing-map-ref>socorrosearch</backing-map-ref>
-        
-        <!--
-            Maximum number of seconds for each item to stay in the queue. Items that are
-            not consumed in <time-to-live-seconds> will automatically
-            get evicted from the queue.
-            Any integer between 0 and Integer.MAX_VALUE. 0 means
-            infinite. Default is 0.
-        -->
-        <time-to-live-seconds>0</time-to-live-seconds>
-        
-    </queue>
-		
-	<map name="socorrosearch">
-		<!-- ElasticSearchIndexQueueStore -->
-		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchIndexQueueStore</class-name>
-			<write-delay-seconds>2</write-delay-seconds>
-			<property name="hazelcast.queue.name">tasks</property>
-			<write-delay-seconds>5</write-delay-seconds>
-			<property name="hazelcast.elasticsearch.index">socorro</property>
-			<property name="hazelcast.elasticsearch.type.name">crash_reports</property>
-			<property name="hazelcast.hbase.pool.size">20</property>
-			<property name="hazelcast.hbase.table">crash_reports</property>
-			<property name="hazelcast.hbase.column.family">processed_data</property>
+			<property name="hazelcast.hbase.table">release</property>
+			<property name="hazelcast.hbase.column.family">data</property>
 			<property name="hazelcast.hbase.column.qualifier">json</property>
 		</map-store>
 	</map>
