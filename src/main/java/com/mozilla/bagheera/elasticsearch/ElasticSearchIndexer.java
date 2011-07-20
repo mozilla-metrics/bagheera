@@ -22,7 +22,6 @@ package com.mozilla.bagheera.elasticsearch;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -33,6 +32,8 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.log4j.Logger;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.node.Node;
+import org.elasticsearch.node.NodeBuilder;
 
 import com.mozilla.bagheera.dao.ElasticSearchDao;
 import com.mozilla.bagheera.dao.HBaseTableDao;
@@ -85,18 +86,23 @@ public class ElasticSearchIndexer {
         Configuration conf = HBaseConfiguration.create();
         HTablePool pool = new HTablePool(conf, 20);
         HBaseTableDao table = new HBaseTableDao(pool, "telemetry", "data", "json");
-        Client esClient = null;
+        Node node = null;
+        Client client = null;
         try {
-            esClient = ClientFactory.getInstance().getNodeClient(new Properties());
-            ElasticSearchDao es = new ElasticSearchDao(esClient, "telemetry", "data");
+            node = NodeBuilder.nodeBuilder().client(true).node();
+            client = node.client();
+            ElasticSearchDao es = new ElasticSearchDao(client, "telemetry", "data");
             ElasticSearchIndexer esi = new ElasticSearchIndexer(table, es);
             esi.indexHBaseData(pool);
         } finally {
             if (pool != null && table != null && table.getTableName() != null) {
                 pool.closeTablePool(table.getTableName());
             }
-            if (esClient != null) {
-                esClient.close();
+            if (client != null) {
+                client.close();
+            }
+            if (node != null) {
+                node.close();
             }
         }
     }

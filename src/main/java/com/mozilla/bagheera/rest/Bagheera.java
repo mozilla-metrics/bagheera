@@ -19,9 +19,7 @@
  */
 package com.mozilla.bagheera.rest;
 
-import java.util.Enumeration;
 import java.util.Map;
-import java.util.Properties;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -29,9 +27,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
-import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.core.Hazelcast;
-import com.mozilla.bagheera.elasticsearch.ClientFactory;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 /**
@@ -57,29 +53,14 @@ public class Bagheera {
 		server.setSendServerVersion(false);
 	    server.setSendDateHeader(false);
 	    server.setStopAtShutdown(true);
-
-	    // Initialize Hazelcast now rather than waiting for the first request
-		Hazelcast.getDefaultInstance();
 		
-		boolean initElasticSearch = Boolean.parseBoolean(System.getProperty("init.elasticsearch.onstartup", "true"));
-		if (initElasticSearch) {
+		boolean initHazelcast = Boolean.parseBoolean(System.getProperty("init.hazelcast.onstartup", "true"));
+		if (initHazelcast) {
+		    // Initialize Hazelcast now rather than waiting for the first request
+	        Hazelcast.getDefaultInstance();
 		    Config config = Hazelcast.getConfig();
 		    for (Map.Entry<String, MapConfig> entry : config.getMapConfigs().entrySet()) {
-		        MapConfig mapConfig = entry.getValue();
-		        if (mapConfig != null) {
-		            MapStoreConfig mapStoreConfig = mapConfig.getMapStoreConfig();
-		            if (mapStoreConfig != null) {
-        		        Properties props = mapStoreConfig.getProperties();
-        		        Enumeration<?> propEnum = props.propertyNames();
-        		        while (propEnum.hasMoreElements()) {
-        		            String propKey = (String)propEnum.nextElement();
-        		            if (propKey.contains("hazelcast.elasticsearch")) {
-        		                ClientFactory.getInstance().getNodeClient(entry.getKey(), props, true);
-        		                break;
-        		            }
-        		        }
-		            }
-		        }
+		        Hazelcast.getMap(entry.getKey());
 		    }
 		}
 		
