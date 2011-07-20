@@ -94,22 +94,22 @@ If you want to configure a Hazelcast Map to persist data to HDFS you can use the
 ### Hazelcast ElasticSearchMapStore Configuration ###
 If you want to configure a Hazelcast Map to persist data to ElasticSearch you can use the ElasticSearchMapStore. It will start a Node using the specified ElasticSearch config and index the data submitted to this map. This is probably of limited use if you're only using ElasticSearch as you could just use their interface directly.  Here's an example configuration:
 
-  <map name="mymapname">
-	  <time-to-live-seconds>20</time-to-live-seconds>
-	  <backup-count>1</backup-count>
-	  <eviction-policy>NONE</eviction-policy>
-	  <max-size>0</max-size>
-	  <eviction-percentage>25</eviction-percentage>
-	  <merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-	  <!-- ElasticSearchIndexQueueStore -->
-	  <map-store enabled="true">
-		  <class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</class-name>
-		  <write-delay-seconds>5</write-delay-seconds>
-		  <property name="hazelcast.elasticsearch.config.path">elasticsearch-socorro.yml</property>
-		  <property name="hazelcast.elasticsearch.index">socorro</property>
-		  <property name="hazelcast.elasticsearch.type.name">crash_reports</property>
-	  </map-store>
-  </map>
+	<map name="mymapname">
+		<time-to-live-seconds>20</time-to-live-seconds>
+		<backup-count>1</backup-count>
+		<eviction-policy>NONE</eviction-policy>
+		<max-size>0</max-size>
+		<eviction-percentage>25</eviction-percentage>
+		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+		<!-- ElasticSearchMapStore -->
+		<map-store enabled="true">
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</class-name>
+			<write-delay-seconds>5</write-delay-seconds>
+			<property name="hazelcast.elasticsearch.config.path">elasticsearch-socorro.yml</property>
+			<property name="hazelcast.elasticsearch.index">socorro</property>
+			<property name="hazelcast.elasticsearch.type.name">crash_reports</property>
+		</map-store>
+	</map>
 
 ### Hazelcast CompositeMapStore Configuration ###
 
@@ -122,7 +122,7 @@ The idea behind this store is that if you have data being inserted into HBase al
 		<max-size>0</max-size>
 		<eviction-percentage>25</eviction-percentage>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<!-- ElasticSearchIndexQueueStore -->
+		<!-- CompositeMapStore -->
 		<map-store enabled="true">
 			<class-name>com.mozilla.bagheera.hazelcast.persistence.CompositeMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
@@ -143,28 +143,28 @@ Unfortunately for now you cannot use the same type of MapStore as both the load 
 ### Hazelcast MultipleMapStore Configuration ###
 This store is for when you have data you want to store in multiple data stores. Unlike CompositeMapStore this doesn't retrieve anything it only stores to all configured MapStore(s). Here is an example configuration using ElasticSearch and HBase:
 
-  <map name="mymapname">
-	  <time-to-live-seconds>20</time-to-live-seconds>
-	  <backup-count>1</backup-count>
-	  <eviction-policy>NONE</eviction-policy>
-	  <max-size>0</max-size>
-	  <eviction-percentage>25</eviction-percentage>
-	  <merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-	  <!-- ElasticSearchIndexQueueStore -->
-	  <map-store enabled="true">
-		  <class-name>com.mozilla.bagheera.hazelcast.persistence.MultiMapStore</class-name>
-		  <write-delay-seconds>5</write-delay-seconds>
-		  <property name="hazelcast.multi.store.class.name.1">com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</property>
-		  <property name="hazelcast.multi.store.class.name.2">com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</property>
-		  <property name="hazelcast.elasticsearch.config.path">elasticsearch-socorro.yml</property>
-		  <property name="hazelcast.elasticsearch.index">socorro</property>
-		  <property name="hazelcast.elasticsearch.type.name">crash_reports</property>
-		  <property name="hazelcast.hbase.pool.size">20</property>
-		  <property name="hazelcast.hbase.table">crash_reports</property>
-		  <property name="hazelcast.hbase.column.family">processed_data</property>
-		  <property name="hazelcast.hbase.column.qualifier">json</property>
-	  </map-store>
-  </map>
+	<map name="mymapname">
+		<time-to-live-seconds>20</time-to-live-seconds>
+		<backup-count>1</backup-count>
+		<eviction-policy>NONE</eviction-policy>
+		<max-size>0</max-size>
+		<eviction-percentage>25</eviction-percentage>
+		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+		<!-- MultipleMapStore -->
+		<map-store enabled="true">
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.MultiMapStore</class-name>
+			<write-delay-seconds>5</write-delay-seconds>
+			<property name="hazelcast.multi.store.class.name.1">com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</property>
+			<property name="hazelcast.multi.store.class.name.2">com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</property>
+			<property name="hazelcast.elasticsearch.config.path">elasticsearch-socorro.yml</property>
+			<property name="hazelcast.elasticsearch.index">socorro</property>
+			<property name="hazelcast.elasticsearch.type.name">crash_reports</property>
+			<property name="hazelcast.hbase.pool.size">20</property>
+			<property name="hazelcast.hbase.table">crash_reports</property>
+			<property name="hazelcast.hbase.column.family">processed_data</property>
+			<property name="hazelcast.hbase.column.qualifier">json</property>
+		</map-store>
+	</map>
 
 Unfortunately for now you cannot use the same type of MapStore more than once, because the configuration parameters don't allow for it. We hope to find a somewhat clean solution for this in the future.
 
