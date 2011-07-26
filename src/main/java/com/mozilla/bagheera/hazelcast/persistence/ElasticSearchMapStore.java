@@ -97,14 +97,12 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
 
     @Override
     public String load(String key) {
-        // TODO Auto-generated method stub
-        return null;
+        return es.get(key);
     }
 
     @Override
     public Map<String, String> loadAll(Collection<String> keys) {
-        // TODO Auto-generated method stub
-        return null;
+        return es.fetchAll(keys);
     }
 
     @Override

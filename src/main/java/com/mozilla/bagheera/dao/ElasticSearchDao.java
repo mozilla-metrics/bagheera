@@ -28,11 +28,18 @@ import org.apache.log4j.Logger;
 import org.elasticsearch.ElasticSearchException;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.client.action.index.IndexRequestBuilder;
+import org.elasticsearch.client.action.get.GetRequestBuilder;
+import org.elasticsearch.client.action.search.SearchRequestBuilder;
+import org.elasticsearch.index.query.xcontent.BoolQueryBuilder;
+import org.elasticsearch.index.query.xcontent.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
 
 public class ElasticSearchDao {
 
@@ -56,7 +63,7 @@ public class ElasticSearchDao {
     public boolean indexDocument(String id, String source) {
         return indexDocument(id,source,null);
     }
-    
+
     /**
      * @param id
      * @param source
@@ -112,29 +119,77 @@ public class ElasticSearchDao {
     }
 
     /**
+     * @return A map of all documents that exist here (can be very slow and memory intensive).
+     */
+    public Map<String, String> fetchAll() {
+        SearchRequestBuilder search = client.prepareSearch(indexName).setTypes(typeName);
+        search.setQuery(QueryBuilders.matchAllQuery());
+        return unwrap(client.search(search.request()).actionGet());
+    }
+
+    /**
+     * @param List<String> IDs for which to get documents.
+     * @return List<String> docs fresh from the index (make sure to have elasticsearch store them, and to have id indexed).
+     */
+    public Map<String, String> fetchAll(Iterable<String> ids) {
+        SearchRequestBuilder search = client.prepareSearch(indexName).setTypes(typeName);
+        BoolQueryBuilder qBuilder = QueryBuilders.boolQuery();
+        for (String id : ids) {
+            qBuilder.should(QueryBuilders.fieldQuery("id", id));
+        }
+        search.setQuery(qBuilder);
+        return unwrap(client.search(search.request()).actionGet());
+    }
+
+    /** Receive a specific document from elasticsearch. Make sure source is stored. */
+    public String get(String id) {
+        GetRequestBuilder get = client.prepareGet();
+        get.setIndex(indexName).setType(typeName).setId(id);
+        GetResponse response = client.get(get.request()).actionGet();
+        String result = response.sourceAsString();
+        if (result == null) {
+            LOG.error("Cannot load document " + id + "from elasticsearch. Make sure source is stored.");
+        }
+        return result;
+    }
+
+    /**
      * @param ids The documents to delete.
      * @return <tt>true</tt> if no error occured, else <tt>false</tt>
      */
     public boolean delete(Iterable<String> ids) {
         BulkRequestBuilder brb = client.prepareBulk();
-        for (String key : ids) {
-            if (StringUtils.isNotBlank(key)) {
+        for (String id : ids) {
+            if (StringUtils.isNotBlank(id)) {
                 brb.add(Requests.deleteRequest(indexName).type(typeName)
-                        .id(key));
+                        .id(id));
             } else {
-                LOG.error("Trying to delete bad key: " + key);
+                LOG.error("Trying to delete bad key: " + id);
             }
         }
 
         return check(brb.execute().actionGet());
     }
 
-    public boolean delete(String key) {
-        List<String> keys = new ArrayList<String>();
-        keys.add(key);
+    /** @param id The item to delete from the index. */
+    public boolean delete(String id) {
+        List<String> keys = new ArrayList<String>(1);
+        keys.add(id);
         return delete(keys);
     }
 
+    private Map<String, String> unwrap(SearchResponse response) {
+        Map<String, String> results = new java.util.HashMap<String, String>((int) response.hits().totalHits());
+        for (SearchHit hit : response.getHits()) {
+            String source = hit.sourceAsString();
+            if (source == null) {
+                LOG.error("Cannot load document " + hit.getId() + "from elasticsearch. Make sure source is stored.");
+            } else {
+                results.put(hit.getId(), source);
+            }
+        }
+        return results;
+    }
 
     private boolean check(BulkResponse response) {
         boolean success = true;
