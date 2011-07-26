@@ -19,6 +19,8 @@
  */
 package com.mozilla.bagheera.dao;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
@@ -65,7 +67,7 @@ public class ElasticSearchDao {
         if (StringUtils.isBlank(id) || StringUtils.isBlank(source)) {
             return false;
         }
-        
+
         boolean success = false;
         try {
             IndexRequestBuilder requestBuilder = client.prepareIndex(indexName, typeName, id).setSource(source);
@@ -88,17 +90,15 @@ public class ElasticSearchDao {
                 LOG.debug("Failed to index id: " + id);
             }
         }
-        
+
         return success;
     }
-    
+
     /**
      * @param dataMap
      * @return
      */
     public boolean indexDocuments(Map<String, String> dataMap) {
-        boolean success = true;
-
         BulkRequestBuilder brb = client.prepareBulk();
         for (Map.Entry<String, String> entry : dataMap.entrySet()) {
             if (StringUtils.isNotBlank(entry.getKey()) && StringUtils.isNotBlank(entry.getValue())) {
@@ -107,16 +107,46 @@ public class ElasticSearchDao {
                 LOG.error("Received bad key or value for key: " + entry.getKey());
             }
         }
-        BulkResponse br = brb.execute().actionGet();
-        if (br.hasFailures()) {
+
+        return check(brb.execute().actionGet());
+    }
+
+    /**
+     * @param ids The documents to delete.
+     * @return <tt>true</tt> if no error occured, else <tt>false</tt>
+     */
+    public boolean delete(Iterable<String> ids) {
+        BulkRequestBuilder brb = client.prepareBulk();
+        for (String key : ids) {
+            if (StringUtils.isNotBlank(key)) {
+                brb.add(Requests.deleteRequest(indexName).type(typeName)
+                        .id(key));
+            } else {
+                LOG.error("Trying to delete bad key: " + key);
+            }
+        }
+
+        return check(brb.execute().actionGet());
+    }
+
+    public boolean delete(String key) {
+        List<String> keys = new ArrayList<String>();
+        keys.add(key);
+        return delete(keys);
+    }
+
+
+    private boolean check(BulkResponse response) {
+        boolean success = true;
+
+        if (response.hasFailures()) {
             success = false;
-            for (BulkItemResponse b : br) {
-                LOG.error("Failed to index id: " + b.getId());
+            for (BulkItemResponse b : response) {
+                LOG.error("Failed to " + b.getType() + " id: " + b.getId());
                 LOG.error("Failure message: " + b.getFailureMessage());
             }
         }
 
         return success;
     }
-
 }

@@ -115,12 +115,12 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
 
     @Override
     public void delete(String key) {
-        // TODO Auto-generated method stub
+        es.delete(key);
     }
 
     @Override
     public void deleteAll(Collection<String> keys) {
-        // TODO Auto-generated method stub
+        es.delete(keys);
     }
 
     @Override
