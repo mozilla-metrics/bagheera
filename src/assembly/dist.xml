@@ -35,9 +35,9 @@
       <outputDirectory>/lib</outputDirectory>
       <unpack>false</unpack>
       <scope>runtime</scope>
-      <excludes>
-        <exclude>${project.name}-${project.version}.jar</exclude>
-      </excludes>
+	  <excludes>
+	  	<exclude>${project.groupId}:${project.artifactId}</exclude>
+	  </excludes>
     </dependencySet>
   </dependencySets>
 </assembly>

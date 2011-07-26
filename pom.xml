@@ -327,6 +327,7 @@
         <artifactId>maven-assembly-plugin</artifactId>
         <configuration>
           <appendAssemblyId>false</appendAssemblyId>
+          <finalName>${project.name}-${project.version}</finalName>
           <descriptors>
             <descriptor>src/assembly/dist.xml</descriptor>
           </descriptors>
