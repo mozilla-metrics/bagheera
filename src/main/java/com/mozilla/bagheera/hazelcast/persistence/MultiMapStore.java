@@ -33,9 +33,9 @@ import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
 
 /**
- * A MultiMapStore consists of any number of MapStore implementations specified via Hazelcast config. This consists of 
+ * A MultiMapStore consists of any number of MapStore implementations specified via Hazelcast config. This consists of
  * setting configuration properties that specify the MapStore implementation to use that begin with MULTI_MAP_STORE_PREFIX.
- * 
+ *
  * Example:
  * <map-store enabled="true">
  *  <class-name>com.mozilla.bagheera.hazelcast.persistence.MultiMapStore</class-name>
@@ -44,18 +44,18 @@ import com.hazelcast.core.MapStore;
  *  ...
  * </map-store>
  */
-public class MultiMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class MultiMapStore extends MapStoreBase implements MapStore<String, String> {
 
     private static final Logger LOG = Logger.getLogger(MultiMapStore.class);
-    
+
     private static final String MULTI_MAP_STORE_PREFIX = "hazelcast.multi.store.class.name";
-    
+
     private List<MapStore<String,String>> mapStores;
-    
+
     @SuppressWarnings("unchecked")
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
         super.init(hazelcastInstance, properties, mapName);
-        
+
         mapStores = new ArrayList<MapStore<String,String>>();
         for (Map.Entry<Object, Object> prop : properties.entrySet()) {
             Object ko = prop.getKey();
@@ -86,7 +86,7 @@ public class MultiMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         }
     }
-    
+
     @Override
     public void destroy() {
         for (MapStore<String,String> ms : mapStores) {
@@ -95,7 +95,7 @@ public class MultiMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         }
     }
-    
+
     @Override
     public String load(String key) {
         // TODO Auto-generated method stub
@@ -117,13 +117,13 @@ public class MultiMapStore extends MapStoreBase implements MapStore<String, Stri
     @Override
     public void delete(String key) {
         // TODO Auto-generated method stub
-        
+
     }
 
     @Override
     public void deleteAll(Collection<String> keys) {
         // TODO Auto-generated method stub
-        
+
     }
 
     @Override

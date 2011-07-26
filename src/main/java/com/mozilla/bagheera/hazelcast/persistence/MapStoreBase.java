@@ -21,28 +21,24 @@ package com.mozilla.bagheera.hazelcast.persistence;
 
 import java.util.Properties;
 
-import org.apache.log4j.Logger;
-
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 
 public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
 
-    private static final Logger LOG = Logger.getLogger(MapStoreBase.class);
-    
     private static final String ALLOW_LOAD = "hazelcast.allow.load";
     private static final String ALLOW_LOAD_ALL = "hazelcast.allow.load.all";
     private static final String ALLOW_DELETE = "hazelcast.allow.delete";
-    
+
     protected boolean allowLoad = false;
     protected boolean allowLoadAll = false;
     protected boolean allowDelete = false;
-    
+
     protected String mapName;
-    
+
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * com.hazelcast.core.MapLoaderLifecycleSupport#init(com.hazelcast.core.
      * HazelcastInstance, java.util.Properties, java.lang.String)
@@ -53,5 +49,5 @@ public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
         this.allowLoadAll = Boolean.parseBoolean(properties.getProperty(ALLOW_LOAD_ALL, "false"));
         this.allowDelete = Boolean.parseBoolean(properties.getProperty(ALLOW_DELETE, "false"));
     }
-    
+
 }

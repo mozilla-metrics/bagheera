@@ -51,16 +51,15 @@ import com.mozilla.hadoop.hbase.mapreduce.MultiScanTableMapReduceUtil;
 public class ElasticSearchIndexer {
 
     private static final Logger LOG = Logger.getLogger(ElasticSearchIndexer.class);
-    
+
     private final HBaseTableDao hbaseTableDao;
     private final ElasticSearchDao es;
     private final ObjectMapper jsonMapper = new ObjectMapper();
-    
+
     public ElasticSearchIndexer(HBaseTableDao hbaseTableDao, ElasticSearchDao es) {
         this.hbaseTableDao = hbaseTableDao;
         this.es = es;
     }
-    
     public void indexHBaseData(HTablePool pool, Calendar startCal, Calendar endCal) {
         HTableInterface table = pool.getTable(hbaseTableDao.getTableName());
         Map<byte[],byte[]> columns = new HashMap<byte[], byte[]>();
@@ -76,22 +75,22 @@ public class ElasticSearchIndexer {
                         String indexString = new String(r.getValue(hbaseTableDao.getColumnFamily(), hbaseTableDao.getColumnQualifier()));
                         Map<String,Object> values = jsonMapper.readValue(indexString, new TypeReference<Map<String,Object>>() { });
                         String rowId = new String(r.getRow());
-                        
+
                         // Pull the date string out of the rowId into a separate field
                         String d = rowId.substring(1,9);
                         values.put("date", d);
                         rowId = rowId.substring(9);
-                        
+
                         LOG.info("Adding row to batch: " + rowId);
                         batch.put(rowId, jsonMapper.writeValueAsString(values));
-                        
+
                         if (batch.size() == 100) {
                             LOG.info("Indexing batch...");
                             es.indexDocuments(batch);
                             batch.clear();
                         }
                     }
-                    
+
                     if (!batch.isEmpty()) {
                         LOG.info("Indexing batch...");
                         es.indexDocuments(batch);
@@ -102,13 +101,14 @@ public class ElasticSearchIndexer {
                     }
                 }
             }
+
         } catch (IOException e) {
             LOG.error("IO error occurred during indexing", e);
         } finally {
             pool.putTable(table);
         }
     }
-    
+
     public static void main(String[] args) throws IOException, ParseException {
         // Setup the start and stop dates for scanning
         Calendar startCal = Calendar.getInstance();
@@ -120,7 +120,7 @@ public class ElasticSearchIndexer {
             startCal.setTime(sdf.parse(startDateStr));
             endCal.setTime(sdf.parse(endDateStr));
         }
-        
+
         Configuration conf = HBaseConfiguration.create();
         HTablePool pool = new HTablePool(conf, 20);
         HBaseTableDao table = new HBaseTableDao(pool, "telemetry", "data", "json", true);
@@ -133,7 +133,7 @@ public class ElasticSearchIndexer {
             ElasticSearchIndexer esi = new ElasticSearchIndexer(table, es);
             esi.indexHBaseData(pool, startCal, endCal);
         } finally {
-            if (pool != null && table != null && table.getTableName() != null) {
+            if (table.getTableName() != null) {
                 pool.closeTablePool(table.getTableName());
             }
             if (client != null) {
@@ -144,5 +144,5 @@ public class ElasticSearchIndexer {
             }
         }
     }
-    
+
 }
