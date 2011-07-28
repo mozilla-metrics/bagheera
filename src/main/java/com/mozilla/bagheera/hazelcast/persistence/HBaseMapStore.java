@@ -187,7 +187,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
     @Override
     public void store(String key, String value) {
         try {
-            table.put(Bytes.toBytes(key), Bytes.toBytes(value));
+            table.put(key, value);
         } catch (IOException e) {
             LOG.error("Error during put", e);
         }

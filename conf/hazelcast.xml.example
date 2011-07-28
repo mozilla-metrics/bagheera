@@ -2,7 +2,7 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hazelcast.com/schema/config hazelcast-basic.xsd">
 	<group>
 		<name>bagheera</name>
-		<password>IwUICWtuK7fzR4nrmY0b5afef1NABDLY5</password>
+		<password>bagheera</password>
 	</group>
 	<network>
 		<port auto-increment="true">5701</port>

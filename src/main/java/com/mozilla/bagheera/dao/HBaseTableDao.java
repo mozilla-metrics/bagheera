@@ -104,7 +104,7 @@ public class HBaseTableDao {
      * @param value
      * @throws IOException
      */
-    public void put(byte[] key, byte[] value) throws IOException {
+    private void put(byte[] key, byte[] value) throws IOException {
         HTableInterface table = null;
         try {
             table = pool.getTable(tableName);

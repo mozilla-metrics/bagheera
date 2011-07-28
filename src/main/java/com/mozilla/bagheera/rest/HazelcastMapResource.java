@@ -25,8 +25,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
@@ -47,6 +50,7 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
 
+import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
 
 /**
@@ -59,9 +63,11 @@ public class HazelcastMapResource extends ResourceBase {
 	
 	private static final String MAX_BYTES_POSTFIX = ".max.bytes";
 	private static final String ALLOW_GET_ACCESS = ".allow.get.access";
+	private static final String POST_RESPONSE = ".post.response";
 	
 	private final JsonFactory jsonFactory;
 	private Properties props;
+	private Set<String> validMapNames;
 	
 	public HazelcastMapResource() throws IOException {
 		super();
@@ -78,6 +84,13 @@ public class HazelcastMapResource extends ResourceBase {
 			if (in != null) {
 				in.close();
 			}
+		}
+		
+		Map<String,MapConfig> mapConfigs = Hazelcast.getConfig().getMapConfigs();
+		if (mapConfigs != null && mapConfigs.size() > 0) {
+		    validMapNames = mapConfigs.keySet();
+		} else {
+		    validMapNames = new HashSet<String>();
 		}
 	}
 	
@@ -107,14 +120,18 @@ public class HazelcastMapResource extends ResourceBase {
 	@Path("{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
+	    if (!validMapNames.contains(name)) {
+            // Get the user-agent and IP address
+            String userAgent = request.getHeader("User-Agent");
+            String remoteIpAddress = request.getRemoteAddr();
+            LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
+            return Response.status(Status.NOT_ACCEPTABLE).build();
+        }
+	    
 		int maxByteSize = Integer.parseInt(props.getProperty(name + MAX_BYTES_POSTFIX, "0"));
 		if (maxByteSize > 0 && request.getContentLength() > maxByteSize) {
 			return Response.status(Status.NOT_ACCEPTABLE).build();
 		}
-		
-		// Get the user-agent and IP address
-		String userAgent = request.getHeader("User-Agent");
-		String remoteIpAddress = request.getRemoteAddr();
 		
 		// Read in the JSON data straight from the request
 		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
@@ -144,6 +161,11 @@ public class HazelcastMapResource extends ResourceBase {
 		
 		Map<String,String> m = Hazelcast.getMap(name);
 		m.put(id, sb.toString());
+		
+		boolean postResponse = Boolean.parseBoolean(props.getProperty(name + POST_RESPONSE, "false"));
+		if (postResponse) {
+		    return Response.created(URI.create(id)).build();
+		}
 		
 		return Response.noContent().build();
 	}
