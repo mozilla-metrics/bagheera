@@ -45,9 +45,10 @@ import com.mozilla.bagheera.dao.HBaseTableDao;
 
 /**
  * An implementation of Hazelcast's MapStore interface that persists map data to
- * HBase. Due to the general size of data in HBase there is no interest for this
- * particular implementation to ever load keys. Therefore only the store and
- * storeAll methods are implemented.
+ * HBase.
+ * An arbitrary number of maps can be persisted into the same HBase table. To do
+ * this, do not specify a column qualifer in the map configuration: the map name
+ * will be used.
  */
 public class HBaseMapStore extends MapStoreBase implements MapStore<String, String> {
 
@@ -74,8 +75,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
         String tableName = properties.getProperty("hazelcast.hbase.table", "default");
         String family = properties.getProperty("hazelcast.hbase.column.family", "data");
-        String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
-        String qualifier = columnQualifier == null ? "" : columnQualifier;
+        String qualifier = properties.getProperty("hazelcast.hbase.column.qualifier", mapName);
 
         pool = new HTablePool(conf, hbasePoolSize);
         table = new HBaseTableDao(pool, tableName, family, qualifier, prefixDate);
