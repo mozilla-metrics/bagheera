@@ -78,7 +78,7 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
         super.init(hazelcastInstance, properties, mapName);
 
-        String indexName = properties.getProperty("hazelcast.elasticsearch.index", "default");
+        String indexName = properties.getProperty("hazelcast.elasticsearch.index", mapName);
         String typeName = properties.getProperty("hazelcast.elasticsearch.type.name", "data");
 
         initNodeClient(properties);
