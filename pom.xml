@@ -18,6 +18,10 @@
   </properties>
   
   <repositories>
+    <repository>
+      <id>mozilla-metrics-snapshots</id>
+      <url>http://mozilla-metrics.github.com/maven2/snapshots</url>
+    </repository>
 	<repository>
       <id>java.net</id>
       <url>http://download.java.net/maven/2</url>
@@ -297,7 +301,13 @@
       <artifactId>je</artifactId>
       <version>4.1.10</version>
     </dependency>
-    
+
+	<dependency>
+		<groupId>com.mozilla</groupId>
+		<artifactId>akela</artifactId>
+		<version>0.2-SNAPSHOT</version>
+	</dependency>
+	
   </dependencies>
 
   <build>

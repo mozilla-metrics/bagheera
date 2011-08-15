@@ -15,6 +15,7 @@ SERVER_PORT=$1
 HAZELCAST_CONF=$2
 SERVER_CLASS_NAME="com.mozilla.bagheera.rest.Bagheera"
 JAVA_OPTS="-Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
+export MALLOC_ARENA_MAX=4
 
 if [ "$BAGHEERA_USER" = "" ]; then
     BAGHEERA_USER="$USER"

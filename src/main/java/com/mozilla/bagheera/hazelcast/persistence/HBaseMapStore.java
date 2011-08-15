@@ -39,7 +39,6 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
@@ -137,10 +136,8 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 s.addColumn(table.getColumnFamily(), table.getColumnQualifier());
                 ResultScanner rs = hti.getScanner(s);
                 Result r = null;
-                Map<String,String> hzMap = Hazelcast.getMap(mapName);
                 while ((r = rs.next()) != null) {
                     String k = new String(r.getRow());
-                    hzMap.put(k, new String(r.getValue(table.getColumnFamily(), table.getColumnQualifier())));
                     keySet.add(k);
                 }
             } catch (IOException e) {

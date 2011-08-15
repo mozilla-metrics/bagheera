@@ -1,0 +1,61 @@
+#!/bin/bash
+
+function usage() {
+  echo "Usage: $0"
+  exit 1
+}
+
+# Print usage if incorrect number of args
+[[ $# -ne 0 ]] && usage
+
+bin=`dirname "$0"`
+bin=`cd "$bin"; pwd`
+
+HAZELCAST_CONF=$1
+SERVER_CLASS_NAME="com.mozilla.bagheera.elasticsearch.ElasticSearchIndexer"
+JAVA_OPTS="-Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
+
+if [ "$BAGHEERA_USER" = "" ]; then
+    BAGHEERA_USER="$USER"
+fi
+
+if [ "$HADOOP_CONF" = "" ]; then
+    HADOOP_CONF="/etc/hadoop/conf"
+fi
+
+if [ "$HBASE_CONF" = "" ]; then
+    HBASE_CONF="/etc/hbase/conf"
+fi
+
+# if this is a developer then use the main jar in the build directory
+if [ -d $bin/../build/lib ]; then
+    MAIN_JAR_PATH="$bin/../build/lib/bagheera-*.jar"
+else
+    MAIN_JAR_PATH="$bin/../bagheera-*.jar"
+fi
+
+CLASSPATH="$bin/../conf":"$HADOOP_CONF":"$HBASE_CONF"
+# add main jar
+for lib in `ls $MAIN_JAR_PATH`; do
+    CLASSPATH=${CLASSPATH}:$lib
+done    
+
+# add dependency libs
+for lib in `ls $bin/../lib/*.jar`; do
+    CLASSPATH=${CLASSPATH}:$lib
+done
+
+for lib in `ls $bin/../lib/elasticsearch/*.jar`; do
+    CLASSPATH=${CLASSPATH}:$lib
+done
+
+# create logs dir if it doesn't exist
+if [ ! -d $bin/../logs ]; then
+    mkdir -p $bin/../logs
+fi
+
+echo "java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME"
+java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
+RETVAL=$?
+
+exit $RETVAL

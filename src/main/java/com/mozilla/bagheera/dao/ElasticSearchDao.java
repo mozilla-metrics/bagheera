@@ -30,6 +30,7 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.client.action.index.IndexRequestBuilder;
 
 public class ElasticSearchDao {
 
@@ -51,13 +52,27 @@ public class ElasticSearchDao {
      * @return
      */
     public boolean indexDocument(String id, String source) {
+        return indexDocument(id,source,null);
+    }
+    
+    /**
+     * @param id
+     * @param source
+     * @param percolate
+     * @return
+     */
+    public boolean indexDocument(String id, String source, String percolate) {
         if (StringUtils.isBlank(id) || StringUtils.isBlank(source)) {
             return false;
         }
         
         boolean success = false;
         try {
-            IndexResponse response = client.prepareIndex(indexName, typeName, id).setSource(source).execute().actionGet();
+            IndexRequestBuilder requestBuilder = client.prepareIndex(indexName, typeName, id).setSource(source);
+            if (percolate != null) {
+                requestBuilder.setPercolate(percolate);
+            }
+            IndexResponse response = client.index(requestBuilder.request()).actionGet();
             if (StringUtils.equals(id, response.getId())) {
                 success = true;
             }
