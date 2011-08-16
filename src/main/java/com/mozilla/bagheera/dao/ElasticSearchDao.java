@@ -39,6 +39,7 @@ import org.elasticsearch.client.action.get.GetRequestBuilder;
 import org.elasticsearch.client.action.search.SearchRequestBuilder;
 import org.elasticsearch.index.query.xcontent.BoolQueryBuilder;
 import org.elasticsearch.index.query.xcontent.QueryBuilders;
+import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.search.SearchHit;
 
 public class ElasticSearchDao {
@@ -85,9 +86,12 @@ public class ElasticSearchDao {
             if (StringUtils.equals(id, response.getId())) {
                 success = true;
             }
+        } catch (IndexMissingException e) {
+            LOG.info("Creating index '" + indexName + "' to insert '" + id + "'", e);
+
         } catch (ElasticSearchException e) {
             success = false;
-            LOG.error("ElasticSearchException while indexing document", e);
+            LOG.error("ElasticSearchException while indexing document '" + id + "' (index '" + indexName + "'", e);
         }
 
         if (LOG.isDebugEnabled()) {
@@ -107,11 +111,12 @@ public class ElasticSearchDao {
      */
     public boolean indexDocuments(Map<String, String> dataMap) {
         BulkRequestBuilder brb = client.prepareBulk();
+
         for (Map.Entry<String, String> entry : dataMap.entrySet()) {
             if (StringUtils.isNotBlank(entry.getKey()) && StringUtils.isNotBlank(entry.getValue())) {
                 brb.add(Requests.indexRequest(indexName).type(typeName).id(entry.getKey()).source(entry.getValue()));
             } else {
-                LOG.error("Received bad key or value for key: " + entry.getKey());
+                LOG.error("Received bad key or value for key: '" + entry.getKey() + "' (index '" + indexName + "'");
             }
         }
 
@@ -143,12 +148,19 @@ public class ElasticSearchDao {
 
     /** Receive a specific document from elasticsearch. Make sure source is stored. */
     public String get(String id) {
-        GetRequestBuilder get = client.prepareGet();
-        get.setIndex(indexName).setType(typeName).setId(id);
-        GetResponse response = client.get(get.request()).actionGet();
-        String result = response.sourceAsString();
+        String result = null;
+        try {
+            GetRequestBuilder get = client.prepareGet();
+            get.setIndex(indexName).setType(typeName).setId(id);
+            GetResponse response = client.get(get.request()).actionGet();
+            result = response.sourceAsString();
+        }
+        catch (IndexMissingException e) {
+            LOG.info("Tried to get '" + id + "' from missing index '" + indexName + "'");
+            return null;
+        }
         if (result == null) {
-            LOG.error("Cannot load document " + id + "from elasticsearch. Make sure source is stored.");
+            LOG.error("Failed loading source of '" + id + "' (index: '" + indexName + "') from ES.");
         }
         return result;
     }
@@ -164,7 +176,7 @@ public class ElasticSearchDao {
                 brb.add(Requests.deleteRequest(indexName).type(typeName)
                         .id(id));
             } else {
-                LOG.error("Trying to delete bad key: " + id);
+                LOG.info("Trying to delete bad key: '" + id + "' (index '" + indexName + "')");
             }
         }
 
@@ -183,7 +195,7 @@ public class ElasticSearchDao {
         for (SearchHit hit : response.getHits()) {
             String source = hit.sourceAsString();
             if (source == null) {
-                LOG.error("Cannot load document " + hit.getId() + "from elasticsearch. Make sure source is stored.");
+                LOG.error("Failed loading source of '" + hit.getId() + "' (index: '" + indexName + "') from ES.");
             } else {
                 results.put(hit.getId(), source);
             }
