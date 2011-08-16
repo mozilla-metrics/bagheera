@@ -33,9 +33,11 @@ import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
 
 /**
- * A MultiMapStore consists of any number of MapStore implementations specified via Hazelcast config. This consists of 
+ * A MultiMapStore consists of any number of MapStore implementations specified via Hazelcast config. This consists of
  * setting configuration properties that specify the MapStore implementation to use that begin with MULTI_MAP_STORE_PREFIX.
- * 
+ *
+ * The first store (suffix ".1") is considered to be authoritative, and is used for loads.
+ *
  * Example:
  * <map-store enabled="true">
  *  <class-name>com.mozilla.bagheera.hazelcast.persistence.MultiMapStore</class-name>
@@ -44,18 +46,19 @@ import com.hazelcast.core.MapStore;
  *  ...
  * </map-store>
  */
-public class MultiMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class MultiMapStore extends MapStoreBase implements MapStore<String, String> {
 
     private static final Logger LOG = Logger.getLogger(MultiMapStore.class);
-    
+
     private static final String MULTI_MAP_STORE_PREFIX = "hazelcast.multi.store.class.name";
-    
+
     private List<MapStore<String,String>> mapStores;
-    
+    private MapStore<String, String> primaryStore;
+
     @SuppressWarnings("unchecked")
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
         super.init(hazelcastInstance, properties, mapName);
-        
+
         mapStores = new ArrayList<MapStore<String,String>>();
         for (Map.Entry<Object, Object> prop : properties.entrySet()) {
             Object ko = prop.getKey();
@@ -69,6 +72,9 @@ public class MultiMapStore extends MapStoreBase implements MapStore<String, Stri
                             MapStore<String,String> classInstance = (MapStore<String,String>)Class.forName(className).newInstance();
                             if (classInstance instanceof MapLoaderLifecycleSupport) {
                                 ((MapLoaderLifecycleSupport) classInstance).init(hazelcastInstance, properties, mapName);
+                            }
+                            if (k.endsWith(".1")) {
+                                primaryStore = classInstance;
                             }
                             mapStores.add(classInstance);
                         } catch (InstantiationException e) {
@@ -86,7 +92,7 @@ public class MultiMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         }
     }
-    
+
     @Override
     public void destroy() {
         for (MapStore<String,String> ms : mapStores) {
@@ -95,35 +101,34 @@ public class MultiMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         }
     }
-    
+
     @Override
     public String load(String key) {
-        // TODO Auto-generated method stub
-        return null;
+        return primaryStore.load(key);
     }
 
     @Override
     public Map<String, String> loadAll(Collection<String> keys) {
-        // TODO Auto-generated method stub
-        return null;
+        return primaryStore.loadAll(keys);
     }
 
     @Override
     public Set<String> loadAllKeys() {
-        // TODO Auto-generated method stub
-        return null;
+        return primaryStore.loadAllKeys();
     }
 
     @Override
     public void delete(String key) {
-        // TODO Auto-generated method stub
-        
+        for (MapStore<String, String> ms : mapStores) {
+            ms.delete(key);
+        }
     }
 
     @Override
     public void deleteAll(Collection<String> keys) {
-        // TODO Auto-generated method stub
-        
+        for (MapStore<String, String> ms : mapStores) {
+            ms.deleteAll(keys);
+        }
     }
 
     @Override

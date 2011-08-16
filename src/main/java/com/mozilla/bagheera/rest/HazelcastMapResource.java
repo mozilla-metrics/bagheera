@@ -60,7 +60,7 @@ import com.hazelcast.core.Hazelcast;
 public class HazelcastMapResource extends ResourceBase {
 
 	private static final Logger LOG = Logger.getLogger(HazelcastMapResource.class);
-	
+
 	private static final String MAX_BYTES_POSTFIX = ".max.bytes";
 	private static final String ALLOW_GET_ACCESS = ".allow.get.access";
 	private static final String POST_RESPONSE = ".post.response";
@@ -68,7 +68,7 @@ public class HazelcastMapResource extends ResourceBase {
 	private final JsonFactory jsonFactory;
 	private Properties props;
 	private Set<String> validMapNames;
-	
+
 	public HazelcastMapResource() throws IOException {
 		super();
 		jsonFactory = new JsonFactory();
@@ -93,7 +93,7 @@ public class HazelcastMapResource extends ResourceBase {
 		    validMapNames = new HashSet<String>();
 		}
 	}
-	
+
 	/**
 	 * A REST POST that generates an id and put the id,data pair into a map with the given name.
 	 * @param name
@@ -104,10 +104,10 @@ public class HazelcastMapResource extends ResourceBase {
 	@POST
 	@Path("{name}")
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response mapPut(@PathParam("name") String name, @Context HttpServletRequest request) throws IOException {	
+	public Response mapPut(@PathParam("name") String name, @Context HttpServletRequest request) throws IOException {
 		return mapPut(name, UUID.randomUUID().toString(), request);
 	}
-	
+
 	/**
 	 * A REST POST that puts the id,data pair into the map with the given name.
 	 * @param name
@@ -132,7 +132,7 @@ public class HazelcastMapResource extends ResourceBase {
 		if (maxByteSize > 0 && request.getContentLength() > maxByteSize) {
 			return Response.status(Status.NOT_ACCEPTABLE).build();
 		}
-		
+
 		// Read in the JSON data straight from the request
 		BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
 		String line = null;
@@ -140,7 +140,7 @@ public class HazelcastMapResource extends ResourceBase {
 		while ((line = reader.readLine()) != null) {
 			sb.append(line);
 		}
-		
+
 		// Validate JSON (open schema)
 		JsonParser parser = jsonFactory.createJsonParser(sb.toString());
 		JsonToken token = null;
@@ -154,19 +154,19 @@ public class HazelcastMapResource extends ResourceBase {
 			// if this was hit we'll return below
 			LOG.error("Error parsing JSON", e);
 		}
-		
+
 		if (!parseSucceeded) {
 			return Response.status(Status.NOT_ACCEPTABLE).build();
 		}
-		
+
 		Map<String,String> m = Hazelcast.getMap(name);
 		m.put(id, sb.toString());
-		
+
 		boolean postResponse = Boolean.parseBoolean(props.getProperty(name + POST_RESPONSE, "false"));
 		if (postResponse) {
 		    return Response.created(URI.create(id)).build();
 		}
-		
+
 		return Response.noContent().build();
 	}
 
@@ -178,7 +178,7 @@ public class HazelcastMapResource extends ResourceBase {
 	    if (!allowGetAccess) {
 	        return Response.status(Status.FORBIDDEN).build();
 	    }
-	    
+
 	    Map<String,String> m = Hazelcast.getMap(name);
 	    // This won't have any fields filled out other than the payload
 	    String data = m.get(id);
@@ -188,7 +188,7 @@ public class HazelcastMapResource extends ResourceBase {
 	    } else {
 	        resp = Response.status(Status.NOT_FOUND).build();
 	    }
-	    
+
 	    return resp;
 	}
 }
