@@ -1,12 +1,24 @@
 #!/bin/bash
 
 function usage() {
-  echo "Usage: $0"
+  echo "Usage: $0 [yyyyMMdd] [yyyyMMdd]"
   exit 1
 }
 
 # Print usage if incorrect number of args
-[[ $# -ne 0 ]] && usage
+[[ $# -gt 2 ]] && usage
+
+START_DATE=$1
+STOP_DATE=$2
+if [ "$START_DATE" == "" ]; then
+    START_DATE="`date +%Y%m%d`"
+fi
+if [ "$STOP_DATE" == "" ]; then
+    STOP_DATE="`date +%Y%m%d`"
+fi
+
+echo "Using start date: " $START_DATE
+echo "Using stop date: " $STOP_DATE
 
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
@@ -45,17 +57,12 @@ for lib in `ls $bin/../lib/*.jar`; do
     CLASSPATH=${CLASSPATH}:$lib
 done
 
-for lib in `ls $bin/../lib/elasticsearch/*.jar`; do
-    CLASSPATH=${CLASSPATH}:$lib
-done
-
 # create logs dir if it doesn't exist
 if [ ! -d $bin/../logs ]; then
     mkdir -p $bin/../logs
 fi
 
-echo "java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME"
-java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
+java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME $START_DATE $STOP_DATE
 RETVAL=$?
 
 exit $RETVAL

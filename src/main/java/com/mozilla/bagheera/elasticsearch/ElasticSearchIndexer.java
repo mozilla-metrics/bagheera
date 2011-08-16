@@ -44,6 +44,10 @@ import com.mozilla.bagheera.dao.ElasticSearchDao;
 import com.mozilla.bagheera.dao.HBaseTableDao;
 import com.mozilla.hadoop.hbase.mapreduce.MultiScanTableMapReduceUtil;
 
+/**
+ * This is a temporary class made to take telemetry data in HBase and index in ElasticSearch. In the future 
+ * we will simply use MultiMapStore instead.
+ */
 public class ElasticSearchIndexer {
 
     private static final Logger LOG = Logger.getLogger(ElasticSearchIndexer.class);
@@ -119,7 +123,7 @@ public class ElasticSearchIndexer {
         
         Configuration conf = HBaseConfiguration.create();
         HTablePool pool = new HTablePool(conf, 20);
-        HBaseTableDao table = new HBaseTableDao(pool, "telemetry", "data", "json");
+        HBaseTableDao table = new HBaseTableDao(pool, "telemetry", "data", "json", true);
         Node node = null;
         Client client = null;
         try {

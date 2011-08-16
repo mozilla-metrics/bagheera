@@ -71,6 +71,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         }
 
+        boolean prefixDate = Boolean.parseBoolean(properties.getProperty("hazelcast.hbase.key.prefix.date", "false"));
         int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
         String tableName = properties.getProperty("hazelcast.hbase.table", "default");
         String family = properties.getProperty("hazelcast.hbase.column.family", "data");
@@ -78,7 +79,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         String qualifier = columnQualifier == null ? "" : columnQualifier;
 
         pool = new HTablePool(conf, hbasePoolSize);
-        table = new HBaseTableDao(pool, tableName, family, qualifier);
+        table = new HBaseTableDao(pool, tableName, family, qualifier, prefixDate);
     }
 
     /* (non-Javadoc)

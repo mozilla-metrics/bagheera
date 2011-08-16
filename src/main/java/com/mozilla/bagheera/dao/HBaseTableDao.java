@@ -53,12 +53,18 @@ public class HBaseTableDao {
     private final byte[] tableName;
     private final byte[] family;
     private final byte[] qualifier;
-
+    private final boolean prefixDate;
+    
     public HBaseTableDao(HTablePool pool, String tableName, String family, String qualifier) {
+        this(pool, tableName, family, qualifier, false);
+    }
+    
+    public HBaseTableDao(HTablePool pool, String tableName, String family, String qualifier, boolean prefixDate) {
         this.pool = pool;
         this.tableName = Bytes.toBytes(tableName);
         this.family = Bytes.toBytes(family);
         this.qualifier = Bytes.toBytes(qualifier);
+        this.prefixDate = prefixDate;
     }
 
     /**
@@ -87,7 +93,8 @@ public class HBaseTableDao {
      * @throws IOException
      */
     public void put(String value) throws IOException {
-        put(IdUtil.generateBucketizedId(), Bytes.toBytes(value));
+        byte[] id = prefixDate ? IdUtil.generateBucketizedId() : IdUtil.generateNonBucketizedId();
+        put(id, Bytes.toBytes(value));
     }
 
     /**
@@ -96,7 +103,8 @@ public class HBaseTableDao {
      * @throws IOException
      */
     public void put(String key, String value) throws IOException {
-        put(IdUtil.bucketizeId(key), Bytes.toBytes(value));
+        byte[] id = prefixDate ? IdUtil.bucketizeId(key) : key.getBytes();
+        put(id, Bytes.toBytes(value));
     }
 
     /**
@@ -125,7 +133,7 @@ public class HBaseTableDao {
     public void putStringCollection(Collection<String> values) throws IOException {
         List<Put> puts = new ArrayList<Put>();
         for (String value : values) {
-            byte[] id = IdUtil.generateBucketizedId();
+            byte[] id = prefixDate ? IdUtil.generateBucketizedId() : IdUtil.generateNonBucketizedId();
             Put p = new Put(id);
             p.add(family, qualifier, Bytes.toBytes(value));
             puts.add(p);
@@ -140,7 +148,8 @@ public class HBaseTableDao {
     public void putStringMap(Map<String, String> values) throws IOException {
         List<Put> puts = new ArrayList<Put>();
         for (Map.Entry<String, String> entry : values.entrySet()) {
-            Put p = new Put(IdUtil.bucketizeId(entry.getKey()));
+            byte[] id = prefixDate ? IdUtil.bucketizeId(entry.getKey()) : entry.getKey().getBytes();
+            Put p = new Put(id);
             p.add(family, qualifier, Bytes.toBytes(entry.getValue()));
             puts.add(p);
         }
@@ -176,7 +185,8 @@ public class HBaseTableDao {
         HTableInterface table = null;
         String retval = null;
         try {
-            Get g = new Get(IdUtil.bucketizeId(row));
+            //byte[] id = prefixDate ? IdUtil.bucketizeId(row) : row.getBytes();
+            Get g = new Get(Bytes.toBytes(row));
             table = pool.getTable(tableName);
             Result r = table.get(g);
             byte[] value = r.getValue(family, qualifier);
@@ -209,7 +219,8 @@ public class HBaseTableDao {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("adding: " + r);
                 }
-                gets.add(new Get(IdUtil.bucketizeId(r)));
+                //byte[] id = prefixDate ? IdUtil.bucketizeId(r) : r.getBytes();
+                gets.add(new Get(Bytes.toBytes(r)));
                 rowSet.add(r);
             }
             

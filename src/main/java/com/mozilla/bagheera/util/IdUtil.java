@@ -27,6 +27,8 @@ import java.util.Date;
 import java.util.Random;
 import java.util.UUID;
 
+import org.apache.commons.lang.StringUtils;
+
 /**
  * Utility class for id generation and bucketing
  */
@@ -38,6 +40,13 @@ public class IdUtil {
 	public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyyMMdd");
 	private static final Random RAND = new Random();
 
+	/**
+	 * @return
+	 */
+	public static byte[] generateNonBucketizedId() {
+	    return UUID.randomUUID().toString().getBytes();
+	}
+	
 	/**
 	 * Generates a bucket/date prefixed random id
 	 * @return
@@ -96,16 +105,21 @@ public class IdUtil {
 	 * @throws IOException
 	 */
 	public static byte[] nonRandByteBucketizeId(String id, Date d) throws IOException {
-		if (id == null || id.length() < 2) {
-			throw new IllegalArgumentException("id cannot be null or less that 2 characters in length");
+		if (StringUtils.isBlank(id)) {
+			throw new IllegalArgumentException("id cannot be null or empty");
 		}
         if (d == null) {
             throw new IllegalArgumentException("date cannot be null");
         }
         
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		// Munge two hex characters into the range of a single byte
-		int bucket = Integer.parseInt(id.substring(0, 2), 16) - 128;
+		int bucket = 0;
+		if (id.length() >= 2) {
+		    // Munge two hex characters into the range of a single byte
+		    bucket = Integer.parseInt(id.substring(0, 2), 16) - 128;
+		} else {
+		    bucket = Integer.parseInt(id, 16) - 128;
+		}
 		baos.write(bucket);
 		baos.write(SDF.format(d).getBytes());
 		baos.write(id.getBytes());
