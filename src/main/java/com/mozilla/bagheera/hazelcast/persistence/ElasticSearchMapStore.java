@@ -32,11 +32,10 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
 import com.mozilla.bagheera.dao.ElasticSearchDao;
 
-public class ElasticSearchMapStore extends MapStoreBase implements MapStore<String,String>, MapLoaderLifecycleSupport {
+public class ElasticSearchMapStore extends MapStoreBase implements MapStore<String,String> {
 
     public static final String ES_CONFIG_PATH = "hazelcast.elasticsearch.config.path";
     public static final String ES_CLUSTER_NAME = "hazelcast.elasticsearch.cluster.name";
@@ -44,48 +43,48 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
     public static final String ES_STORE_DATA = "hazelcast.elasticsearch.store.data";
     public static final String ES_TRANSPORT_AUTO_DISCOVER = "hazelcast.elasticsearch.transport.autodiscover";
     public static final String ES_SERVER_LIST = "hazelcast.elasticsearch.server.list";
-    
+
     public static final String ES_LOCAL_DEFAULT = "false";
     public static final String ES_STORE_DATA_DEFAULT = "false";
-    
+
     protected Node esNode;
     protected Client esClient;
     protected ElasticSearchDao es;
-    
+
     private void initNodeClient(Properties properties) {
         NodeBuilder nodeBuilder = nodeBuilder();
         ImmutableSettings.Builder settingsBuilder = ImmutableSettings.settingsBuilder();
         String configFile = properties.getProperty(ES_CONFIG_PATH);
         if (configFile != null) {
             settingsBuilder.loadFromClasspath(configFile);
-        } else {           
+        } else {
             String clusterName = properties.getProperty(ES_CLUSTER_NAME);
             if (clusterName != null) {
                 nodeBuilder.clusterName(clusterName);
             }
-            
+
             boolean localMode = Boolean.parseBoolean(properties.getProperty(ES_LOCAL, ES_LOCAL_DEFAULT));
             nodeBuilder.local(localMode);
-            
+
             boolean storeData = Boolean.parseBoolean(properties.getProperty(ES_STORE_DATA, ES_STORE_DATA_DEFAULT));
             nodeBuilder.client(!storeData).data(storeData);
         }
-        
+
         esNode = nodeBuilder.loadConfigSettings(false).settings(settingsBuilder).node();
         esClient = esNode.client();
     }
-    
+
     @Override
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
         super.init(hazelcastInstance, properties, mapName);
-        
-        String indexName = properties.getProperty("hazelcast.elasticsearch.index", "default");
+
+        String indexName = properties.getProperty("hazelcast.elasticsearch.index", mapName);
         String typeName = properties.getProperty("hazelcast.elasticsearch.type.name", "data");
-        
+
         initNodeClient(properties);
         es = new ElasticSearchDao(esClient, indexName, typeName);
     }
-    
+
     @Override
     public void destroy() {
         if (esClient != null) {
@@ -95,17 +94,15 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
             esNode.close();
         }
     }
-    
+
     @Override
     public String load(String key) {
-        // TODO Auto-generated method stub
-        return null;
+        return es.get(key);
     }
 
     @Override
     public Map<String, String> loadAll(Collection<String> keys) {
-        // TODO Auto-generated method stub
-        return null;
+        return es.fetchAll(keys);
     }
 
     @Override
@@ -113,15 +110,15 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
         // TODO Auto-generated method stub
         return null;
     }
-    
+
     @Override
     public void delete(String key) {
-        // TODO Auto-generated method stub
+        es.delete(key);
     }
 
     @Override
     public void deleteAll(Collection<String> keys) {
-        // TODO Auto-generated method stub
+        es.delete(keys);
     }
 
     @Override
