@@ -40,17 +40,17 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
 import com.mozilla.bagheera.dao.HBaseTableDao;
 
 /**
  * An implementation of Hazelcast's MapStore interface that persists map data to
- * HBase. Due to the general size of data in HBase there is no interest for this
- * particular implementation to ever load keys. Therefore only the store and
- * storeAll methods are implemented.
+ * HBase.
+ * An arbitrary number of maps can be persisted into the same HBase table. To do
+ * this, do not specify a column qualifer in the map configuration: the map name
+ * will be used.
  */
-public class HBaseMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class HBaseMapStore extends MapStoreBase implements MapStore<String, String> {
 
     private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 
@@ -63,7 +63,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
     @Override
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
         super.init(hazelcastInstance, properties, mapName);
-        
+
         Configuration conf = HBaseConfiguration.create();
         for (String name : properties.stringPropertyNames()) {
             if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
@@ -75,8 +75,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
         String tableName = properties.getProperty("hazelcast.hbase.table", "default");
         String family = properties.getProperty("hazelcast.hbase.column.family", "data");
-        String columnQualifier = properties.getProperty("hazelcast.hbase.column.qualifier");
-        String qualifier = columnQualifier == null ? "" : columnQualifier;
+        String qualifier = properties.getProperty("hazelcast.hbase.column.qualifier", mapName);
 
         pool = new HTablePool(conf, hbasePoolSize);
         table = new HBaseTableDao(pool, tableName, family, qualifier, prefixDate);
@@ -91,10 +90,10 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             pool.closeTablePool(table.getTableName());
         }
     }
-    
+
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
      */
     @Override
@@ -104,7 +103,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
      */
     @Override
@@ -115,10 +114,10 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 Get g = new Get(Bytes.toBytes(k));
                 gets.add(g);
             }
-            
+
             return table.getAll(keys);
         }
-        
+
         return null;
     }
 
@@ -151,10 +150,10 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         }
         return keySet;
     }
-    
+
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
      */
     @Override
@@ -166,7 +165,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
      */
     @Override
@@ -178,7 +177,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.hazelcast.core.MapStore#store(java.lang.Object,
      * java.lang.Object)
      */
@@ -193,7 +192,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.hazelcast.core.MapStore#storeAll(java.util.Map)
      */
     @Override

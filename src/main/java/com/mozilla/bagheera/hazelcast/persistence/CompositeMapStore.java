@@ -31,10 +31,10 @@ import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.hazelcast.core.MapStore;
 
 /**
- * A CompositeMapStore consists of two MapStore implementations specified via Hazelcast config. This consists of 
+ * A CompositeMapStore consists of two MapStore implementations specified via Hazelcast config. This consists of
  * setting a MapStore to load data and a second to store data. Currently this doesn't support using the same type
  * of MapStore for both. Typically we use this to load data from HBase and index it with ElasticSearch.
- * 
+ *
  * Example:
  * <map-store enabled="true">
  *  <class-name>com.mozilla.bagheera.hazelcast.persistence.CompositeMapStore</class-name>
@@ -43,18 +43,18 @@ import com.hazelcast.core.MapStore;
  *  ...
  * </map-store>
  */
-public class CompositeMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class CompositeMapStore extends MapStoreBase implements MapStore<String, String> {
 
     private static final Logger LOG = Logger.getLogger(CompositeMapStore.class);
-    
+
     private static final String LOAD_MAP_STORE = "hazelcast.composite.load.class.name";
     private static final String STORE_MAP_STORE = "hazelcast.composite.store.class.name";
-    
+
     private MapStore<String,String> loadInstance;
     private boolean loadLifeCycleSupport = false;
     private MapStore<String,String> storeInstance;
     private boolean storeLifeCycleSupport = false;
-    
+
     @SuppressWarnings("unchecked")
     @Override
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
@@ -72,13 +72,13 @@ public class CompositeMapStore extends MapStoreBase implements MapStore<String, 
                 MapLoaderLifecycleSupport mapLoadLifecycle = (MapLoaderLifecycleSupport)loadInstance;
                 mapLoadLifecycle.init(hazelcastInstance, properties, mapName);
             }
-            
+
             Class<?> storeClass = Class.forName(storeClassName);
             if (storeClass == null) {
                 throw new ClassNotFoundException("Store class could not be found");
             }
             storeInstance = (MapStore<String,String>)storeClass.newInstance();
-            
+
             if (storeInstance instanceof MapLoaderLifecycleSupport) {
                 storeLifeCycleSupport = true;
                 MapLoaderLifecycleSupport mapLoadLifecycle = (MapLoaderLifecycleSupport)storeInstance;
@@ -95,7 +95,7 @@ public class CompositeMapStore extends MapStoreBase implements MapStore<String, 
             throw new RuntimeException(e);
         }
     }
-    
+
     @Override
     public void destroy() {
         if (loadLifeCycleSupport) {
@@ -107,7 +107,7 @@ public class CompositeMapStore extends MapStoreBase implements MapStore<String, 
             mapLoadLifecycle.destroy();
         }
     }
-    
+
     @Override
     public String load(String key) {
         // TODO Auto-generated method stub
@@ -129,13 +129,13 @@ public class CompositeMapStore extends MapStoreBase implements MapStore<String, 
     @Override
     public void delete(String key) {
         // TODO Auto-generated method stub
-        
+
     }
 
     @Override
     public void deleteAll(Collection<String> keys) {
         // TODO Auto-generated method stub
-        
+
     }
 
     @Override
