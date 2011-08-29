@@ -41,7 +41,7 @@
 			<property name="hazelcast.hbase.column.qualifier">json</property>
 		</map-store>
 	</map>
-	<map name="testpilot">
+	<map name="testpilot_*">
 		<time-to-live-seconds>20</time-to-live-seconds>
 		<backup-count>1</backup-count>
 		<eviction-policy>NONE</eviction-policy>
