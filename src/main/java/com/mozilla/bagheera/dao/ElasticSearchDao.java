@@ -37,8 +37,8 @@ import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.client.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.action.get.GetRequestBuilder;
 import org.elasticsearch.client.action.search.SearchRequestBuilder;
-import org.elasticsearch.index.query.xcontent.BoolQueryBuilder;
-import org.elasticsearch.index.query.xcontent.QueryBuilders;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.search.SearchHit;
 
