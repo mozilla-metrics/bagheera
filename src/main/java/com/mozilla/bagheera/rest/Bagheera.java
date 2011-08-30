@@ -60,7 +60,11 @@ public class Bagheera {
 	        Hazelcast.getDefaultInstance();
 		    Config config = Hazelcast.getConfig();
 		    for (Map.Entry<String, MapConfig> entry : config.getMapConfigs().entrySet()) {
-		        Hazelcast.getMap(entry.getKey());
+		        String mapName = entry.getKey();
+		        // If the map contains a wildcard then we need to wait to initialize
+		        if (!mapName.contains("*")) {
+		            Hazelcast.getMap(entry.getKey());
+		        }
 		    }
 		}
 		

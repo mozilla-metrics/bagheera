@@ -26,11 +26,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -48,7 +47,6 @@ import org.apache.log4j.Logger;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonToken;
 
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
@@ -67,7 +65,8 @@ public class HazelcastMapResource extends ResourceBase {
 	
 	private final JsonFactory jsonFactory;
 	private Properties props;
-	private Set<String> validMapNames;
+	
+	private Pattern validMapNames;
 
 	public HazelcastMapResource() throws IOException {
 		super();
@@ -86,14 +85,57 @@ public class HazelcastMapResource extends ResourceBase {
 			}
 		}
 		
-		Map<String,MapConfig> mapConfigs = Hazelcast.getConfig().getMapConfigs();
-		if (mapConfigs != null && mapConfigs.size() > 0) {
-		    validMapNames = mapConfigs.keySet();
-		} else {
-		    validMapNames = new HashSet<String>();
+		// Construct a regular expression to validate map names
+		Map<String,MapConfig> mapConfigs = Hazelcast.getConfig().getMapConfigs();		
+		StringBuilder sb = new StringBuilder("(");
+		for (String wc : mapConfigs.keySet()) {
+		    if (wc.contains("*")) {
+		        sb.append(wc.replaceAll("\\*", ".+"));
+		    } else {
+		        sb.append(wc);
+		    }
+            sb.append("|");
+        }
+		if (sb.charAt(sb.length()-1) == '|') {
+		    sb.deleteCharAt(sb.length()-1);
 		}
+		sb.append(")");
+		validMapNames = Pattern.compile(sb.toString());
 	}
 
+	/**
+	 * Validate a given map name
+	 * @param mapName
+	 * @return
+	 */
+	private boolean validMapName(String mapName) {
+	    return validMapNames.matcher(mapName).find();
+	}
+	
+	/**
+	 * Validate JSON content
+	 * @param content
+	 * @return
+	 * @throws IOException
+	 */
+	private boolean validJSON(String content) throws IOException {
+	    // Validate JSON (open schema)
+        JsonParser parser = null;
+        boolean isValid = false;
+        try {
+            parser = jsonFactory.createJsonParser(content);
+            while (parser.nextToken() != null) {
+                // noop
+            }
+            isValid = true;
+        } catch (JsonParseException e) {
+            // if this was hit we'll return below
+            LOG.error("Error parsing JSON", e);
+        }
+        
+        return isValid;
+	}
+	
 	/**
 	 * A REST POST that generates an id and put the id,data pair into a map with the given name.
 	 * @param name
@@ -120,7 +162,8 @@ public class HazelcastMapResource extends ResourceBase {
 	@Path("{name}/{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mapPut(@PathParam("name") String name, @PathParam("id") String id, @Context HttpServletRequest request) throws IOException {
-	    if (!validMapNames.contains(name)) {
+	    // Check the map name to make sure it's valid
+	    if (!validMapName(name)) {
             // Get the user-agent and IP address
             String userAgent = request.getHeader("User-Agent");
             String remoteIpAddress = request.getRemoteAddr();
@@ -128,6 +171,7 @@ public class HazelcastMapResource extends ResourceBase {
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 	    
+	    // Check the payload size versus any map specific restrictions
 		int maxByteSize = Integer.parseInt(props.getProperty(name + MAX_BYTES_POSTFIX, "0"));
 		if (maxByteSize > 0 && request.getContentLength() > maxByteSize) {
 			return Response.status(Status.NOT_ACCEPTABLE).build();
@@ -142,20 +186,7 @@ public class HazelcastMapResource extends ResourceBase {
 		}
 
 		// Validate JSON (open schema)
-		JsonParser parser = jsonFactory.createJsonParser(sb.toString());
-		JsonToken token = null;
-		boolean parseSucceeded = false;
-		try {
-			while ((token = parser.nextToken()) != null) {
-				// noop
-			}
-			parseSucceeded = true;
-		} catch (JsonParseException e) {
-			// if this was hit we'll return below
-			LOG.error("Error parsing JSON", e);
-		}
-
-		if (!parseSucceeded) {
+		if (!validJSON(sb.toString())) {
 			return Response.status(Status.NOT_ACCEPTABLE).build();
 		}
 

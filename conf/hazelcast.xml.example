@@ -35,6 +35,7 @@
 		<map-store enabled="true">
 			<class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
+			<property name="hazelcast.hbase.key.prefix.date">true</property>
 			<property name="hazelcast.hbase.pool.size">20</property>
 			<property name="hazelcast.hbase.table">telemetry</property>
 			<property name="hazelcast.hbase.column.family">data</property>
