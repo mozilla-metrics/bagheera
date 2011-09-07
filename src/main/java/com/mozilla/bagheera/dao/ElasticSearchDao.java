@@ -19,18 +19,25 @@
  */
 package com.mozilla.bagheera.dao;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+import org.elasticsearch.action.admin.indices.exists.IndicesExistsRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.AdminClient;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
@@ -54,6 +61,15 @@ public class ElasticSearchDao {
         this.client = client;
         this.indexName = indexName;
         this.typeName = typeName;
+
+        // Make sure to have the index available.
+        AdminClient admin = client.admin();
+        if (!admin.indices().exists(new IndicesExistsRequest(indexName)).actionGet().exists()) {
+            LOG.info(String.format("Creating missing index '%s'", indexName));
+            admin.indices().create(new CreateIndexRequest(indexName)).actionGet();
+        }
+        LOG.info(String.format("Waiting for index '%s'...", indexName));
+        admin.cluster().health(new ClusterHealthRequest(indexName).waitForNodes("1")).actionGet();
     }
 
     /**
@@ -87,11 +103,9 @@ public class ElasticSearchDao {
                 success = true;
             }
         } catch (IndexMissingException e) {
-            LOG.info("Creating index '" + indexName + "' to insert '" + id + "'", e);
-
+            LOG.warn("Index '" + indexName + "' has gone missing! (trying to put, key='" + id + "')", e);
         } catch (ElasticSearchException e) {
-            success = false;
-            LOG.error("ElasticSearchException while indexing document '" + id + "' (index '" + indexName + "'", e);
+            LOG.error("ElasticSearchException while indexing document '" + id + "' (index '" + indexName + "')", e);
         }
 
         if (LOG.isDebugEnabled()) {
@@ -124,15 +138,6 @@ public class ElasticSearchDao {
     }
 
     /**
-     * @return A map of all documents that exist here (can be very slow and memory intensive).
-     */
-    public Map<String, String> fetchAll() {
-        SearchRequestBuilder search = client.prepareSearch(indexName).setTypes(typeName);
-        search.setQuery(QueryBuilders.matchAllQuery());
-        return unwrap(client.search(search.request()).actionGet());
-    }
-
-    /**
      * @param List<String> IDs for which to get documents.
      * @return List<String> docs fresh from the index (make sure to have elasticsearch store them, and to have id indexed).
      */
@@ -142,8 +147,26 @@ public class ElasticSearchDao {
         for (String id : ids) {
             qBuilder.should(QueryBuilders.fieldQuery("id", id));
         }
+        search.setExtraSource("{}");
         search.setQuery(qBuilder);
         return unwrap(client.search(search.request()).actionGet());
+    }
+
+    /**
+     * @return A set of all document-ids that exist here (prefer to {@link #fetchAll()}).
+     */
+    public Set<String> fetchAllKeys() {
+        LOG.info("Fetching all keys (index: '" + indexName + "') from ES...");
+        SearchRequestBuilder search = client.prepareSearch(indexName).setTypes(typeName);
+        search.setExtraSource("{}");
+        search.setQuery(QueryBuilders.matchAllQuery());
+        search.setNoFields();
+        SearchResponse response = client.search(search.request()).actionGet();
+        Set<String> keys = new HashSet<String>((int) response.hits().totalHits());
+        for (SearchHit hit : response.getHits()) {
+            keys.add(hit.getId());
+        }
+        return keys;
     }
 
     /** Receive a specific document from elasticsearch. Make sure source is stored. */
@@ -156,11 +179,11 @@ public class ElasticSearchDao {
             result = response.sourceAsString();
         }
         catch (IndexMissingException e) {
-            LOG.info("Tried to get '" + id + "' from missing index '" + indexName + "'");
+            LOG.error("Index '" + indexName + "' has gone missing! (trying to get, key='" + id + "')", e);
             return null;
         }
-        if (result == null) {
-            LOG.error("Failed loading source of '" + id + "' (index: '" + indexName + "') from ES.");
+        if (result == null && LOG.isTraceEnabled()) {
+            LOG.trace("Failed loading source of '" + id + "' (index: '" + indexName + "') from ES.");
         }
         return result;
     }
@@ -176,7 +199,7 @@ public class ElasticSearchDao {
                 brb.add(Requests.deleteRequest(indexName).type(typeName)
                         .id(id));
             } else {
-                LOG.info("Trying to delete bad key: '" + id + "' (index '" + indexName + "')");
+                LOG.warn("Trying to delete non-existent entry: '" + id + "' (index '" + indexName + "')");
             }
         }
 
@@ -191,7 +214,7 @@ public class ElasticSearchDao {
     }
 
     private Map<String, String> unwrap(SearchResponse response) {
-        Map<String, String> results = new java.util.HashMap<String, String>((int) response.hits().totalHits());
+        Map<String, String> results = new HashMap<String, String>((int) response.hits().totalHits());
         for (SearchHit hit : response.getHits()) {
             String source = hit.sourceAsString();
             if (source == null) {
