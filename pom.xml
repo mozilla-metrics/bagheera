@@ -4,7 +4,7 @@
 
   <groupId>com.mozilla</groupId>
   <artifactId>bagheera</artifactId>
-  <version>0.3-SNAPSHOT</version>
+  <version>0.4-SNAPSHOT</version>
 
   <name>bagheera</name>
   <description>REST services for Mozilla Metrics.</description>
