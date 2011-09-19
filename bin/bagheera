@@ -24,7 +24,7 @@ fi
 if [ "$HADOOP_CONF" = "" ]; then
     HADOOP_CONF="/etc/hadoop/conf"
 fi
-
+HADOOP_CONF="/Users/ap/services-metrics/bagheera/hadoop-conf/"
 if [ "$HBASE_CONF" = "" ]; then
     HBASE_CONF="/etc/hbase/conf"
 fi
@@ -47,7 +47,7 @@ else
         DAEMON_DETACHED=true
     fi
 fi
-
+DAEMON_DETACHED=false
 CLASSPATH="$bin/../conf":"$HADOOP_CONF":"$HBASE_CONF"
 # add main jar
 for lib in `ls $MAIN_JAR_PATH`; do

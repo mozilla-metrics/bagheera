@@ -45,9 +45,9 @@ import com.hazelcast.core.MapStore;
  * particular implementation to ever load keys. Therefore only the store and
  * storeAll methods are implemented.
  */
-public class HdfsMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class SequenceFileMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport {
 
-    private static final Logger LOG = Logger.getLogger(HdfsMapStore.class);
+    private static final Logger LOG = Logger.getLogger(SequenceFileMapStore.class);
 
     private FileSystem hdfs;
     private Path baseDir;
