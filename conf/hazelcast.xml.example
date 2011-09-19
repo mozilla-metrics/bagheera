@@ -51,7 +51,7 @@
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
 		<!-- HdfsMapStore -->
 		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.HdfsMapStore</class-name>
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.SequenceFileMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
 			<property name="hazelcast.hdfs.basedir">/bagheera</property>
 			<property name="hazelcast.hdfs.dateformat">yyyy-MM-dd</property>
