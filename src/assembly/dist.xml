@@ -16,7 +16,7 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>/Users/ap/services-metrics/bagheera/conf</directory>
+      <directory>conf</directory>
     </fileSet>
     <fileSet>
       <directory>bin</directory>
