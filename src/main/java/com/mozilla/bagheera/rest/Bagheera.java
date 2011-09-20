@@ -22,6 +22,7 @@ package com.mozilla.bagheera.rest;
 import java.util.Map;
 
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
@@ -38,9 +39,18 @@ public class Bagheera {
     public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
   
 	public static void main(String[] args) throws Exception {		
+		Server server = new Server();
+		
+		SelectChannelConnector scc = new SelectChannelConnector();
+		// Set the port number
 		int port = Integer.parseInt(System.getProperty("server.port", "8080"));
-		Server server = new Server(port);
-		ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.SESSIONS);
+		scc.setPort(port);
+		// Set the number of acceptors
+		int acceptors = Integer.parseInt(System.getProperty("server.acceptors", "8"));
+        scc.setAcceptors(acceptors);
+        server.addConnector(scc);
+        
+		ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.NO_SESSIONS);		
 		
 		ServletHolder jerseyHolder = new ServletHolder(ServletContainer.class);
 		jerseyHolder.setInitParameter("com.sun.jersey.config.property.resourceConfigClass", 
@@ -49,7 +59,7 @@ public class Bagheera {
 		// Init jersey on startup
 		jerseyHolder.setInitOrder(1);
 		root.addServlet(jerseyHolder, "/*");
-		
+			
 		server.setSendServerVersion(false);
 	    server.setSendDateHeader(false);
 	    server.setStopAtShutdown(true);
