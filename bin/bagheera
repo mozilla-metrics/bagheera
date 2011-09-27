@@ -12,9 +12,11 @@ bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
 SERVER_PORT=$1
+JMXREMOTE_PORT=8081
 HAZELCAST_CONF=$2
 SERVER_CLASS_NAME="com.mozilla.bagheera.rest.Bagheera"
-JAVA_OPTS="-Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
+BAGHEERA_OPTS="-Dhazelcast.config=$HAZELCAST_CONF -Dhazelcast.jmx=true -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs -Dcom.sun.management.jmxremote.port=$JMXREMOTE_PORT -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+JAVA_OPTS="$BAGHEERA_OPTS -Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
 export MALLOC_ARENA_MAX=4
 
 if [ "$BAGHEERA_USER" = "" ]; then
@@ -65,10 +67,10 @@ if [ ! -d $bin/../logs ]; then
 fi
 
 if [ "$DAEMON_DETACHED" = false ]; then
-    java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
+    java $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
     RETVAL=$?
 else
-    nohup java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME > $bin/../logs/bagheera.out 2>&1 < /dev/null &
+    nohup java $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME > $bin/../logs/bagheera.out 2>&1 < /dev/null &
     PID=$!
     RETVAL=$?
 
