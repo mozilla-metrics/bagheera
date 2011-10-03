@@ -60,7 +60,9 @@ public class ElasticSearchIndexer {
         this.hbaseTableDao = hbaseTableDao;
         this.es = es;
     }
+    
     public void indexHBaseData(HTablePool pool, Calendar startCal, Calendar endCal) {
+        LOG.info("Entering indexing phase ...");
         HTableInterface table = pool.getTable(hbaseTableDao.getTableName());
         Map<byte[],byte[]> columns = new HashMap<byte[], byte[]>();
         columns.put(hbaseTableDao.getColumnFamily(), hbaseTableDao.getColumnQualifier());
@@ -121,19 +123,23 @@ public class ElasticSearchIndexer {
             endCal.setTime(sdf.parse(endDateStr));
         }
 
-        Configuration conf = HBaseConfiguration.create();
-        HTablePool pool = new HTablePool(conf, 20);
-        HBaseTableDao table = new HBaseTableDao(pool, "telemetry", "data", "json", true);
+        HTablePool pool = null;
+        HBaseTableDao table = null;
         Node node = null;
         Client client = null;
         try {
-            node = NodeBuilder.nodeBuilder().client(true).node();
+            Configuration conf = HBaseConfiguration.create();
+            LOG.info("HDFS Namnode: " + conf.get("fs.default.name"));
+            pool = new HTablePool(conf, 20);
+            table = new HBaseTableDao(pool, "telemetry", "data", "json", true);
+            node = NodeBuilder.nodeBuilder().loadConfigSettings(true).node();
+            LOG.info("ES Cluster Name: " + node.settings().get("cluster.name"));
             client = node.client();
             ElasticSearchDao es = new ElasticSearchDao(client, "telemetry", "data");
             ElasticSearchIndexer esi = new ElasticSearchIndexer(table, es);
             esi.indexHBaseData(pool, startCal, endCal);
         } finally {
-            if (table.getTableName() != null) {
+            if (pool != null && table != null && table.getTableName() != null) {
                 pool.closeTablePool(table.getTableName());
             }
             if (client != null) {

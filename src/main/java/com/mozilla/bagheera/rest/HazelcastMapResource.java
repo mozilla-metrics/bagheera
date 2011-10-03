@@ -29,6 +29,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
@@ -71,7 +72,8 @@ public class HazelcastMapResource extends ResourceBase {
     private Properties props;
 
     private Pattern validMapNames;
-
+    private Pattern propertyPattern;
+    
     public HazelcastMapResource() throws IOException {
         super();
         jsonFactory = new JsonFactory();
@@ -105,6 +107,7 @@ public class HazelcastMapResource extends ResourceBase {
         }
         sb.append(")");
         validMapNames = Pattern.compile(sb.toString());
+        propertyPattern = Pattern.compile("^([^\\.]+)\\.(.*)");
     }
 
     /**
@@ -117,6 +120,35 @@ public class HazelcastMapResource extends ResourceBase {
         return validMapNames.matcher(mapName).find();
     }
 
+    /**
+     * @param propertyName
+     * @return
+     */
+    private String getProperty(String propertyName, String defaultValue) {
+        String v = null;
+        if (props.containsKey(propertyName)) {
+            v = props.getProperty(propertyName);
+        } else {
+            for (Object k : props.keySet()) {
+                String ks = (String)k;
+                Matcher m = propertyPattern.matcher(ks);
+                if (m.find() && m.groupCount() == 2) {
+                    String propMapName = m.group(1);
+                    if (propMapName.contains("*")) {
+                        Pattern propPattern = Pattern.compile(ks.replaceAll("\\*", ".+"));
+                        Matcher m2 = propPattern.matcher(propertyName);
+                        if (m2.find()) {
+                            v = props.getProperty(ks);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return v == null ? defaultValue : v;
+    }
+    
     /**
      * Validate JSON content
      * 
@@ -182,7 +214,7 @@ public class HazelcastMapResource extends ResourceBase {
         }
 
         // Check the payload size versus any map specific restrictions
-        int maxByteSize = Integer.parseInt(props.getProperty(name + MAX_BYTES_POSTFIX, "0"));
+        int maxByteSize = Integer.parseInt(getProperty(name + MAX_BYTES_POSTFIX, "0"));
         if (maxByteSize > 0 && request.getContentLength() > maxByteSize) {
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
@@ -197,7 +229,7 @@ public class HazelcastMapResource extends ResourceBase {
         }
 
         // Validate JSON (open schema)
-        boolean validateJson = Boolean.parseBoolean(props.getProperty(name + VALIDATE_JSON, "true"));
+        boolean validateJson = Boolean.parseBoolean(getProperty(name + VALIDATE_JSON, "true"));
         if (validateJson && !validJSON(sb.toString())) {
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
@@ -205,7 +237,7 @@ public class HazelcastMapResource extends ResourceBase {
         Map<String, String> m = Hazelcast.getMap(name);
         m.put(id, sb.toString());
 
-        boolean postResponse = Boolean.parseBoolean(props.getProperty(name + POST_RESPONSE, "false"));
+        boolean postResponse = Boolean.parseBoolean(getProperty(name + POST_RESPONSE, "false"));
         if (postResponse) {
             return Response.created(URI.create(id)).build();
         }
@@ -234,4 +266,5 @@ public class HazelcastMapResource extends ResourceBase {
 
         return resp;
     }
+    
 }

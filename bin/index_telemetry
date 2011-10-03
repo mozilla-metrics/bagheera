@@ -11,10 +11,10 @@ function usage() {
 START_DATE=$1
 STOP_DATE=$2
 if [ "$START_DATE" == "" ]; then
-    START_DATE="`date +%Y%m%d`"
+    START_DATE="`date +%Y%m%d --date="1 day ago"`"
 fi
 if [ "$STOP_DATE" == "" ]; then
-    STOP_DATE="`date +%Y%m%d`"
+    STOP_DATE="`date +%Y%m%d --date="1 day ago"`"
 fi
 
 echo "Using start date: " $START_DATE
@@ -23,9 +23,9 @@ echo "Using stop date: " $STOP_DATE
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
-HAZELCAST_CONF=$1
+ES_CONF_PATH="$bin/../conf/elasticsearch.yml"
 SERVER_CLASS_NAME="com.mozilla.bagheera.elasticsearch.ElasticSearchIndexer"
-JAVA_OPTS="-Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
+JAVA_OPTS="-Xms512m -Xmx512m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -Des.config=$ES_CONF_PATH -Dbagheera.log.dir=$bin/../logs"
 
 if [ "$BAGHEERA_USER" = "" ]; then
     BAGHEERA_USER="$USER"
@@ -62,7 +62,7 @@ if [ ! -d $bin/../logs ]; then
     mkdir -p $bin/../logs
 fi
 
-java -Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME $START_DATE $STOP_DATE
+java $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME $START_DATE $STOP_DATE
 RETVAL=$?
 
 exit $RETVAL
