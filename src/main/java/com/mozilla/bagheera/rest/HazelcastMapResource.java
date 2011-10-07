@@ -19,18 +19,12 @@
  */
 package com.mozilla.bagheera.rest;
 
-import static com.mozilla.bagheera.rest.Bagheera.PROPERTIES_RESOURCE_NAME;
-
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.util.Map;
-import java.util.Properties;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
@@ -45,141 +39,33 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.JsonParser;
 
-import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
-import com.sun.jersey.spi.resource.Singleton;
+import com.mozilla.bagheera.rest.properties.WildcardProperties;
+import com.mozilla.bagheera.rest.validation.Validator;
 
 /**
  * A REST resource that inserts data into Hazelcast maps.
  */
-@Singleton
 @Path("/map")
 public class HazelcastMapResource extends ResourceBase {
 
     private static final Logger LOG = Logger.getLogger(HazelcastMapResource.class);
 
-    private static final String MAX_BYTES_POSTFIX = ".max.bytes";
+    // property suffixes
     private static final String ALLOW_GET_ACCESS = ".allow.get.access";
     private static final String POST_RESPONSE = ".post.response";
-    private static final String VALIDATE_JSON = ".validate.json";
     
     // system independent newline
     public static String NEWLINE = System.getProperty("line.separator");
     
-    private final JsonFactory jsonFactory;
-    private Properties props;
-
-    private Pattern validMapNames;
-    private Pattern propertyPattern;
+    private Validator validator;
+    private WildcardProperties props;
     
-    public HazelcastMapResource() throws IOException {
+    public HazelcastMapResource() {
         super();
-        jsonFactory = new JsonFactory();
-        props = new Properties();
-        InputStream in = null;
-        try {
-            in = getClass().getResource(PROPERTIES_RESOURCE_NAME).openStream();
-            if (in == null) {
-                throw new IllegalArgumentException("Could not find the properites file: " + PROPERTIES_RESOURCE_NAME);
-            }
-            props.load(in);
-        } finally {
-            if (in != null) {
-                in.close();
-            }
-        }
-
-        // Construct a regular expression to validate map names
-        Map<String, MapConfig> mapConfigs = Hazelcast.getConfig().getMapConfigs();
-        StringBuilder sb = new StringBuilder("(");
-        for (String wc : mapConfigs.keySet()) {
-            if (wc.contains("*")) {
-                sb.append(wc.replaceAll("\\*", ".+"));
-            } else {
-                sb.append(wc);
-            }
-            sb.append("|");
-        }
-        if (sb.charAt(sb.length() - 1) == '|') {
-            sb.deleteCharAt(sb.length() - 1);
-        }
-        sb.append(")");
-        validMapNames = Pattern.compile(sb.toString());
-        propertyPattern = Pattern.compile("^([^\\.]+)\\.(.*)");
-    }
-
-    /**
-     * Validate a given map name
-     * 
-     * @param mapName
-     * @return
-     */
-    private boolean validMapName(String mapName) {
-        return validMapNames.matcher(mapName).find();
-    }
-
-    /**
-     * @param propertyName
-     * @return
-     */
-    private String getProperty(String propertyName, String defaultValue) {
-        String v = null;
-        if (props.containsKey(propertyName)) {
-            v = props.getProperty(propertyName);
-        } else {
-            for (Object k : props.keySet()) {
-                String ks = (String)k;
-                Matcher m = propertyPattern.matcher(ks);
-                if (m.find() && m.groupCount() == 2) {
-                    String propMapName = m.group(1);
-                    if (propMapName.contains("*")) {
-                        Pattern propPattern = Pattern.compile(ks.replaceAll("\\*", ".+"));
-                        Matcher m2 = propPattern.matcher(propertyName);
-                        if (m2.find()) {
-                            v = props.getProperty(ks);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (v == null) {
-            v = defaultValue;
-        } else {
-            props.setProperty(propertyName, v);
-        }
-        
-        return v;
-    }
-    
-    /**
-     * Validate JSON content
-     * 
-     * @param content
-     * @return
-     * @throws IOException
-     */
-    private boolean validJSON(String content) throws IOException {
-        // Validate JSON (open schema)
-        JsonParser parser = null;
-        boolean isValid = false;
-        try {
-            parser = jsonFactory.createJsonParser(content);
-            while (parser.nextToken() != null) {
-                // noop
-            }
-            isValid = true;
-        } catch (JsonParseException e) {
-            // if this was hit we'll return below
-            LOG.error("Error parsing JSON", e);
-        }
-
-        return isValid;
+        validator = rs.getValidator();
+        props = rs.getWildcardProperties();
     }
 
     /**
@@ -212,21 +98,20 @@ public class HazelcastMapResource extends ResourceBase {
     @Consumes({ MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN })
     public Response mapPut(@PathParam("name") String name, @PathParam("id") String id,
                            @Context HttpServletRequest request) throws IOException {
-        stats.numRequests.incrementAndGet();
+        rs.getStats().numRequests.incrementAndGet();
         // Check the map name to make sure it's valid
-        if (!validMapName(name)) {
+        if (!validator.isValidMapName(name)) {
             // Get the user-agent and IP address
             String userAgent = request.getHeader("User-Agent");
             String remoteIpAddress = request.getRemoteAddr();
             LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
-            stats.numInvalidRequests.incrementAndGet();
+            rs.getStats().numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
         // Check the payload size versus any map specific restrictions
-        int maxByteSize = Integer.parseInt(getProperty(name + MAX_BYTES_POSTFIX, "0"));
-        if (maxByteSize > 0 && request.getContentLength() > maxByteSize) {
-            stats.numInvalidRequests.incrementAndGet();
+        if (!validator.isValidRequestSize(name, request.getContentLength())) {
+            rs.getStats().numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
@@ -240,18 +125,17 @@ public class HazelcastMapResource extends ResourceBase {
         }
 
         // Validate JSON (open schema)
-        boolean validateJson = Boolean.parseBoolean(getProperty(name + VALIDATE_JSON, "true"));
-        if (validateJson && !validJSON(sb.toString())) {
-            stats.numInvalidRequests.incrementAndGet(); 
+        if (!validator.isValidJSON(name, sb.toString())) {
+            rs.getStats().numInvalidRequests.incrementAndGet(); 
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
         
-        stats.numValidRequests.incrementAndGet();
+        rs.getStats().numValidRequests.incrementAndGet();
         Map<String, String> m = Hazelcast.getMap(name);
         m.put(id, sb.toString());
-        stats.numPuts.incrementAndGet();
+        rs.getStats().numPuts.incrementAndGet();
 
-        boolean postResponse = Boolean.parseBoolean(getProperty(name + POST_RESPONSE, "false"));
+        boolean postResponse = Boolean.parseBoolean(props.getWildcardProperty(name + POST_RESPONSE, "false"));
         if (postResponse) {
             return Response.created(URI.create(id)).build();
         }
@@ -263,7 +147,7 @@ public class HazelcastMapResource extends ResourceBase {
     @Path("{name}/{id}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response mapGet(@PathParam("name") String name, @PathParam("id") String id) throws IOException {
-        boolean allowGetAccess = Boolean.parseBoolean(props.getProperty(name + ALLOW_GET_ACCESS, "false"));
+        boolean allowGetAccess = Boolean.parseBoolean(props.getWildcardProperty(name + ALLOW_GET_ACCESS, "false"));
         if (!allowGetAccess) {
             return Response.status(Status.FORBIDDEN).build();
         }
@@ -271,6 +155,7 @@ public class HazelcastMapResource extends ResourceBase {
         Map<String, String> m = Hazelcast.getMap(name);
         // This won't have any fields filled out other than the payload
         String data = m.get(id);
+        rs.getStats().numGets.incrementAndGet();
         Response resp = null;
         if (data != null) {
             resp = Response.ok(data, MediaType.APPLICATION_JSON).build();

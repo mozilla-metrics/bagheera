@@ -21,8 +21,6 @@ package com.mozilla.bagheera.rest;
 
 import javax.ws.rs.core.CacheControl;
 
-import com.mozilla.bagheera.rest.stats.Stats;
-
 public class ResourceBase {
 	
 	private static CacheControl cacheControl;
@@ -32,9 +30,9 @@ public class ResourceBase {
 		cacheControl.setNoTransform(false);
 	}
 
-	Stats stats;
+	RESTSingleton rs;
 	
 	public ResourceBase() {
-	    stats = Stats.getInstance();
+	    rs = RESTSingleton.getInstance();
 	}
 }

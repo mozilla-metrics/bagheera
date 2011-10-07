@@ -32,16 +32,16 @@ public class StatsResource extends ResourceBase {
     @Produces(MediaType.TEXT_PLAIN)
     public Response getStats() {
         StringBuilder sb = new StringBuilder();
-        sb.append("numRequests=").append(stats.numRequests.get()).append("\n");
-        sb.append("numPuts=").append(stats.numPuts.get()).append("\n");
-        sb.append("numGets=").append(stats.numGets.get());
+        sb.append("numRequests=").append(rs.getStats().numRequests.get()).append("\n");
+        sb.append("numPuts=").append(rs.getStats().numPuts.get()).append("\n");
+        sb.append("numGets=").append(rs.getStats().numGets.get());
         return Response.ok(sb.toString(), MediaType.APPLICATION_JSON).build();
     }
     
     @GET
     @Path("reset")
     public void resetStats() {
-        stats.resetAll();
+        rs.getStats().resetAll();
     }
     
 }
