@@ -51,10 +51,12 @@ import org.codehaus.jackson.JsonParser;
 
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
+import com.sun.jersey.spi.resource.Singleton;
 
 /**
  * A REST resource that inserts data into Hazelcast maps.
  */
+@Singleton
 @Path("/map")
 public class HazelcastMapResource extends ResourceBase {
 
@@ -146,7 +148,13 @@ public class HazelcastMapResource extends ResourceBase {
             }
         }
         
-        return v == null ? defaultValue : v;
+        if (v == null) {
+            v = defaultValue;
+        } else {
+            props.setProperty(propertyName, v);
+        }
+        
+        return v;
     }
     
     /**
@@ -204,18 +212,21 @@ public class HazelcastMapResource extends ResourceBase {
     @Consumes({ MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN })
     public Response mapPut(@PathParam("name") String name, @PathParam("id") String id,
                            @Context HttpServletRequest request) throws IOException {
+        stats.numRequests.incrementAndGet();
         // Check the map name to make sure it's valid
         if (!validMapName(name)) {
             // Get the user-agent and IP address
             String userAgent = request.getHeader("User-Agent");
             String remoteIpAddress = request.getRemoteAddr();
             LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
+            stats.numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
         // Check the payload size versus any map specific restrictions
         int maxByteSize = Integer.parseInt(getProperty(name + MAX_BYTES_POSTFIX, "0"));
         if (maxByteSize > 0 && request.getContentLength() > maxByteSize) {
+            stats.numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
@@ -231,11 +242,14 @@ public class HazelcastMapResource extends ResourceBase {
         // Validate JSON (open schema)
         boolean validateJson = Boolean.parseBoolean(getProperty(name + VALIDATE_JSON, "true"));
         if (validateJson && !validJSON(sb.toString())) {
+            stats.numInvalidRequests.incrementAndGet(); 
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
         
+        stats.numValidRequests.incrementAndGet();
         Map<String, String> m = Hazelcast.getMap(name);
         m.put(id, sb.toString());
+        stats.numPuts.incrementAndGet();
 
         boolean postResponse = Boolean.parseBoolean(getProperty(name + POST_RESPONSE, "false"));
         if (postResponse) {

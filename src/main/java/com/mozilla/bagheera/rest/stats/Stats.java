@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 The Apache Software Foundation
+ * Copyright 2011 Mozilla Foundation
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -17,24 +17,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.rest;
+package com.mozilla.bagheera.rest.stats;
 
-import javax.ws.rs.core.CacheControl;
+import java.util.concurrent.atomic.AtomicLong;
 
-import com.mozilla.bagheera.rest.stats.Stats;
+public class Stats {
+    
+    private static Stats INSTANCE;
+    
+    public final AtomicLong numRequests = new AtomicLong(0L);
+    public final AtomicLong numValidRequests = new AtomicLong(0L);
+    public final AtomicLong numInvalidRequests = new AtomicLong(0L);
+    public final AtomicLong numPuts = new AtomicLong(0L);
+    public final AtomicLong numGets = new AtomicLong(0L);
+    
+    private Stats() {
+    }
+    
+    public static Stats getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = new Stats();
+        }
+        return INSTANCE;
+    }
 
-public class ResourceBase {
-	
-	private static CacheControl cacheControl;
-	static {
-		cacheControl = new CacheControl();
-		cacheControl.setNoCache(true);
-		cacheControl.setNoTransform(false);
-	}
-
-	Stats stats;
-	
-	public ResourceBase() {
-	    stats = Stats.getInstance();
-	}
+    public void resetAll() {
+        numRequests.set(0);
+        numPuts.set(0);
+        numGets.set(0);
+    }
+    
 }

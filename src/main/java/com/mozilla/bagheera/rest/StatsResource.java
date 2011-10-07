@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 The Apache Software Foundation
+ * Copyright 2011 Mozilla Foundation
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -19,22 +19,29 @@
  */
 package com.mozilla.bagheera.rest;
 
-import javax.ws.rs.core.CacheControl;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
-import com.mozilla.bagheera.rest.stats.Stats;
+@Path("/stats")
+public class StatsResource extends ResourceBase {
 
-public class ResourceBase {
-	
-	private static CacheControl cacheControl;
-	static {
-		cacheControl = new CacheControl();
-		cacheControl.setNoCache(true);
-		cacheControl.setNoTransform(false);
-	}
-
-	Stats stats;
-	
-	public ResourceBase() {
-	    stats = Stats.getInstance();
-	}
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getStats() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("numRequests=").append(stats.numRequests.get()).append("\n");
+        sb.append("numPuts=").append(stats.numPuts.get()).append("\n");
+        sb.append("numGets=").append(stats.numGets.get());
+        return Response.ok(sb.toString(), MediaType.APPLICATION_JSON).build();
+    }
+    
+    @GET
+    @Path("reset")
+    public void resetStats() {
+        stats.resetAll();
+    }
+    
 }
