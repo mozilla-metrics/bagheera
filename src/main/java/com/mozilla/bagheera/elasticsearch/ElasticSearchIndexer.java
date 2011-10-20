@@ -19,12 +19,21 @@
  */
 package com.mozilla.bagheera.elasticsearch;
 
-import java.io.IOException;
+import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -36,12 +45,12 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.Requests;
+import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.node.Node;
-import org.elasticsearch.node.NodeBuilder;
 
-import com.mozilla.bagheera.dao.ElasticSearchDao;
-import com.mozilla.bagheera.dao.HBaseTableDao;
 import com.mozilla.hadoop.hbase.mapreduce.MultiScanTableMapReduceUtil;
 
 /**
@@ -52,66 +61,174 @@ public class ElasticSearchIndexer {
 
     private static final Logger LOG = Logger.getLogger(ElasticSearchIndexer.class);
 
-    private final HBaseTableDao hbaseTableDao;
-    private final ElasticSearchDao es;
-    private final ObjectMapper jsonMapper = new ObjectMapper();
+    private final String indexName;
+    private final String tableName;
+    private final String columnFamily;
+    private final String columnQualifier;
 
-    public ElasticSearchIndexer(HBaseTableDao hbaseTableDao, ElasticSearchDao es) {
-        this.hbaseTableDao = hbaseTableDao;
-        this.es = es;
+    private ExecutorService pool;
+    
+    private Node node;
+    private Client client;
+    private HTablePool hbasePool;
+    
+    public ElasticSearchIndexer(String indexName, String tableName, String columnFamily, String columnQualifier) {
+        this.node = nodeBuilder().loadConfigSettings(true).client(true).node();
+        this.client = node.client();
+        this.indexName = indexName;
+        
+        Configuration conf = HBaseConfiguration.create();
+        this.hbasePool = new HTablePool(conf, 32);
+        
+        this.tableName = tableName;
+        this.columnFamily = columnFamily;
+        this.columnQualifier = columnQualifier;
+        
+        this.pool = Executors.newFixedThreadPool(8);
     }
     
-    public void indexHBaseData(HTablePool pool, Calendar startCal, Calendar endCal) {
+    public void indexHBaseData(Calendar startCal, Calendar endCal) throws InterruptedException, ExecutionException {
         LOG.info("Entering indexing phase ...");
-        HTableInterface table = pool.getTable(hbaseTableDao.getTableName());
+
+        // Init scanners to give to the worker threads
         Map<byte[],byte[]> columns = new HashMap<byte[], byte[]>();
-        columns.put(hbaseTableDao.getColumnFamily(), hbaseTableDao.getColumnQualifier());
-        Scan[] scans = MultiScanTableMapReduceUtil.generateBytePrefixScans(startCal, endCal, "yyyyMMdd", columns, 100, false);
+        columns.put(columnFamily.getBytes(), columnQualifier.getBytes());
+        Scan[] scans = MultiScanTableMapReduceUtil.generateBytePrefixScans(startCal, endCal, "yyyyMMdd", columns, 1000, false);
+        
+        List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
+        for (Scan s : scans) {
+            tasks.add(new IndexWorker(client, indexName, hbasePool, tableName, columnFamily, columnQualifier, s));
+        }
+        
+        int sum = 0;
+        for (Future<Integer> f : pool.invokeAll(tasks)) {
+            int count = f.get();
+            sum += count;
+            LOG.info("Thread finished: " + (count > 0 ? "success" : "failed"));
+            if (count <= 0) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        
+        LOG.info(String.format("Indexed %d documents", sum));
+    }
+    
+    public void close() {
         try {
-            ResultScanner scanner = null;
-            for (Scan s : scans) {
+            if (pool != null) {
                 try {
-                    scanner = table.getScanner(s);
-                    Map<String,String> batch = new HashMap<String,String>();
-                    for (Result r : scanner) {
-                        String indexString = new String(r.getValue(hbaseTableDao.getColumnFamily(), hbaseTableDao.getColumnQualifier()));
+                    pool.shutdown();
+                    while (!pool.awaitTermination(30, TimeUnit.SECONDS)) {
+                        LOG.warn("Waited 30 seconds and pool still isn't shutdown");
+                    }
+                } catch (InterruptedException e) {
+                    pool.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
+            }
+        } finally {
+            if (hbasePool != null && tableName != null) {
+                hbasePool.closeTablePool(tableName);
+            }
+            if (client != null) {
+                client.close();
+            }
+            if (node != null) {
+                node.close();
+            }
+        }
+    }
+    
+    private class IndexWorker implements Callable<Integer> {
+
+        private static final int BATCH_SIZE = 200;
+
+        private final ObjectMapper jsonMapper = new ObjectMapper();
+        
+        private Client client;
+        private final String indexName;
+        
+        private final String tableName;
+        private final String columnFamily;
+        private final String columnQualifier;
+        
+        private HTablePool hbasePool;
+        private Scan scan;
+
+        public IndexWorker(Client client, String indexName, HTablePool hbasePool, String tableName, String columnFamily, String columnQualifier, Scan scan) {
+            this.client = client;
+            this.indexName = indexName;
+            
+            this.hbasePool = hbasePool;
+            this.tableName = tableName;
+            this.columnFamily = columnFamily;
+            this.columnQualifier = columnQualifier;
+            this.scan = scan;
+        }
+        
+        @SuppressWarnings("unchecked")
+        @Override
+        public Integer call() throws Exception {
+            int counter = 0;
+            
+            HTableInterface table = null;
+            ResultScanner scanner = null;
+            try {                
+                table = hbasePool.getTable(this.tableName);
+                scanner = table.getScanner(scan);
+                Result[] results = null;
+                while ((results = scanner.next(BATCH_SIZE)).length > 0) {
+                    BulkRequestBuilder brb = client.prepareBulk();
+                    for (Result r : results) {
+                        String indexString = new String(r.getValue(this.columnFamily.getBytes(), this.columnQualifier.getBytes()));
                         Map<String,Object> values = jsonMapper.readValue(indexString, new TypeReference<Map<String,Object>>() { });
                         String rowId = new String(r.getRow());
-
+    
+                        //LOG.info(String.format("Adding rowId: %s", rowId));
                         // Pull the date string out of the rowId into a separate field
                         String d = rowId.substring(1,9);
                         values.put("date", d);
                         rowId = rowId.substring(9);
-
-                        LOG.info("Adding row to batch: " + rowId);
-                        batch.put(rowId, jsonMapper.writeValueAsString(values));
-
-                        if (batch.size() == 100) {
-                            LOG.info("Indexing batch...");
-                            es.indexDocuments(batch);
-                            batch.clear();
+    
+                        // Add histname as a value of itself
+                        Map<String, Map<String, Object>> hists = (Map<String, Map<String, Object>>)values.get("histograms");
+                        for (Map.Entry<String, Map<String, Object>> hist : hists.entrySet()) {
+                            String histName = hist.getKey();
+                            Map<String, Object> histValues = hist.getValue();
+                            histValues.put("histogram_name", histName);
                         }
+                        
+                        brb.add(Requests.indexRequest(indexName).type(columnFamily).id(rowId).source(jsonMapper.writeValueAsString(values)));
                     }
 
-                    if (!batch.isEmpty()) {
-                        LOG.info("Indexing batch...");
-                        es.indexDocuments(batch);
+                    int numActions = brb.numberOfActions();
+                    String threadName = Thread.currentThread().getName();
+                    LOG.info(String.format("%s - Indexing batch of size %d", threadName, numActions));
+                    BulkResponse response = brb.execute().actionGet(60, TimeUnit.SECONDS);
+                    LOG.info(String.format("%s - Bulk request finished in %dms", threadName, response.getTookInMillis()));
+                    if (response.hasFailures()) {
+                        LOG.error(String.format("%s - Had failures during bulk indexing", threadName));
+                        counter = -1;
+                        break;
                     }
-                } finally {
-                    if (scanner != null) {
-                        scanner.close();
-                    }
+                    counter += numActions;
+                    LOG.info(String.format("%s - Indexed %d documents so far", threadName, counter));
+                }
+            } finally {
+                if (scanner != null) {
+                    scanner.close();
+                }
+                if (hbasePool != null && table != null) {
+                    hbasePool.putTable(table);
                 }
             }
-
-        } catch (IOException e) {
-            LOG.error("IO error occurred during indexing", e);
-        } finally {
-            pool.putTable(table);
+            
+            return counter;
         }
+        
     }
-
-    public static void main(String[] args) throws IOException, ParseException {
+    
+    public static void main(String[] args) throws InterruptedException, ExecutionException, ParseException {
         // Setup the start and stop dates for scanning
         Calendar startCal = Calendar.getInstance();
         Calendar endCal = Calendar.getInstance();
@@ -123,30 +240,13 @@ public class ElasticSearchIndexer {
             endCal.setTime(sdf.parse(endDateStr));
         }
 
-        HTablePool pool = null;
-        HBaseTableDao table = null;
-        Node node = null;
-        Client client = null;
+        ElasticSearchIndexer esi = null;
         try {
-            Configuration conf = HBaseConfiguration.create();
-            LOG.info("HDFS Namnode: " + conf.get("fs.default.name"));
-            pool = new HTablePool(conf, 20);
-            table = new HBaseTableDao(pool, "telemetry", "data", "json", true);
-            node = NodeBuilder.nodeBuilder().loadConfigSettings(true).node();
-            LOG.info("ES Cluster Name: " + node.settings().get("cluster.name"));
-            client = node.client();
-            ElasticSearchDao es = new ElasticSearchDao(client, "telemetry", "data");
-            ElasticSearchIndexer esi = new ElasticSearchIndexer(table, es);
-            esi.indexHBaseData(pool, startCal, endCal);
+            esi = new ElasticSearchIndexer("data_telemetry", "telemetry", "data", "json");
+            esi.indexHBaseData(startCal, endCal);
         } finally {
-            if (pool != null && table != null && table.getTableName() != null) {
-                pool.closeTablePool(table.getTableName());
-            }
-            if (client != null) {
-                client.close();
-            }
-            if (node != null) {
-                node.close();
+            if (esi != null) {
+                esi.close();
             }
         }
     }
