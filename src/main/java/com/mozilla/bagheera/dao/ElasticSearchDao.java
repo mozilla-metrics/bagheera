@@ -229,6 +229,7 @@ public class ElasticSearchDao {
     private boolean check(BulkResponse response) {
         boolean success = true;
 
+        LOG.info(String.format("BulkRequest took: %d ms", response.getTookInMillis()));
         if (response.hasFailures()) {
             success = false;
             for (BulkItemResponse b : response) {

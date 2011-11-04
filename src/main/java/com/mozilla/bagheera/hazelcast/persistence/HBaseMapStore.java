@@ -98,7 +98,10 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
      */
     @Override
     public String load(String key) {
-        return table.get(key);
+        if (allowLoad) {
+            return table.get(key);
+        }
+        return null;
     }
 
     /*
