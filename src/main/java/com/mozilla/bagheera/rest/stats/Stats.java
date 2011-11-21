@@ -30,6 +30,7 @@ public class Stats {
     public final AtomicLong numInvalidRequests = new AtomicLong(0L);
     public final AtomicLong numPuts = new AtomicLong(0L);
     public final AtomicLong numGets = new AtomicLong(0L);
+    public final AtomicLong numDels = new AtomicLong(0L);
     
     private Stats() {
     }
@@ -45,6 +46,7 @@ public class Stats {
         numRequests.set(0);
         numPuts.set(0);
         numGets.set(0);
+        numDels.set(0);
     }
     
 }

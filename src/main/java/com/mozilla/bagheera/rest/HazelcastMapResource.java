@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -54,6 +55,7 @@ public class HazelcastMapResource extends ResourceBase {
 
     // property suffixes
     private static final String ALLOW_GET_ACCESS = ".allow.get.access";
+    private static final String ALLOW_DEL_ACCESS = ".allow.delete.access";
     private static final String POST_RESPONSE = ".post.response";
     
     // system independent newline
@@ -163,6 +165,54 @@ public class HazelcastMapResource extends ResourceBase {
             resp = Response.status(Status.NOT_FOUND).build();
         }
 
+        return resp;
+    }
+    
+
+    /**
+     * A REST DELETE that removes the given key from the map.
+     * 
+     * @param name
+     * @param id
+     * @param request
+     * @return
+     * @throws IOException
+     */
+    @DELETE
+    @Path("{name}/{id}")
+    @Consumes({ MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN })
+    public Response mapDel(@PathParam("name") String name, @PathParam("id") String id,
+                           @Context HttpServletRequest request) throws IOException {
+        boolean allowAccess = Boolean.parseBoolean(props.getWildcardProperty(name + ALLOW_DEL_ACCESS, "false"));
+        if (!allowAccess) {
+            return Response.status(Status.FORBIDDEN).build();
+        }
+        
+        rs.getStats().numRequests.incrementAndGet();
+        
+        // Check the map name to make sure it's valid
+        if (!validator.isValidMapName(name)) {
+            // Get the user-agent and IP address
+            String userAgent = request.getHeader("User-Agent");
+            String remoteIpAddress = request.getRemoteAddr();
+            LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
+            rs.getStats().numInvalidRequests.incrementAndGet();
+            return Response.status(Status.NOT_ACCEPTABLE).build();
+        }
+
+        Map<String, String> m = Hazelcast.getMap(name);
+        String data = m.remove(id);
+        
+        rs.getStats().numDels.incrementAndGet();
+        Response resp = null;
+        if (data != null) {
+            resp = Response.ok(id, MediaType.APPLICATION_JSON).build();
+        } else {
+            LOG.warn(String.format("Delete requested, but no record found for key \"%s\"", id));
+            resp = Response.status(Status.NOT_FOUND).build();
+        }
+
+        rs.getStats().numValidRequests.incrementAndGet();
         return resp;
     }
     
