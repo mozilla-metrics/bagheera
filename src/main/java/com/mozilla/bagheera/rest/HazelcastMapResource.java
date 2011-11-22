@@ -180,7 +180,6 @@ public class HazelcastMapResource extends ResourceBase {
      */
     @DELETE
     @Path("{name}/{id}")
-    @Consumes({ MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN })
     public Response mapDel(@PathParam("name") String name, @PathParam("id") String id,
                            @Context HttpServletRequest request) throws IOException {
         boolean allowAccess = Boolean.parseBoolean(props.getWildcardProperty(name + ALLOW_DEL_ACCESS, "false"));
