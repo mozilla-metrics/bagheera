@@ -23,16 +23,15 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
-import org.apache.log4j.Logger;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapStore;
@@ -50,7 +49,6 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
     public static final String ES_STORE_DATA = "hazelcast.elasticsearch.store.data";
     public static final String ES_TRANSPORT_AUTO_DISCOVER = "hazelcast.elasticsearch.transport.autodiscover";
     public static final String ES_SERVER_LIST = "hazelcast.elasticsearch.server.list";
-    public static final String ES_LOAD_ALL = "hazelcast.elasticsearch.load_all";
 
     public static final String ES_LOCAL_DEFAULT = "false";
     public static final String ES_STORE_DATA_DEFAULT = "false";
@@ -59,7 +57,6 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
     protected String nodeKey;
     protected Client esClient;
     protected ElasticSearchDao es;
-    protected boolean loadAll;
 
     /**
      * Manages ElasticSearch node clients.
@@ -133,8 +130,6 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
             throw new IllegalArgumentException("Illegal index name: " + indexName);
         }
 
-        loadAll = Boolean.parseBoolean(properties.getProperty(ES_LOAD_ALL, ES_LOAD_ALL_DEFAULT));
-
         nodeKey = properties.getProperty(ES_CONFIG_PATH);
         if (nodeKey == null) {
             nodeKey = properties.getProperty(ES_CLUSTER_NAME);
@@ -171,10 +166,12 @@ public class ElasticSearchMapStore extends MapStoreBase implements MapStore<Stri
 
     @Override
     public Set<String> loadAllKeys() {
-        if (loadAll) {
-            return es.fetchAllKeys();
+        Set<String> keySet = null;
+        if (allowLoadAll) {
+            keySet = es.fetchAllKeys();
         }
-        return new HashSet<String>();
+        
+        return keySet;
     }
 
     @Override

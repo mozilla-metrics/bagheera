@@ -19,11 +19,15 @@
  */
 package com.mozilla.bagheera.rest;
 
+import java.util.Map;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
+import com.mozilla.bagheera.rest.stats.Stats;
 
 @Path("/stats")
 public class StatsResource extends ResourceBase {
@@ -32,16 +36,27 @@ public class StatsResource extends ResourceBase {
     @Produces(MediaType.TEXT_PLAIN)
     public Response getStats() {
         StringBuilder sb = new StringBuilder();
-        sb.append("numRequests=").append(rs.getStats().numRequests.get()).append("\n");
-        sb.append("numPuts=").append(rs.getStats().numPuts.get()).append("\n");
-        sb.append("numGets=").append(rs.getStats().numGets.get());
+        for (Map.Entry<String, Stats> entry : rs.getStatsMap().entrySet()) {
+            Stats stats = entry.getValue();
+            sb.append("name=").append(entry.getKey()).append("\n");
+            sb.append("numRequests=").append(stats.numRequests.get()).append("\n");
+            sb.append("numValidRequests=").append(stats.numValidRequests.get()).append("\n");
+            sb.append("numInvalidRequests=").append(stats.numInvalidRequests.get()).append("\n");
+            sb.append("numForbiddenRequests=").append(stats.numForbiddenRequests.get()).append("\n");
+            sb.append("numPuts=").append(stats.numPuts.get()).append("\n");
+            sb.append("numGets=").append(stats.numGets.get()).append("\n");
+            sb.append("numDels=").append(stats.numDels.get());
+        }
+        
         return Response.ok(sb.toString(), MediaType.APPLICATION_JSON).build();
     }
     
     @GET
     @Path("reset")
     public void resetStats() {
-        rs.getStats().resetAll();
+        for (Map.Entry<String, Stats> entry : rs.getStatsMap().entrySet()) {
+            entry.getValue().resetAll();
+        }
     }
     
 }

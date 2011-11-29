@@ -23,6 +23,8 @@ import static com.mozilla.bagheera.rest.Bagheera.PROPERTIES_RESOURCE_NAME;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.mozilla.bagheera.rest.properties.WildcardProperties;
 import com.mozilla.bagheera.rest.stats.Stats;
@@ -33,7 +35,7 @@ public class RESTSingleton {
     private static RESTSingleton INSTANCE;
     
     private final WildcardProperties props;
-    private final Stats stats;
+    private final Map<String,Stats> statsMap;
     private final Validator validator;
     
     private RESTSingleton() {
@@ -60,7 +62,7 @@ public class RESTSingleton {
         }
         
         validator = new Validator(props);
-        stats = Stats.getInstance();
+        statsMap = new HashMap<String,Stats>();
     }
     
     public static RESTSingleton getInstance() {
@@ -78,7 +80,19 @@ public class RESTSingleton {
         return validator;
     }
     
-    public Stats getStats() {
+    public Map<String,Stats> getStatsMap() {
+        return statsMap;
+    }
+    
+    public Stats getStats(String mapName) {
+        Stats stats = null;
+        if (statsMap.containsKey(mapName)) {
+            stats = statsMap.get(mapName);
+        } else {
+            stats = new Stats();
+            statsMap.put(mapName, stats);
+        }
+        
         return stats;
     }
 }

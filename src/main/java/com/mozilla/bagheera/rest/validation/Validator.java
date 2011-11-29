@@ -90,6 +90,10 @@ public class Validator {
             } catch (JsonParseException e) {
                 // if this was hit we'll return below
                 LOG.error("Error parsing JSON", e);
+            } finally {
+                if (parser != null) {
+                    parser.close();
+                }
             }
         }
 

@@ -70,12 +70,17 @@
 	<dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-core-asl</artifactId>
-      <version>1.8.3</version>
+      <version>1.9.2</version>
     </dependency>
 	<dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
-      <version>1.8.3</version>
+      <version>1.9.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-smile</artifactId>
+      <version>1.9.2</version>
     </dependency>
 
 	<!-- Jersey JAX-RS -->
@@ -117,7 +122,7 @@
 	<dependency>
       <groupId>com.hazelcast</groupId>
       <artifactId>hazelcast</artifactId>
-      <version>1.9.3</version>
+      <version>1.9.4.3</version>
     </dependency>
 
     <!-- Cloudera Hadoop, HBase -->
@@ -292,7 +297,7 @@
 	<dependency>
       <groupId>org.elasticsearch</groupId>
       <artifactId>elasticsearch</artifactId>
-      <version>0.17.6</version>
+      <version>0.17.9</version>
     </dependency>
 	
 	<!-- BDB -->
@@ -343,8 +348,9 @@
           </descriptors>
         </configuration>
       </plugin>
-      
+       
     </plugins>
+    
   </build>
 
 </project>

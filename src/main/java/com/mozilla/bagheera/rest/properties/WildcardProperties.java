@@ -33,10 +33,10 @@ public class WildcardProperties extends Properties {
      * Get a property if it exists. If not check for wildcard property matches.
      * 
      * @param name
-     * @param defaultValue
-     * @return
+     * @return null if property does not exist
+     * @return String if property exists
      */
-    public String getWildcardProperty(String name, String defaultValue) {
+    public String getWildcardProperty(String name) {
         String v = null;
         if (containsKey(name)) {
             v = getProperty(name);
@@ -58,13 +58,30 @@ public class WildcardProperties extends Properties {
             }
         }
         
-        if (v == null) {
-            v = defaultValue;
-        } else {
+        if (v != null) {
             setProperty(name, v);
         }
         
         return v;
     }
     
+    /**
+     * @param name
+     * @param defaultValue
+     * @return
+     */
+    public String getWildcardProperty(String name, String defaultValue) {
+        String v = getWildcardProperty(name);
+        return v == null ? defaultValue : v;
+    }
+    
+    /**
+     * @param name
+     * @param defaultValue
+     * @return
+     */
+    public boolean getWildcardProperty(String name, boolean defaultValue) {
+        String v = getWildcardProperty(name);
+        return v == null ? defaultValue : Boolean.parseBoolean(v);
+    }
 }

@@ -23,17 +23,23 @@ import java.util.Properties;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
+import com.mozilla.bagheera.json.JsonSmileConverter;
 
 public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
 
     private static final String ALLOW_LOAD = "hazelcast.allow.load";
     private static final String ALLOW_LOAD_ALL = "hazelcast.allow.load.all";
     private static final String ALLOW_DELETE = "hazelcast.allow.delete";
-
+    private static final String STORE_FORMAT = "hazelcast.store.format";
+    
     protected boolean allowLoad = false;
     protected boolean allowLoadAll = false;
     protected boolean allowDelete = false;
-
+    
+    protected enum StoreFormatType { JSON, SMILE };
+    protected StoreFormatType outputFormatType = StoreFormatType.JSON;
+    protected JsonSmileConverter jsonSmileConverter;
+    
     protected String mapName;
 
     /*
@@ -48,6 +54,13 @@ public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
         this.allowLoad = Boolean.parseBoolean(properties.getProperty(ALLOW_LOAD, "false"));
         this.allowLoadAll = Boolean.parseBoolean(properties.getProperty(ALLOW_LOAD_ALL, "false"));
         this.allowDelete = Boolean.parseBoolean(properties.getProperty(ALLOW_DELETE, "false"));
+        String storeFormat = properties.getProperty(STORE_FORMAT);
+        if ("json".equals(storeFormat)) {
+            outputFormatType = StoreFormatType.JSON;
+        } else if ("smile".equals(storeFormat)) {
+            outputFormatType = StoreFormatType.SMILE;
+            jsonSmileConverter = new JsonSmileConverter();
+        }
     }
 
 }

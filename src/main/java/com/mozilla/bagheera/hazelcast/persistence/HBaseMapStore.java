@@ -22,6 +22,7 @@ package com.mozilla.bagheera.hazelcast.persistence;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +31,12 @@ import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -41,7 +45,7 @@ import org.apache.log4j.Logger;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapStore;
-import com.mozilla.bagheera.dao.HBaseTableDao;
+import com.mozilla.bagheera.util.IdUtil;
 
 /**
  * An implementation of Hazelcast's MapStore interface that persists map data to
@@ -55,8 +59,13 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
     private static final Logger LOG = Logger.getLogger(HBaseMapStore.class);
 
     protected HTablePool pool;
-    protected HBaseTableDao table;
-
+    
+    private byte[] tableName;
+    private byte[] family;
+    private byte[] qualifier;
+    
+    private boolean prefixDate;
+    
     /* (non-Javadoc)
      * @see com.mozilla.bagheera.hazelcast.persistence.MapStoreBase#init(com.hazelcast.core.HazelcastInstance, java.util.Properties, java.lang.String)
      */
@@ -71,14 +80,13 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         }
 
-        boolean prefixDate = Boolean.parseBoolean(properties.getProperty("hazelcast.hbase.key.prefix.date", "false"));
+        prefixDate = Boolean.parseBoolean(properties.getProperty("hazelcast.hbase.key.prefix.date", "false"));
         int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-        String tableName = properties.getProperty("hazelcast.hbase.table", "default");
-        String family = properties.getProperty("hazelcast.hbase.column.family", "data");
-        String qualifier = properties.getProperty("hazelcast.hbase.column.qualifier", mapName);
+        tableName = Bytes.toBytes(properties.getProperty("hazelcast.hbase.table", "default"));
+        family = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.family", "data"));
+        qualifier = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.qualifier", mapName));
 
         pool = new HTablePool(conf, hbasePoolSize);
-        table = new HBaseTableDao(pool, tableName, family, qualifier, prefixDate);
     }
 
     /* (non-Javadoc)
@@ -87,7 +95,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
     @Override
     public void destroy() {
         if (pool != null) {
-            pool.closeTablePool(table.getTableName());
+            pool.closeTablePool(tableName);
         }
     }
 
@@ -98,10 +106,31 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
      */
     @Override
     public String load(String key) {
+        String retval = null;
         if (allowLoad) {
-            return table.get(key);
+            HTableInterface table = null;
+            try {
+                Get g = new Get(Bytes.toBytes(key));
+                table = pool.getTable(tableName);
+                Result r = table.get(g);
+                byte[] value = r.getValue(family, qualifier);
+                if (value != null) {
+                    if (outputFormatType == StoreFormatType.SMILE) {
+                        retval = jsonSmileConverter.convertFromSmile(value);
+                    } else {
+                        retval = new String(value);
+                    }
+                }
+            } catch (IOException e) {
+                LOG.error("Value did not exist for row: " + key, e);
+            } finally {
+                if (pool != null && table != null) {
+                    pool.putTable(table);
+                }
+            }
         }
-        return null;
+        
+        return retval;
     }
 
     /*
@@ -118,7 +147,29 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 gets.add(g);
             }
 
-            return table.getAll(keys);
+            HTableInterface table = null;
+            Map<String,String> kvMap = new HashMap<String,String>();
+            try {
+                table = pool.getTable(tableName);
+                table.get(gets);
+                Result[] result = table.get(gets);
+                for (Result r : result) {
+                    byte[] value = r.getValue(family, qualifier);
+                    if (value != null) {
+                        if (outputFormatType == StoreFormatType.SMILE) {
+                            kvMap.put(new String(r.getRow()), jsonSmileConverter.convertFromSmile(r.getValue(family, qualifier)));
+                        } else {
+                            kvMap.put(new String(r.getRow()), new String(r.getValue(family, qualifier)));
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                LOG.error("IOException while getting values", e);
+            } finally {
+                if (pool != null && table != null) {
+                    pool.putTable(table);
+                }
+            }
         }
 
         return null;
@@ -134,9 +185,9 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             keySet = new HashSet<String>();
             HTableInterface hti = null;
             try {
-                hti = pool.getTable(table.getTableName());
+                hti = pool.getTable(tableName);
                 Scan s = new Scan();
-                s.addColumn(table.getColumnFamily(), table.getColumnQualifier());
+                s.addColumn(family, qualifier);
                 ResultScanner rs = hti.getScanner(s);
                 Result r = null;
                 while ((r = rs.next()) != null) {
@@ -162,7 +213,18 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
     @Override
     public void delete(String key) {
         if (allowDelete) {
-            table.delete(key);
+            HTableInterface table = null;
+            try {
+                Delete d = new Delete(Bytes.toBytes(key));
+                table = pool.getTable(tableName);
+                table.delete(d);
+            } catch (IOException e) {
+                LOG.error("IOException while deleting key: " + key, e);
+            } finally {
+                if (table != null) {
+                    pool.putTable(table);
+                }
+            }
         }
     }
 
@@ -174,7 +236,22 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
     @Override
     public void deleteAll(Collection<String> keys) {
         if (allowDelete) {
-            table.deleteAll(keys);
+            HTableInterface table = null;
+            try {
+                List<Delete> deletes = new ArrayList<Delete>();
+                for (String k : keys) {
+                    Delete d = new Delete(Bytes.toBytes(k));
+                    deletes.add(d);
+                }
+                table = pool.getTable(tableName);
+                table.delete(deletes);
+            } catch (IOException e) {
+                LOG.error("IOException while deleting values", e);
+            } finally {
+                if (table != null) {
+                    pool.putTable(table);
+                }
+            }
         }
     }
 
@@ -186,10 +263,24 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
      */
     @Override
     public void store(String key, String value) {
+        HTableInterface table = null;
         try {
-            table.put(key, value);
+            table = pool.getTable(tableName);
+            
+            byte[] rowId = prefixDate ? IdUtil.bucketizeId(key) : Bytes.toBytes(key);
+            Put p = new Put(rowId);
+            if (outputFormatType == StoreFormatType.SMILE) {
+                p.add(family, qualifier, jsonSmileConverter.convertToSmile(value));
+            } else {
+                p.add(family, qualifier, Bytes.toBytes(value));
+            }
+            table.put(p);
         } catch (IOException e) {
             LOG.error("Error during put", e);
+        } finally {
+            if (table != null) {
+                pool.putTable(table);
+            }
         }
     }
 
@@ -200,20 +291,30 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
      */
     @Override
     public void storeAll(Map<String, String> pairs) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
-        }
-
-        long current = System.currentTimeMillis();
+        HTable table = null;
         try {
-            table.putStringMap(pairs);
+            List<Put> puts = new ArrayList<Put>(pairs.size());
+            for (Map.Entry<String, String> pair : pairs.entrySet()) {
+                byte[] rowId = prefixDate ? IdUtil.bucketizeId(pair.getKey()) : Bytes.toBytes(pair.getKey());
+                Put p = new Put(rowId);
+                if (outputFormatType == StoreFormatType.SMILE) {
+                    p.add(family, qualifier, jsonSmileConverter.convertToSmile(pair.getValue()));
+                } else {
+                    p.add(family, qualifier, Bytes.toBytes(pair.getValue()));
+                }
+                puts.add(p);
+            }
+            
+            table = (HTable) pool.getTable(tableName);
+            table.setAutoFlush(false);
+            table.put(puts);
+            table.flushCommits();
         } catch (IOException e) {
-            LOG.error("Error during put", e);
-        }
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("Thread %s stored %d items in %dms", Thread.currentThread().getId(), pairs.size(),
-                      (System.currentTimeMillis() - current)));
+            LOG.error("Error during puts", e);
+        } finally {
+            if (table != null) {
+                pool.putTable(table);
+            }
         }
     }
 

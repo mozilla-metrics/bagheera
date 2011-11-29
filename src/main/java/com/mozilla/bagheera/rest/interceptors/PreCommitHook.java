@@ -17,31 +17,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.rest.stats;
+package com.mozilla.bagheera.rest.interceptors;
 
-import java.util.concurrent.atomic.AtomicLong;
-
-public class Stats {
+public interface PreCommitHook {
     
-    public final AtomicLong numRequests = new AtomicLong(0L);
-    public final AtomicLong numValidRequests = new AtomicLong(0L);
-    public final AtomicLong numInvalidRequests = new AtomicLong(0L);
-    public final AtomicLong numForbiddenRequests = new AtomicLong(0L);
-    public final AtomicLong numPuts = new AtomicLong(0L);
-    public final AtomicLong numGets = new AtomicLong(0L);
-    public final AtomicLong numDels = new AtomicLong(0L);
-    
-    public Stats() {
-    }
-
-    public void resetAll() {
-        numRequests.set(0);
-        numValidRequests.set(0);
-        numInvalidRequests.set(0);
-        numForbiddenRequests.set(0);
-        numPuts.set(0);
-        numGets.set(0);
-        numDels.set(0);
-    }
+    public String preCommit(String mapName, String key, String value);
     
 }

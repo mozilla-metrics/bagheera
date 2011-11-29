@@ -42,7 +42,9 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.log4j.Logger;
 
 import com.hazelcast.core.Hazelcast;
+import com.mozilla.bagheera.rest.interceptors.PreCommitHook;
 import com.mozilla.bagheera.rest.properties.WildcardProperties;
+import com.mozilla.bagheera.rest.stats.Stats;
 import com.mozilla.bagheera.rest.validation.Validator;
 
 /**
@@ -57,6 +59,8 @@ public class HazelcastMapResource extends ResourceBase {
     private static final String ALLOW_GET_ACCESS = ".allow.get.access";
     private static final String ALLOW_DEL_ACCESS = ".allow.delete.access";
     private static final String POST_RESPONSE = ".post.response";
+    private static final String PRE_COMMIT = ".pre.commit";
+    private static final String PRE_COMMIT_CLASS = ".pre.commit.class";
     
     // system independent newline
     public static String NEWLINE = System.getProperty("line.separator");
@@ -100,20 +104,21 @@ public class HazelcastMapResource extends ResourceBase {
     @Consumes({ MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN })
     public Response mapPut(@PathParam("name") String name, @PathParam("id") String id,
                            @Context HttpServletRequest request) throws IOException {
-        rs.getStats().numRequests.incrementAndGet();
+        Stats stats = rs.getStats(name);
+        stats.numRequests.incrementAndGet();
         // Check the map name to make sure it's valid
         if (!validator.isValidMapName(name)) {
             // Get the user-agent and IP address
             String userAgent = request.getHeader("User-Agent");
             String remoteIpAddress = request.getRemoteAddr();
             LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
-            rs.getStats().numInvalidRequests.incrementAndGet();
+            stats.numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
         // Check the payload size versus any map specific restrictions
         if (!validator.isValidRequestSize(name, request.getContentLength())) {
-            rs.getStats().numInvalidRequests.incrementAndGet();
+            stats.numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
@@ -125,19 +130,36 @@ public class HazelcastMapResource extends ResourceBase {
         while((n = reader.read(buffer)) >= 0) {
             sb.append(buffer, 0, n);
         }
-
+        String data = sb.toString();
+        
         // Validate JSON (open schema)
-        if (!validator.isValidJSON(name, sb.toString())) {
-            rs.getStats().numInvalidRequests.incrementAndGet(); 
+        if (!validator.isValidJSON(name, data)) {
+            stats.numInvalidRequests.incrementAndGet(); 
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
         
-        rs.getStats().numValidRequests.incrementAndGet();
+        // If this needs to call preCommit do it here
+        boolean preCommit = props.getWildcardProperty(name + PRE_COMMIT, false);
+        if (preCommit) {
+            String preCommitClassName = props.getWildcardProperty(name + PRE_COMMIT_CLASS);
+            if (preCommitClassName != null) {
+                try {
+                    PreCommitHook pch = (PreCommitHook)Class.forName(preCommitClassName).newInstance();
+                    data = pch.preCommit(name, id, data);
+                } catch (Exception e) {
+                    LOG.error("Exception caught during preCommit attempt", e);
+                    // fail fast and return a 500
+                    return Response.serverError().build();
+                }
+            }
+        }
+        
+        stats.numValidRequests.incrementAndGet();
         Map<String, String> m = Hazelcast.getMap(name);
-        m.put(id, sb.toString());
-        rs.getStats().numPuts.incrementAndGet();
+        m.put(id, data);
+        stats.numPuts.incrementAndGet();
 
-        boolean postResponse = Boolean.parseBoolean(props.getWildcardProperty(name + POST_RESPONSE, "false"));
+        boolean postResponse = props.getWildcardProperty(name + POST_RESPONSE, false);
         if (postResponse) {
             return Response.created(URI.create(id)).build();
         }
@@ -148,16 +170,32 @@ public class HazelcastMapResource extends ResourceBase {
     @GET
     @Path("{name}/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response mapGet(@PathParam("name") String name, @PathParam("id") String id) throws IOException {
+    public Response mapGet(@PathParam("name") String name, @PathParam("id") String id, 
+                           @Context HttpServletRequest request) throws IOException {
+        Stats stats = rs.getStats(name);
+        stats.numRequests.incrementAndGet();
+        
         boolean allowGetAccess = Boolean.parseBoolean(props.getWildcardProperty(name + ALLOW_GET_ACCESS, "false"));
         if (!allowGetAccess) {
+            stats.numForbiddenRequests.incrementAndGet();
             return Response.status(Status.FORBIDDEN).build();
         }
 
+        // Check the map name to make sure it's valid
+        if (!validator.isValidMapName(name)) {
+            // Get the user-agent and IP address
+            String userAgent = request.getHeader("User-Agent");
+            String remoteIpAddress = request.getRemoteAddr();
+            LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
+            stats.numInvalidRequests.incrementAndGet();
+            return Response.status(Status.NOT_ACCEPTABLE).build();
+        }
+        
+        stats.numValidRequests.incrementAndGet();
         Map<String, String> m = Hazelcast.getMap(name);
-        // This won't have any fields filled out other than the payload
         String data = m.get(id);
-        rs.getStats().numGets.incrementAndGet();
+        stats.numGets.incrementAndGet();
+        
         Response resp = null;
         if (data != null) {
             resp = Response.ok(data, MediaType.APPLICATION_JSON).build();
@@ -182,27 +220,30 @@ public class HazelcastMapResource extends ResourceBase {
     @Path("{name}/{id}")
     public Response mapDel(@PathParam("name") String name, @PathParam("id") String id,
                            @Context HttpServletRequest request) throws IOException {
+        Stats stats = rs.getStats(name);
+        stats.numRequests.incrementAndGet();
+        
         boolean allowAccess = Boolean.parseBoolean(props.getWildcardProperty(name + ALLOW_DEL_ACCESS, "false"));
         if (!allowAccess) {
+            stats.numForbiddenRequests.incrementAndGet();
             return Response.status(Status.FORBIDDEN).build();
         }
-        
-        rs.getStats().numRequests.incrementAndGet();
-        
+
         // Check the map name to make sure it's valid
         if (!validator.isValidMapName(name)) {
             // Get the user-agent and IP address
             String userAgent = request.getHeader("User-Agent");
             String remoteIpAddress = request.getRemoteAddr();
             LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
-            rs.getStats().numInvalidRequests.incrementAndGet();
+            stats.numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
+        stats.numValidRequests.incrementAndGet();    
         Map<String, String> m = Hazelcast.getMap(name);
         String data = m.remove(id);
+        stats.numDels.incrementAndGet();
         
-        rs.getStats().numDels.incrementAndGet();
         Response resp = null;
         if (data != null) {
             resp = Response.ok(id, MediaType.APPLICATION_JSON).build();
@@ -210,8 +251,7 @@ public class HazelcastMapResource extends ResourceBase {
             LOG.warn(String.format("Delete requested, but no record found for key \"%s\"", id));
             resp = Response.status(Status.NOT_FOUND).build();
         }
-
-        rs.getStats().numValidRequests.incrementAndGet();
+        
         return resp;
     }
     
