@@ -50,13 +50,13 @@ public class StatsResource extends ResourceBase {
         
         return Response.ok(sb.toString(), MediaType.APPLICATION_JSON).build();
     }
-    
+
     @GET
     @Path("reset")
-    public void resetStats() {
+    public Response resetStats() {
         for (Map.Entry<String, Stats> entry : rs.getStatsMap().entrySet()) {
             entry.getValue().resetAll();
         }
+        return Response.ok().build();
     }
-    
 }
