@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.util;
+package com.mozilla.bagheera.rest.interceptors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
