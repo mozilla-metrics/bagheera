@@ -10,8 +10,8 @@ This code is built with the following assumptions.  You may get mixed results if
 
 * [Hadoop](http://hadoop.apache.org) 0.20.2+
 * [HBase](http://hbase.apache.org) 0.90+
-* [Hazelcast](http://www.hazelcast.com/) 1.9.3
-* [Elastic Search](http://www.elasticsearch.org/) 0.17.6
+* [Hazelcast](http://www.hazelcast.com/) 1.9.3+
+* [Elastic Search](http://www.elasticsearch.org/) 0.17.9
 
 ### Building ###
 To make a jar you can do:  
@@ -180,3 +180,4 @@ All aspects of this software written in Python are distributed under the [Mozill
 * Xavier Stevens ([@xstevens](http://twitter.com/xstevens))
 * Daniel Einspanjer ([@deinspanjer](http://twitter/deinspanjer))
 * Anurag Phadke ([@anuragphadke](http://twitter.com/anuragphadke))
+* Mark Reid
