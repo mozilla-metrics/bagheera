@@ -34,7 +34,6 @@ import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
 
 import com.hazelcast.core.Hazelcast;
-import com.mozilla.bagheera.rest.interceptors.PreCommitHook;
 
 
 /**
@@ -50,6 +49,10 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		"completedSessionActivityRatio", "abortedSessions", "abortedSessionTime", 
 		"abortedSessionActivityRatio", "abortedSessionMed", "currentSessionTime", 
 		"currentSessionActivityRatio", "aboutSessionRestoreStarts"};
+	private static String[] simpleMeasureKeys = {"uptime", "main", "firstPaint", 
+			"sessionRestored", "isDefaultBrowser", "crashCountSubmitted",
+			"crashCountPending", "profileAge", "placesPagesCount",
+			"placesBookmarksCount", "addonCount"};
 	private static String[] envKeys = {"OS", "appID", "appVersion", "appVendor", "appName", 
        "appBuildID", "appABI", "appUpdateChannel", "appDistribution",
        "appDistributionVersion", "platformBuildID", "platformVersion",
@@ -126,15 +129,33 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		ArrayNode pingTime = (ArrayNode)aggregate.get("pingTime");
 		pingTime.add(pingTimeText);
 
-		// Also calculate skew
+		// Also calculate skew and duration
 		ArrayNode clockSkewNode = (ArrayNode)aggregate.get("clockSkew");
-		try {
-			Date parsedPingTime = dateFormat.parse(pingTimeText);
+		ArrayNode pingDurationNode = (ArrayNode)aggregate.get("pingDuration");
+		Date parsedPingTime = parseDateString(pingTimeText);
+		Date parsedLastPingTime = parseDateString(incoming.get("lastPingTime").getTextValue());
+		
+		// TODO: if "lastPingTime" doesn't match with the existing aggregate, we may have
+		//       a situation where the same UUID is being used by multiple profiles, such
+		//       as when a profile is copied to a new computer, and the copy and the
+		//       original both continue to submit.
+		//       In that case, we should apply the current submission to a new UUID and 
+		//       assign that UUID to the client.
+		
+		if (parsedPingTime != null) {
 			long clockSkew = (getReferenceDate().getTime() - parsedPingTime.getTime());
 			clockSkewNode.add(clockSkew);
-		} catch (ParseException e) {
-			LOG.error("Error parsing client timestamp: " + pingTimeText 
-					+ " (expecting something of the form 2000-01-01T00:00:01.515Z)");
+			
+			if (parsedLastPingTime != null) {
+				long pingDurationSeconds = (parsedPingTime.getTime() - parsedLastPingTime.getTime()) / 1000;
+				pingDurationNode.add(pingDurationSeconds);
+			} else {
+				LOG.error("Could not parse 'lastPingTime' from incoming document - failed to calculate pingDuration");
+				pingDurationNode.add("NO_DATA");
+			}
+		} else {
+			LOG.error("Could not parse 'thisPingTime' from incoming document - failed to calculate clockSkew and pingDuration");
+			clockSkewNode.add("NO_DATA");
 		}
 
 		String currentVersionText = null;
@@ -185,6 +206,24 @@ public class MetricsPingPreCommit implements PreCommitHook {
 				newVersion.add(currentVersionText);
 				versionList.add(newVersion);
 			}
+		}
+		
+		// Simple measurements:
+		ObjectNode simpleNode = (ObjectNode)aggregate.get("simpleMeasurements");
+		ObjectNode simpleNodeIn = (ObjectNode)incoming.get("simpleMeasurements");
+		aggregate.put("addons", simpleNodeIn.get("addons"));
+		
+		// TODO: setup defaults for each simpleMeasureKeys entry.  For example,
+		//       crashCountPending -> 0
+		//       uptime -> "NO_DATA" (?)
+		//       We need to avoid having jagged arrays, otherwise we lose the
+		//       ability to associate a value with a pingTime.
+		for(String simpleKey : simpleMeasureKeys) {
+			ArrayNode simpleArr = (ArrayNode)simpleNode.get(simpleKey);
+			if (simpleNodeIn.has(simpleKey))
+				simpleArr.add(simpleNodeIn.get(simpleKey));
+			else
+				simpleArr.add("NO_DATA");
 		}
 
 		// Process events:
@@ -291,6 +330,17 @@ public class MetricsPingPreCommit implements PreCommitHook {
 
 		corruptedEvents.add(numCorruptedEvents);
 	}
+
+	private Date parseDateString(String dateText) {
+		Date parsedDate = null;
+		try {
+			parsedDate = dateFormat.parse(dateText);
+		} catch (ParseException e) {
+			LOG.error("Error parsing client timestamp: " + dateText 
+					+ " (expecting something of the form 2000-01-01T00:00:01.515Z)");
+		}
+		return parsedDate;
+	}
 	
 	public Date getReferenceDate() {
 		return referenceDate;
@@ -307,7 +357,7 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		Date d;
 		try {
 			d = dateFormat.parse(referenceDate);
-			this.referenceDate = d;
+			this.setReferenceDate(d);
 		} catch (ParseException e) {
 			LOG.error("Error parsing reference date", e);
 		}
@@ -331,19 +381,33 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		
 		return true;
 	}
+	
+	// Check if all specified nodeNames exist and are ArrayNode children
+	// of the given document.
+	private boolean isArrayChild(JsonNode document, String... nodeNames) {
+		for (String nodeName : nodeNames) {
+			JsonNode aNode = document.path(nodeName);
+			if (!aNode.isArray())
+				return false;
+		}
+		return true;
+	}
 
 	protected boolean isValidAggregate(JsonNode aggregate) {
 		if (!isValidAggregateOrInstance(aggregate)) return false;
 		if (aggregate == null || !aggregate.isObject()) return false;
-		
-		JsonNode pingTime = aggregate.path("pingTime");
-		if (!pingTime.isArray()) return false;
-		
-		JsonNode clockSkewNode = aggregate.path("clockSkew");
-		if (!clockSkewNode.isArray()) return false;
 
-		JsonNode versions = aggregate.path("versions");
-		if (!versions.isArray()) return false;
+		if (!isArrayChild(aggregate, "pingTime", "pingDuration", "clockSkew", "versions", "addons"))
+			return false;
+		
+		JsonNode simple = aggregate.get("simpleMeasurements");
+		if (!simple.isObject()) return false;
+		
+		if (!isArrayChild(simple, "uptime", "main", "firstPaint", "sessionRestored",
+				"isDefaultBrowser", "crashCountSubmitted", "crashCountPending",
+				"profileAge", "placesPagesCount", "placesBookmarksCount", "addonCount")) {
+			return false;
+		}
 		
 		// "events" checked for null in isValidAggregateOrInstance
 		JsonNode events = aggregate.get("events");
@@ -368,6 +432,9 @@ public class MetricsPingPreCommit implements PreCommitHook {
 
 		JsonNode pingTime = instance.path("thisPingTime");
 		if(!pingTime.isValueNode()) return false;
+		
+		JsonNode lastPingTime = instance.path("lastPingTime");
+		if(!lastPingTime.isValueNode()) return false;
 
 		// "events" checked for null in isValidAggregateOrInstance
 		JsonNode events = instance.get("events");
@@ -380,13 +447,28 @@ public class MetricsPingPreCommit implements PreCommitHook {
 	public JsonNode createEmptyAggregate() {
 		ObjectNode root = objectMapper.createObjectNode();
 //		root.put("uuid", "UNKNOWN");
+
 		root.put("pingTime", objectMapper.createArrayNode());
+		root.put("pingDuration", objectMapper.createArrayNode());
 		root.put("clockSkew", objectMapper.createArrayNode());
 		root.put("env", objectMapper.createObjectNode());
 		root.put("versions", objectMapper.createArrayNode());
+		root.put("addons", objectMapper.createArrayNode()); // This comes from simpleMeasurements
+		
 		ObjectNode simple = objectMapper.createObjectNode();
+		simple.put("uptime", objectMapper.createArrayNode());
+		simple.put("main", objectMapper.createArrayNode());
+		simple.put("firstPaint", objectMapper.createArrayNode());
+		simple.put("sessionRestored", objectMapper.createArrayNode());
+		simple.put("isDefaultBrowser", objectMapper.createArrayNode());
+		simple.put("crashCountSubmitted", objectMapper.createArrayNode());
+		simple.put("crashCountPending", objectMapper.createArrayNode());
+		simple.put("profileAge", objectMapper.createArrayNode());
+		simple.put("placesPagesCount", objectMapper.createArrayNode());
+		simple.put("placesBookmarksCount", objectMapper.createArrayNode());
+		simple.put("addonCount", objectMapper.createArrayNode());
 		root.put("simpleMeasurements", simple);
-		// TODO: setup histograms
+
 		ObjectNode events = objectMapper.createObjectNode();
 		ObjectNode search = objectMapper.createObjectNode();
 		ObjectNode sessions = objectMapper.createObjectNode();
