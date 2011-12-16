@@ -49,10 +49,7 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		"completedSessionActivityRatio", "abortedSessions", "abortedSessionTime", 
 		"abortedSessionActivityRatio", "abortedSessionMed", "currentSessionTime", 
 		"currentSessionActivityRatio", "aboutSessionRestoreStarts"};
-	private static String[] simpleMeasureKeys = {"uptime", "main", "firstPaint", 
-			"sessionRestored", "isDefaultBrowser", "crashCountSubmitted",
-			"crashCountPending", "profileAge", "placesPagesCount",
-			"placesBookmarksCount", "addonCount"};
+	
 	private static String[] envKeys = {"OS", "appID", "appVersion", "appVendor", "appName", 
        "appBuildID", "appABI", "appUpdateChannel", "appDistribution",
        "appDistributionVersion", "platformBuildID", "platformVersion",
@@ -151,11 +148,11 @@ public class MetricsPingPreCommit implements PreCommitHook {
 				pingDurationNode.add(pingDurationSeconds);
 			} else {
 				LOG.error("Could not parse 'lastPingTime' from incoming document - failed to calculate pingDuration");
-				pingDurationNode.add("NO_DATA");
+				pingDurationNode.add(-1);
 			}
 		} else {
 			LOG.error("Could not parse 'thisPingTime' from incoming document - failed to calculate clockSkew and pingDuration");
-			clockSkewNode.add("NO_DATA");
+			clockSkewNode.add(-1);
 		}
 
 		String currentVersionText = null;
@@ -213,18 +210,20 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		ObjectNode simpleNodeIn = (ObjectNode)incoming.get("simpleMeasurements");
 		aggregate.put("addons", simpleNodeIn.get("addons"));
 		
-		// TODO: setup defaults for each simpleMeasureKeys entry.  For example,
-		//       crashCountPending -> 0
-		//       uptime -> "NO_DATA" (?)
-		//       We need to avoid having jagged arrays, otherwise we lose the
-		//       ability to associate a value with a pingTime.
-		for(String simpleKey : simpleMeasureKeys) {
-			ArrayNode simpleArr = (ArrayNode)simpleNode.get(simpleKey);
-			if (simpleNodeIn.has(simpleKey))
-				simpleArr.add(simpleNodeIn.get(simpleKey));
-			else
-				simpleArr.add("NO_DATA");
-		}
+		// Use specific defaults for each simpleMeasureKeys entry.
+		// We need to avoid having jagged arrays, otherwise we lose the
+		// ability to associate a value with a pingTime.
+		applyValueOrDefault(simpleNode, simpleNodeIn, "uptime", -1);
+		applyValueOrDefault(simpleNode, simpleNodeIn, "main", -1); 
+		applyValueOrDefault(simpleNode, simpleNodeIn, "firstPaint", -1); 
+		applyValueOrDefault(simpleNode, simpleNodeIn, "sessionRestored", -1); 
+		applyValueOrDefault(simpleNode, simpleNodeIn, "isDefaultBrowser", Boolean.FALSE);
+		applyValueOrDefault(simpleNode, simpleNodeIn, "crashCountSubmitted", 0);
+		applyValueOrDefault(simpleNode, simpleNodeIn, "crashCountPending", 0);
+		applyValueOrDefault(simpleNode, simpleNodeIn, "profileAge", -1);
+		applyValueOrDefault(simpleNode, simpleNodeIn, "placesPagesCount", -1);
+		applyValueOrDefault(simpleNode, simpleNodeIn, "placesBookmarksCount", -1);
+		applyValueOrDefault(simpleNode, simpleNodeIn, "addonCount", -1);
 
 		// Process events:
 		JsonNode eventNode = aggregate.get("events");
@@ -329,6 +328,26 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		numCorruptedEvents = corruptedEventsIn.asInt(0);
 
 		corruptedEvents.add(numCorruptedEvents);
+	}
+
+	private void applyValueOrDefault(ObjectNode destination, ObjectNode source, 
+			String key, Integer defaultValue) {
+		ArrayNode destArr = (ArrayNode)destination.get(key);
+		if (source.has(key))
+			destArr.add(source.get(key));
+		else {
+			destArr.add(defaultValue);
+		}
+	}
+
+	private void applyValueOrDefault(ObjectNode destination, ObjectNode source, 
+			String key, Boolean defaultValue) {
+		ArrayNode destArr = (ArrayNode)destination.get(key);
+		if (source.has(key))
+			destArr.add(source.get(key));
+		else {
+			destArr.add(defaultValue);
+		}
 	}
 
 	private Date parseDateString(String dateText) {
