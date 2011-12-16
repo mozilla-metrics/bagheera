@@ -49,13 +49,15 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
 
     private static final Logger LOG = Logger.getLogger(TextFileMapStore.class);
 
+    private static final long DAY_IN_MILLIS = 86400000L;
+    
     private FileSystem hdfs;
     private Path baseDir;
     private BufferedWriter br;
     private long bytesWritten = 0;
     private SimpleDateFormat sdf;
     private long maxFileSize = 0;
-    private long previousRolloverMillis = 0;
+    private long prevRolloverMillis = 0;
 
     /*
      * (non-Javadoc)
@@ -84,7 +86,6 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
 
         maxFileSize = Integer.parseInt(properties.getProperty("hazelcast.hdfs.max.filesize", "0"));
         LOG.info("Using HDFS max file size: " + maxFileSize);
-        previousRolloverMillis = System.currentTimeMillis();
 
         try {
             hdfs = FileSystem.get(conf);
@@ -103,17 +104,22 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         Path outputPath = new Path(baseDir, new Path(UUID.randomUUID().toString()));
         LOG.info("Opening file handle to: " + outputPath.toString());
         br = new BufferedWriter(new OutputStreamWriter(hdfs.create(outputPath, true)));
+        
+        // Get time in millis at a day resolution
+        Calendar prev = Calendar.getInstance();
+        prev.set(Calendar.HOUR_OF_DAY, 0);
+        prev.set(Calendar.MINUTE, 0);
+        prev.set(Calendar.SECOND, 0);
+        prev.set(Calendar.MILLISECOND, 0);
+        prevRolloverMillis = prev.getTimeInMillis();
     }
 
     private void checkRollover() throws IOException {
         boolean getNewFile = false;
-        Calendar prev = Calendar.getInstance();
-        prev.setTimeInMillis(previousRolloverMillis);
-        prev.add(Calendar.DATE, 1);
         Calendar now = Calendar.getInstance();
         if (maxFileSize != 0 && bytesWritten >= maxFileSize) {
             getNewFile = true;
-        } else if (now.after(prev)) {
+        } else if (now.getTimeInMillis() > (prevRolloverMillis + DAY_IN_MILLIS)) {
             getNewFile = true;
             baseDir = new Path(baseDir.getParent(), new Path(sdf.format(now.getTime())));
         }
@@ -220,8 +226,16 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
             LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
         }
 
-        for (Map.Entry<String, String> pair : pairs.entrySet()) {
-            store(pair.getKey(), pair.getValue());
+        try {
+            checkRollover();
+            for (Map.Entry<String, String> pair : pairs.entrySet()) {
+            	bytesWritten += pair.getValue().length();
+                br.append(pair.getValue());
+            }
+            
+        } catch (IOException e) {
+            LOG.error("IOException while writing key/value pair", e);
+            throw new RuntimeException(e);
         }
     }
 

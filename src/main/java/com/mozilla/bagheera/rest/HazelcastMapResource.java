@@ -118,14 +118,15 @@ public class HazelcastMapResource extends ResourceBase {
 
         // Check the payload size versus any map specific restrictions
         if (!validator.isValidRequestSize(name, request.getContentLength())) {
+            LOG.warn("Tried to put a value larger than configured maximum for name:" + name);
             stats.numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
         // Read in the JSON data straight from the request
-        BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 32768);
         StringBuilder sb = new StringBuilder();
-        char[] buffer = new char[8192];
+        char[] buffer = new char[32768];
         int n;
         while((n = reader.read(buffer)) >= 0) {
             sb.append(buffer, 0, n);

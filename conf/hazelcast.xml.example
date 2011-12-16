@@ -40,7 +40,7 @@
 			<property name="hazelcast.hbase.table">telemetry</property>
 			<property name="hazelcast.hbase.column.family">data</property>
 			<property name="hazelcast.hbase.column.qualifier">json</property>
-			<property name="hazelcast.store.format">smile</property>
+			<property name="hazelcast.store.format">json</property>
 		</map-store>
 	</map>
 	<map name="testpilot_*">
