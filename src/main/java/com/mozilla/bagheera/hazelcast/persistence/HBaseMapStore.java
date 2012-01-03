@@ -31,15 +31,10 @@ import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.io.hfile.Compression.Algorithm;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
@@ -82,11 +77,29 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
 
         prefixDate = Boolean.parseBoolean(properties.getProperty("hazelcast.hbase.key.prefix.date", "false"));
         int hbasePoolSize = Integer.parseInt(properties.getProperty("hazelcast.hbase.pool.size", "10"));
-        tableName = Bytes.toBytes(properties.getProperty("hazelcast.hbase.table", "default"));
+        tableName = Bytes.toBytes(properties.getProperty("hazelcast.hbase.table", mapName));
         family = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.family", "data"));
-        qualifier = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.qualifier", mapName));
+        qualifier = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.qualifier", "json"));
 
         pool = new HTablePool(conf, hbasePoolSize);
+        
+        try {
+            HBaseAdmin hbaseAdmin = new HBaseAdmin(conf);
+            if (!hbaseAdmin.tableExists(tableName)) {
+                HTableDescriptor desc = new HTableDescriptor(tableName);
+                HColumnDescriptor columnDesc = new HColumnDescriptor(family);
+                columnDesc.setCompressionType(Algorithm.LZO);
+                columnDesc.setBlockCacheEnabled(true);
+                columnDesc.setBlocksize(65536);
+                columnDesc.setInMemory(false);
+                columnDesc.setMaxVersions(1);
+                columnDesc.setTimeToLive(Integer.MAX_VALUE);
+                desc.addFamily(columnDesc);
+                hbaseAdmin.createTable(desc);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating table!", e);
+        }
     }
 
     /* (non-Javadoc)

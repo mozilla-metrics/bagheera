@@ -25,7 +25,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.util.thread.ExecutorThreadPool;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
@@ -51,7 +51,7 @@ public class Bagheera {
         scc.setAcceptors(acceptors);
         // Set the number of threads
         int numThreads = Integer.parseInt(System.getProperty("server.threads", "50"));
-        scc.setThreadPool(new ExecutorThreadPool(numThreads));
+        scc.setThreadPool(new QueuedThreadPool(numThreads));
         server.addConnector(scc);
         
 		ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.NO_SESSIONS);		
