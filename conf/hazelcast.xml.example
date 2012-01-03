@@ -75,7 +75,9 @@
 			<property name="hazelcast.hbase.table">metrics</property>
 			<property name="hazelcast.hbase.column.family">data</property>
 			<property name="hazelcast.hbase.column.qualifier">json</property>
-			<property name="hazelcast.store.format">smile</property>
+			<property name="hazelcast.store.format">json</property>
+			<property name="hazelcast.allow.load">true</property>
+			<property name="hazelcast.allow.delete">true</property>
 		</map-store>
 	</map>
 </hazelcast>
