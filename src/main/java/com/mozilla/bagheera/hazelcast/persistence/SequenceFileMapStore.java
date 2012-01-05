@@ -19,6 +19,7 @@
  */
 package com.mozilla.bagheera.hazelcast.persistence;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -48,7 +49,7 @@ import com.hazelcast.core.MapStore;
  * particular implementation to ever load keys. Therefore only the store and
  * storeAll methods are implemented.
  */
-public class SequenceFileMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class SequenceFileMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport, Closeable {
 
     private static final Logger LOG = Logger.getLogger(SequenceFileMapStore.class);
 
@@ -107,6 +108,9 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
             LOG.error("Error initializing SequenceFile.Writer", e);
             throw new RuntimeException(e);
         }
+        
+        // register with MapStoreRepository
+        MapStoreRepository.addMapStore(mapName, this);
     }
 
     private void initWriter() throws IOException {
@@ -128,6 +132,14 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
         prevRolloverMillis = prev.getTimeInMillis();
     }
 
+    private void closeWriter() throws IOException {
+        if (writer != null) {
+            writer.close();
+            writer = null;
+        }
+        bytesWritten = 0;
+    }
+    
     private void checkRollover() throws IOException {
         boolean getNewFile = false;
         Calendar now = Calendar.getInstance();
@@ -138,28 +150,33 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
             baseDir = new Path(baseDir.getParent(), new Path(sdf.format(now.getTime())));
         }
 
-        if (getNewFile) {
-            if (writer != null) {
-                writer.close();
-                writer = null;
-            }
-            bytesWritten = 0;
+        if (writer == null || getNewFile) {
+            closeWriter();
             initWriter();
         }
     }
 
+    /* (non-Javadoc)
+     * @see java.io.Closeable#close()
+     */
+    public void close() throws IOException {
+        try {
+            closeWriter();
+        } catch (IOException e) {
+            LOG.error("Error closing SequenceFile.Writer" , e);
+        }
+    }
+    
     /*
      * (non-Javadoc)
      * 
      * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
      */
     public void destroy() {
-        if (writer != null) {
-            try {
-                writer.close();
-            } catch (IOException e) {
-                LOG.error("Error closing SequenceFile.Writer", e);
-            }
+        try {
+            closeWriter();
+        } catch (IOException e) {
+            LOG.error("Error closing SequenceFile.Writer", e);
         }
 
         if (hdfs != null) {

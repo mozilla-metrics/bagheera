@@ -30,6 +30,7 @@ public class Stats {
     public final AtomicLong numPuts = new AtomicLong(0L);
     public final AtomicLong numGets = new AtomicLong(0L);
     public final AtomicLong numDels = new AtomicLong(0L);
+    public long lastUpdate = System.currentTimeMillis();
     
     public Stats() {
     }

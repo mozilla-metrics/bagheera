@@ -100,6 +100,9 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         } catch (Exception e) {
             throw new RuntimeException("Error creating table!", e);
         }
+        
+        // register with MapStoreRepository
+        MapStoreRepository.addMapStore(mapName, this);
     }
 
     /* (non-Javadoc)

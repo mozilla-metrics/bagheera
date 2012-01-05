@@ -20,6 +20,7 @@
 package com.mozilla.bagheera.hazelcast.persistence;
 
 import java.io.BufferedWriter;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
@@ -45,7 +46,7 @@ import com.hazelcast.core.MapStore;
  * interest for this particular implementation to ever load keys. Therefore only
  * the store and storeAll methods are implemented.
  */
-public class TextFileMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport {
+public class TextFileMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport, Closeable {
 
     private static final Logger LOG = Logger.getLogger(TextFileMapStore.class);
 
@@ -53,7 +54,7 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
     
     private FileSystem hdfs;
     private Path baseDir;
-    private BufferedWriter br;
+    private BufferedWriter writer;
     private long bytesWritten = 0;
     private SimpleDateFormat sdf;
     private long maxFileSize = 0;
@@ -94,6 +95,9 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
             LOG.error("Error initializing SequenceFile.Writer", e);
             throw new RuntimeException(e);
         }
+        
+        // register with MapStoreRepository
+        MapStoreRepository.addMapStore(mapName, this);
     }
 
     private void initWriter() throws IOException {
@@ -103,7 +107,7 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
 
         Path outputPath = new Path(baseDir, new Path(UUID.randomUUID().toString()));
         LOG.info("Opening file handle to: " + outputPath.toString());
-        br = new BufferedWriter(new OutputStreamWriter(hdfs.create(outputPath, true)));
+        writer = new BufferedWriter(new OutputStreamWriter(hdfs.create(outputPath, true)));
         
         // Get time in millis at a day resolution
         Calendar prev = Calendar.getInstance();
@@ -114,6 +118,14 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         prevRolloverMillis = prev.getTimeInMillis();
     }
 
+    private void closeWriter() throws IOException {
+        if (writer != null) {
+            writer.close();
+            writer = null;
+        }
+        bytesWritten = 0;
+    }
+    
     private void checkRollover() throws IOException {
         boolean getNewFile = false;
         Calendar now = Calendar.getInstance();
@@ -125,29 +137,33 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         }
 
         if (getNewFile) {
-            if (br != null) {
-                br.flush();
-                br.close();
-                br = null;
-            }
-            bytesWritten = 0;
+            closeWriter();
             initWriter();
         }
 
     }
 
+    /* (non-Javadoc)
+     * @see java.io.Closeable#close()
+     */
+    public void close() throws IOException {
+        try {
+            closeWriter();
+        } catch (IOException e) {
+            LOG.error("Error closing writer" , e);
+        }
+    }
+    
     /*
      * (non-Javadoc)
      * 
      * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
      */
     public void destroy() {
-        if (br != null) {
-            try {
-                br.close();
-            } catch (IOException e) {
-                LOG.error("Error closing SequenceFile.Writer", e);
-            }
+        try {
+            closeWriter();
+        } catch (IOException e) {
+            LOG.error("Error closing writer", e);
         }
 
         if (hdfs != null) {
@@ -208,7 +224,8 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         try {
             checkRollover();
             bytesWritten += value.length();
-            br.append(value);
+            writer.append(value);
+            writer.newLine();
         } catch (IOException e) {
             LOG.error("IOException while writing key/value pair", e);
             throw new RuntimeException(e);
@@ -230,9 +247,9 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
             checkRollover();
             for (Map.Entry<String, String> pair : pairs.entrySet()) {
             	bytesWritten += pair.getValue().length();
-                br.append(pair.getValue());
+                writer.append(pair.getValue());
+                writer.newLine();
             }
-            
         } catch (IOException e) {
             LOG.error("IOException while writing key/value pair", e);
             throw new RuntimeException(e);
