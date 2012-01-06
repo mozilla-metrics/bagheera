@@ -263,8 +263,14 @@ public class HazelcastMapResource extends ResourceBase {
         return resp;
     }
     
+    /**
+     * A RESTful way to do timed conditional closing of the underlying MapStore if it supports it.
+     * 
+     * @param name
+     * @return
+     */
     @GET
-    @Path("/close/{name}")
+    @Path("close/{name}")
     public Response mapClose(@PathParam("name") String name) {
         Stats stats = rs.getStats(name);
         if (stats.lastUpdate < (System.currentTimeMillis() - DAY_IN_MILLIS)) {

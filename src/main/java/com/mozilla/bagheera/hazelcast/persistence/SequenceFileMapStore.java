@@ -21,16 +21,11 @@ package com.mozilla.bagheera.hazelcast.persistence;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.SequenceFile;
@@ -49,22 +44,14 @@ import com.hazelcast.core.MapStore;
  * particular implementation to ever load keys. Therefore only the store and
  * storeAll methods are implemented.
  */
-public class SequenceFileMapStore extends MapStoreBase implements MapStore<String, String>, MapLoaderLifecycleSupport, Closeable {
+public class SequenceFileMapStore extends HdfsMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport, Closeable {
 
     private static final Logger LOG = Logger.getLogger(SequenceFileMapStore.class);
-
-    private static final long DAY_IN_MILLIS = 86400000L;
     
-    private FileSystem hdfs;
-    private Path baseDir;
     private SequenceFile.Writer writer;
     private Text outputKey = new Text();
     private Writable outputValue;
-    private long bytesWritten = 0;
-    private SimpleDateFormat sdf;
-    private long maxFileSize = 0;
-    private long prevRolloverMillis = 0;
-
+    
     /*
      * (non-Javadoc)
      * 
@@ -74,46 +61,24 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
      */
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
     	super.init(hazelcastInstance, properties, mapName);
-    	
-        Configuration conf = new Configuration();
-        for (String name : properties.stringPropertyNames()) {
-            if (name.startsWith("hadoop.")) {
-                conf.set(name, properties.getProperty(name));
-            }
-        }
-
-        String hdfsBaseDir = properties.getProperty("hazelcast.hdfs.basedir", "/bagheera");
-        String dateFormat = properties.getProperty("hazelcast.hdfs.dateformat", "yyyy-MM-dd");
-        sdf = new SimpleDateFormat(dateFormat);
-        Calendar cal = Calendar.getInstance();
-        if (!hdfsBaseDir.endsWith(Path.SEPARATOR)) {
-            baseDir = new Path(hdfsBaseDir + Path.SEPARATOR + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
-        } else {
-            baseDir = new Path(hdfsBaseDir + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
-        }
-
-        maxFileSize = Integer.parseInt(properties.getProperty("hazelcast.hdfs.max.filesize","0"));
-        LOG.info("Using HDFS max file size: " + maxFileSize);
-        
+    	        
         if (outputFormatType == StoreFormatType.SMILE) {
         	outputValue = new BytesWritable();
         } else {
         	outputValue = new Text();
         }
         
-        try {
-            hdfs = FileSystem.get(conf);
-            initWriter();
-        } catch (IOException e) {
-            LOG.error("Error initializing SequenceFile.Writer", e);
-            throw new RuntimeException(e);
-        }
-        
         // register with MapStoreRepository
         MapStoreRepository.addMapStore(mapName, this);
     }
 
-    private void initWriter() throws IOException {
+    /**
+     * Initialize a SequenceFile.Writer for this persistence class to use
+     * 
+     * @throws IOException
+     */
+    private synchronized void initWriter() throws IOException {
+        LOG.info("Thread " + Thread.currentThread().getId() + " - initWriter() called");
         if (!hdfs.exists(baseDir)) {
             hdfs.mkdirs(baseDir);
         }
@@ -132,15 +97,27 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
         prevRolloverMillis = prev.getTimeInMillis();
     }
 
-    private void closeWriter() throws IOException {
+    /**
+     * Close the SequenceFile.Writer
+     * 
+     * @throws IOException
+     */
+    private synchronized void closeWriter() throws IOException {
+        LOG.info("Thread " + Thread.currentThread().getId() + " - closeWriter() called");
         if (writer != null) {
+            LOG.info("Thread " + Thread.currentThread().getId() + " - writer.close() called");
             writer.close();
             writer = null;
         }
         bytesWritten = 0;
     }
     
-    private void checkRollover() throws IOException {
+    /**
+     * Checks to see if we should rollover to another file. Currently this is either on a daily
+     * or byte size basis.
+     * @throws IOException
+     */
+    private synchronized void checkRollover() throws IOException {
         boolean getNewFile = false;
         Calendar now = Calendar.getInstance();
         if (maxFileSize != 0 && bytesWritten >= maxFileSize) {
@@ -155,16 +132,14 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
             initWriter();
         }
     }
-
+    
     /* (non-Javadoc)
+     * For close we only want to close the file and not the underlying FileSystem. This allows
+     * us to close the files regardless of rollover conditions.
      * @see java.io.Closeable#close()
      */
     public void close() throws IOException {
-        try {
-            closeWriter();
-        } catch (IOException e) {
-            LOG.error("Error closing SequenceFile.Writer" , e);
-        }
+        closeWriter();
     }
     
     /*
@@ -172,58 +147,19 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
      * 
      * @see com.hazelcast.core.MapLoaderLifecycleSupport#destroy()
      */
+    @Override
     public void destroy() {
+        LOG.info("Thread " + Thread.currentThread().getId() + " - destroy() called");
         try {
             closeWriter();
         } catch (IOException e) {
             LOG.error("Error closing SequenceFile.Writer", e);
+        } 
+        
+        if (writer != null) {
+            LOG.info("Closing HDFS and writer isn't null yet - WTF!");
         }
-
-        if (hdfs != null) {
-            try {
-                hdfs.close();
-            } catch (IOException e) {
-                LOG.error("Error closing HDFS handle", e);
-            }
-        }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
-     */
-    @Override
-    public String load(String key) {
-        return null;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
-     */
-    @Override
-    public Map<String, String> loadAll(Collection<String> keys) {
-        return null;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
-     */
-    @Override
-    public void delete(String key) {
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
-     */
-    @Override
-    public void deleteAll(Collection<String> keys) {
+        closeHDFS();
     }
 
     /*
@@ -261,10 +197,11 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
      */
     @Override
     public void storeAll(Map<String, String> pairs) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
+        if (LOG.isInfoEnabled()) {
+            LOG.info(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
         }
         
+        long startTime = System.currentTimeMillis();
         try {
             checkRollover();
             for (Map.Entry<String, String> pair : pairs.entrySet()) {
@@ -281,16 +218,11 @@ public class SequenceFileMapStore extends MapStoreBase implements MapStore<Strin
 
                 writer.append(outputKey, outputValue);
             }
-            
         } catch (IOException e) {
             LOG.error("IOException while writing key/value pair", e);
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public Set<String> loadAllKeys() {
-        // TODO Auto-generated method stub
-        return null;
+        
+        LOG.info(String.format("Thread %s - Stored %d items in %d ms", Thread.currentThread().getId(), pairs.size(), (System.currentTimeMillis() - startTime)));
     }
 }

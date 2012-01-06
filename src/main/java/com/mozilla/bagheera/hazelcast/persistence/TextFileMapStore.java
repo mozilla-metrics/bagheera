@@ -23,16 +23,11 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.log4j.Logger;
 
@@ -46,20 +41,12 @@ import com.hazelcast.core.MapStore;
  * interest for this particular implementation to ever load keys. Therefore only
  * the store and storeAll methods are implemented.
  */
-public class TextFileMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport, Closeable {
+public class TextFileMapStore extends HdfsMapStore implements MapStore<String, String>, MapLoaderLifecycleSupport, Closeable {
 
     private static final Logger LOG = Logger.getLogger(TextFileMapStore.class);
-
-    private static final long DAY_IN_MILLIS = 86400000L;
     
-    private FileSystem hdfs;
-    private Path baseDir;
     private BufferedWriter writer;
-    private long bytesWritten = 0;
-    private SimpleDateFormat sdf;
-    private long maxFileSize = 0;
-    private long prevRolloverMillis = 0;
-
+    
     /*
      * (non-Javadoc)
      * 
@@ -68,39 +55,16 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
      * HazelcastInstance, java.util.Properties, java.lang.String)
      */
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
-        Configuration conf = new Configuration();
-        for (String name : properties.stringPropertyNames()) {
-            if (name.startsWith("hadoop.")) {
-                conf.set(name, properties.getProperty(name));
-            }
-        }
-
-        String hdfsBaseDir = properties.getProperty("hazelcast.hdfs.basedir", "/bagheera");
-        String dateFormat = properties.getProperty("hazelcast.hdfs.dateformat", "yyyy-MM-dd");
-        sdf = new SimpleDateFormat(dateFormat);
-        Calendar cal = Calendar.getInstance();
-        if (!hdfsBaseDir.endsWith(Path.SEPARATOR)) {
-            baseDir = new Path(hdfsBaseDir + Path.SEPARATOR + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
-        } else {
-            baseDir = new Path(hdfsBaseDir + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
-        }
-
-        maxFileSize = Integer.parseInt(properties.getProperty("hazelcast.hdfs.max.filesize", "0"));
-        LOG.info("Using HDFS max file size: " + maxFileSize);
-
-        try {
-            hdfs = FileSystem.get(conf);
-            initWriter();
-        } catch (IOException e) {
-            LOG.error("Error initializing SequenceFile.Writer", e);
-            throw new RuntimeException(e);
-        }
-        
+        super.init(hazelcastInstance, properties, mapName);
+       
         // register with MapStoreRepository
         MapStoreRepository.addMapStore(mapName, this);
     }
 
-    private void initWriter() throws IOException {
+    /**
+     * @throws IOException
+     */
+    private synchronized void initWriter() throws IOException {
         if (!hdfs.exists(baseDir)) {
             hdfs.mkdirs(baseDir);
         }
@@ -118,7 +82,10 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         prevRolloverMillis = prev.getTimeInMillis();
     }
 
-    private void closeWriter() throws IOException {
+    /**
+     * @throws IOException
+     */
+    private synchronized void closeWriter() throws IOException {
         if (writer != null) {
             writer.close();
             writer = null;
@@ -126,7 +93,10 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         bytesWritten = 0;
     }
     
-    private void checkRollover() throws IOException {
+    /**
+     * @throws IOException
+     */
+    private synchronized void checkRollover() throws IOException {
         boolean getNewFile = false;
         Calendar now = Calendar.getInstance();
         if (maxFileSize != 0 && bytesWritten >= maxFileSize) {
@@ -136,22 +106,19 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
             baseDir = new Path(baseDir.getParent(), new Path(sdf.format(now.getTime())));
         }
 
-        if (getNewFile) {
+        if (writer == null || getNewFile) {
             closeWriter();
             initWriter();
         }
-
     }
 
     /* (non-Javadoc)
+     * For close we only want to close the file and not the underlying FileSystem. This allows
+     * us to close the files regardless of rollover conditions.
      * @see java.io.Closeable#close()
      */
     public void close() throws IOException {
-        try {
-            closeWriter();
-        } catch (IOException e) {
-            LOG.error("Error closing writer" , e);
-        }
+        closeWriter();
     }
     
     /*
@@ -165,52 +132,8 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         } catch (IOException e) {
             LOG.error("Error closing writer", e);
         }
-
-        if (hdfs != null) {
-            try {
-                hdfs.close();
-            } catch (IOException e) {
-                LOG.error("Error closing HDFS handle", e);
-            }
-        }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapLoader#load(java.lang.Object)
-     */
-    @Override
-    public String load(String key) {
-        return null;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapLoader#loadAll(java.util.Collection)
-     */
-    @Override
-    public Map<String, String> loadAll(Collection<String> keys) {
-        return null;
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#delete(java.lang.Object)
-     */
-    @Override
-    public void delete(String key) {
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.hazelcast.core.MapStore#deleteAll(java.util.Collection)
-     */
-    @Override
-    public void deleteAll(Collection<String> keys) {
+        
+        closeHDFS();
     }
 
     /*
@@ -223,9 +146,9 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
     public void store(String key, String value) {
         try {
             checkRollover();
-            bytesWritten += value.length();
             writer.append(value);
             writer.newLine();
+            bytesWritten += value.length();
         } catch (IOException e) {
             LOG.error("IOException while writing key/value pair", e);
             throw new RuntimeException(e);
@@ -246,9 +169,9 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         try {
             checkRollover();
             for (Map.Entry<String, String> pair : pairs.entrySet()) {
-            	bytesWritten += pair.getValue().length();
                 writer.append(pair.getValue());
                 writer.newLine();
+                bytesWritten += pair.getValue().length();
             }
         } catch (IOException e) {
             LOG.error("IOException while writing key/value pair", e);
@@ -256,9 +179,4 @@ public class TextFileMapStore implements MapStore<String, String>, MapLoaderLife
         }
     }
 
-    @Override
-    public Set<String> loadAllKeys() {
-        // TODO Auto-generated method stub
-        return null;
-    }
 }
