@@ -40,11 +40,14 @@ public abstract class HdfsMapStore extends MapStoreBase implements MapStore<Stri
      * Synchronized method to make sure we initiliaze only once for this application
      */
     protected synchronized void initHDFS() {
-        LOG.info("Thread " + Thread.currentThread().getId() + " - initHDFS called");
         instanceCount.incrementAndGet();
+        
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Thread " + Thread.currentThread().getId() + " - initHDFS called");
+        }
+    
         if (hdfs == null) {
             try {
-                LOG.info("Getting HDFS handle");
                 hdfs = FileSystem.get(conf);
             } catch (IOException e) {
                 LOG.error("Error getting HDFS handle", e);
@@ -57,12 +60,15 @@ public abstract class HdfsMapStore extends MapStoreBase implements MapStore<Stri
      * 
      */
     protected synchronized void closeHDFS() {
-        LOG.info("Thread " + Thread.currentThread().getId() + " - closeHDFS called");
         instanceCount.decrementAndGet();
-        LOG.info("Instance count == " + instanceCount.get());
+        
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Thread " + Thread.currentThread().getId() + " - closeHDFS called");
+            LOG.debug("Instance count == " + instanceCount.get());
+        }
+        
         if (instanceCount.get() <= 0 && hdfs != null) {
             try {
-                LOG.info("Closing HDFS handle");
                 hdfs.close();
             } catch (IOException e) {
                 LOG.error("Error closing HDFS handle", e);

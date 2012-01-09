@@ -24,6 +24,11 @@ import java.util.Map;
 
 import com.hazelcast.core.MapStore;
 
+/**
+ * A repository that MapStore implementations can register with. 
+ * Note**: Currently this is used for implementations that need to be closed 
+ * via REST calls on a periodic basis.
+ */
 public class MapStoreRepository {
 
     private static Map<String,MapStore<String,String>> instances = new HashMap<String,MapStore<String,String>>();

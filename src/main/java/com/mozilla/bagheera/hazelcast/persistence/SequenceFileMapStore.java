@@ -78,7 +78,10 @@ public class SequenceFileMapStore extends HdfsMapStore implements MapStore<Strin
      * @throws IOException
      */
     private synchronized void initWriter() throws IOException {
-        LOG.info("Thread " + Thread.currentThread().getId() + " - initWriter() called");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Thread " + Thread.currentThread().getId() + " - initWriter() called");
+        }
+        
         if (!hdfs.exists(baseDir)) {
             hdfs.mkdirs(baseDir);
         }
@@ -103,9 +106,14 @@ public class SequenceFileMapStore extends HdfsMapStore implements MapStore<Strin
      * @throws IOException
      */
     private synchronized void closeWriter() throws IOException {
-        LOG.info("Thread " + Thread.currentThread().getId() + " - closeWriter() called");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Thread " + Thread.currentThread().getId() + " - closeWriter() called");
+        }
+        
         if (writer != null) {
-            LOG.info("Thread " + Thread.currentThread().getId() + " - writer.close() called");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Thread " + Thread.currentThread().getId() + " - writer.close() called");
+            }
             writer.close();
             writer = null;
         }
@@ -149,16 +157,16 @@ public class SequenceFileMapStore extends HdfsMapStore implements MapStore<Strin
      */
     @Override
     public void destroy() {
-        LOG.info("Thread " + Thread.currentThread().getId() + " - destroy() called");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Thread " + Thread.currentThread().getId() + " - destroy() called");
+        }
+        
         try {
             closeWriter();
         } catch (IOException e) {
             LOG.error("Error closing SequenceFile.Writer", e);
         } 
         
-        if (writer != null) {
-            LOG.info("Closing HDFS and writer isn't null yet - WTF!");
-        }
         closeHDFS();
     }
 
@@ -197,8 +205,8 @@ public class SequenceFileMapStore extends HdfsMapStore implements MapStore<Strin
      */
     @Override
     public void storeAll(Map<String, String> pairs) {
-        if (LOG.isInfoEnabled()) {
-            LOG.info(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
         }
         
         long startTime = System.currentTimeMillis();
@@ -223,6 +231,8 @@ public class SequenceFileMapStore extends HdfsMapStore implements MapStore<Strin
             throw new RuntimeException(e);
         }
         
-        LOG.info(String.format("Thread %s - Stored %d items in %d ms", Thread.currentThread().getId(), pairs.size(), (System.currentTimeMillis() - startTime)));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("Thread %s - Stored %d items in %d ms", Thread.currentThread().getId(), pairs.size(), (System.currentTimeMillis() - startTime)));
+        }
     }
 }
