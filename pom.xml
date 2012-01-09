@@ -122,14 +122,14 @@
 	<dependency>
       <groupId>com.hazelcast</groupId>
       <artifactId>hazelcast</artifactId>
-      <version>1.9.4.3</version>
+      <version>1.9.4.4</version>
     </dependency>
 
     <!-- Cloudera Hadoop, HBase -->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-core</artifactId>
-      <version>0.20.2-cdh3u0</version>
+      <version>0.20.2-cdh3u2</version>
       <exclusions>
       	<exclusion>
       		<artifactId>jasper-runtime</artifactId>
@@ -204,7 +204,7 @@
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase</artifactId>
-      <version>0.90.1-cdh3u0</version>
+      <version>0.90.4-cdh3u2</version>
       <exclusions>
       	<exclusion>
       		<artifactId>commons-httpclient</artifactId>

@@ -40,7 +40,7 @@
 			<property name="hazelcast.hbase.table">telemetry</property>
 			<property name="hazelcast.hbase.column.family">data</property>
 			<property name="hazelcast.hbase.column.qualifier">json</property>
-			<property name="hazelcast.store.format">smile</property>
+			<property name="hazelcast.store.format">json</property>
 		</map-store>
 	</map>
 	<map name="testpilot_*">
@@ -59,26 +59,25 @@
 			<property name="hazelcast.hdfs.max.filesize">1073741824</property>
 		</map-store>
 	</map>
-	<map name="release">
-		<time-to-live-seconds>5</time-to-live-seconds>
+	<map name="metrics">
+		<time-to-live-seconds>20</time-to-live-seconds>
 		<backup-count>1</backup-count>
 		<eviction-policy>NONE</eviction-policy>
 		<max-size>0</max-size>
 		<eviction-percentage>25</eviction-percentage>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<!-- HBaseElasticSearchMapStore -->
+		<!-- HBaseMapStore -->
 		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.MultiMapStore</class-name>
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
-			<property name="hazelcast.multi.store.class.name.1">com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</property>
-			<property name="hazelcast.multi.store.class.name.2">com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore</property>
-			<property name="hazelcast.elasticsearch.config.path">elasticsearch-release.yml</property>
-			<property name="hazelcast.elasticsearch.index">release</property>
-			<property name="hazelcast.elasticsearch.type.name">data</property>
+			<property name="hazelcast.hbase.key.prefix.date">false</property>
 			<property name="hazelcast.hbase.pool.size">20</property>
-			<property name="hazelcast.hbase.table">release</property>
+			<property name="hazelcast.hbase.table">metrics</property>
 			<property name="hazelcast.hbase.column.family">data</property>
 			<property name="hazelcast.hbase.column.qualifier">json</property>
+			<property name="hazelcast.store.format">json</property>
+			<property name="hazelcast.allow.load">true</property>
+			<property name="hazelcast.allow.delete">true</property>
 		</map-store>
 	</map>
 </hazelcast>

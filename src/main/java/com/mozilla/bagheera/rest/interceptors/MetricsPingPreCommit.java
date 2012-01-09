@@ -34,7 +34,6 @@ import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
 
 import com.hazelcast.core.Hazelcast;
-import com.mozilla.bagheera.rest.interceptors.PreCommitHook;
 
 
 /**
@@ -44,12 +43,17 @@ public class MetricsPingPreCommit implements PreCommitHook {
     private static final Logger LOG = Logger.getLogger(MetricsPingPreCommit.class);
     
 	private ObjectMapper objectMapper;
-	private static String[] searchEngineBuckets = {"Amazon.com", "Bing", "Google", "Yahoo", "Other"};
-	private static String[] searchSources = {"searchbar", "urlbar", "abouthome", "contextmenu"};
-	private static String[] sessionKeys = {"completedSessions", "completedSessionTime", 
-		"completedSessionActivityRatio", "abortedSessions", "abortedSessionTime", 
-		"abortedSessionActivityRatio", "abortedSessionMed", "currentSessionTime", 
-		"currentSessionActivityRatio", "aboutSessionRestoreStarts"};
+//	private static String[] searchEngineBuckets = {"Amazon.com", "Bing", "Google", "Yahoo", "Other"};
+//	private static String[] searchSources = {"searchbar", "urlbar", "abouthome", "contextmenu"};
+//	private static String[] sessionKeys = {"completedSessions", "completedSessionTime", 
+//		"completedSessionActivityRatio", "abortedSessions", "abortedSessionTime", 
+//		"abortedSessionActivityRatio", "abortedSessionMed", "currentSessionTime", 
+//		"currentSessionActivityRatio", "aboutSessionRestoreStarts"};
+	private static String[] simpleMeasureKeys = {"uptime", "main", "firstPaint", 
+		"sessionRestored", "isDefaultBrowser", "crashCountSubmitted",
+		"crashCountPending", "profileAge", "placesPagesCount",
+		"placesBookmarksCount", "addonCount"};
+	
 	private static String[] envKeys = {"OS", "appID", "appVersion", "appVendor", "appName", 
        "appBuildID", "appABI", "appUpdateChannel", "appDistribution",
        "appDistributionVersion", "platformBuildID", "platformVersion",
@@ -122,19 +126,39 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		
 		aggregate.put("uuid", incoming.get("uuid").getTextValue());
 
-		String pingTimeText = incoming.get("thisPingTime").getTextValue();
-		ArrayNode pingTime = (ArrayNode)aggregate.get("pingTime");
-		pingTime.add(pingTimeText);
+		JsonNode thisPingTime = incoming.get("thisPingTime");
+		JsonNode lastPingTime = incoming.get("lastPingTime");
+		ObjectNode newDataPoint = objectMapper.createObjectNode();
+		newDataPoint.put("pingTime", thisPingTime);
+		
+		// TODO: we may not need this again at the top level - can just pop 
+		//       the last dataPoint to see
+		aggregate.put("thisPingTime", thisPingTime);
+		aggregate.put("lastPingTime", lastPingTime);
 
-		// Also calculate skew
-		ArrayNode clockSkewNode = (ArrayNode)aggregate.get("clockSkew");
-		try {
-			Date parsedPingTime = dateFormat.parse(pingTimeText);
+		// Also calculate skew and duration
+		Date parsedPingTime = parseDateString(thisPingTime.getTextValue());
+		Date parsedLastPingTime = parseDateString(lastPingTime.getTextValue());
+		
+		// TODO: if "lastPingTime" doesn't match with the existing aggregate, we may have
+		//       a situation where the same UUID is being used by multiple profiles, such
+		//       as when a profile is copied to a new computer, and the copy and the
+		//       original both continue to submit.
+		//       In that case, we should apply the current submission to a new UUID and 
+		//       assign that UUID to the client.
+		
+		if (parsedPingTime != null) {
 			long clockSkew = (getReferenceDate().getTime() - parsedPingTime.getTime());
-			clockSkewNode.add(clockSkew);
-		} catch (ParseException e) {
-			LOG.error("Error parsing client timestamp: " + pingTimeText 
-					+ " (expecting something of the form 2000-01-01T00:00:01.515Z)");
+			newDataPoint.put("clockSkew", clockSkew);
+			
+			if (parsedLastPingTime != null) {
+				long pingDurationSeconds = (parsedPingTime.getTime() - parsedLastPingTime.getTime()) / 1000;
+				newDataPoint.put("pingDuration", pingDurationSeconds);
+			} else {
+				LOG.error("Could not parse 'lastPingTime' from incoming document - failed to calculate pingDuration");
+			}
+		} else {
+			LOG.error("Could not parse 'thisPingTime' from incoming document - failed to calculate clockSkew and pingDuration");
 		}
 
 		String currentVersionText = null;
@@ -181,115 +205,48 @@ public class MetricsPingPreCommit implements PreCommitHook {
 
 			if (shouldAppend) {
 				ArrayNode newVersion = objectMapper.createArrayNode();
-				newVersion.add(pingTimeText);
+				newVersion.add(thisPingTime);
 				newVersion.add(currentVersionText);
 				versionList.add(newVersion);
 			}
 		}
+		
+		// Simple measurements:
+		ObjectNode newSimpleNode = objectMapper.createObjectNode();
+		ObjectNode simpleNodeIn = (ObjectNode)incoming.get("simpleMeasurements");
+		aggregate.put("addons", simpleNodeIn.get("addons"));
+		
+		// Use specific defaults for each simpleMeasureKeys entry.
+		// We need to avoid having jagged arrays, otherwise we lose the
+		// ability to associate a value with a pingTime.
+		for (String simpleMeasureKey : simpleMeasureKeys) {
+			if (simpleNodeIn.has(simpleMeasureKey))
+				newSimpleNode.put(simpleMeasureKey, simpleNodeIn.get(simpleMeasureKey));
+		}
+		
+		newDataPoint.put("simpleMeasurements", newSimpleNode);
 
 		// Process events:
-		JsonNode eventNode = aggregate.get("events");
-		JsonNode eventNodeIn = incoming.get("events");
-
-		// Searches:
-		JsonNode searchNode = eventNode.get("search");
-		JsonNode searchNodeIn = eventNodeIn.get("search");
-		if (searchNodeIn != null && searchNodeIn.isObject()) {
-			ObjectNode total = (ObjectNode)searchNode.get("total");
-			for (String searchSource : searchSources) {
-				JsonNode source = searchNode.get(searchSource);
-				JsonNode sourceIn = searchNodeIn.get(searchSource);
-				for (String engine : searchEngineBuckets) {
-					JsonNode engineNode = source.get(engine);
-					JsonNode totalForEngine = total.get(engine);
-					if (engineNode != null && engineNode.isArray()) {
-						int searchCount = 0;
-						if (sourceIn != null && sourceIn.has(engine)) {
-							searchCount = sourceIn.get(engine).asInt(0);
-						} else {
-							// normal - no searches for this source/engine
-							LOG.debug(String.format("No searches for source '%s', engine '%s'", searchSource, engine));
-						}
-						((ArrayNode)engineNode).add(searchCount);
-						int totalCount = totalForEngine.asInt(0);
-						totalCount += searchCount;
-						total.put(engine, totalCount);
-					} else {
-						LOG.warn(String.format("Missing or corrupted value for merged source '%s', engine '%s' (expected an array)", searchSource, engine));
-					}
-				}
-			}
-		}
-
-		// Sessions:
-		JsonNode sessions = eventNode.get("sessions");
-		JsonNode sessionsIn = eventNodeIn.get("sessions");
+//		JsonNode eventNode = aggregate.get("events");
+//		JsonNode eventNodeIn = incoming.get("events");
 		
-		// aside from ratios, everything is simple:
-		String[] simpleKeys = new String[]{"completedSessions", "completedSessionTime", 
-				"abortedSessions", "abortedSessionTime", "abortedSessionMed", "currentSessionTime", 
-				"aboutSessionRestoreStarts"};
-		for (String sessKey : simpleKeys) {
-			JsonNode newSessionValue = sessionsIn.get(sessKey);
-			int newSessionIntValue = 0;
-			if (newSessionValue != null) {
-				newSessionIntValue = newSessionValue.asInt(0);
-			} else {
-				// this is OK, we just didn't get a value
-				LOG.debug(String.format("No incoming value for session key '%s'", sessKey));
-			}
-			JsonNode aggregateSessionValue = sessions.get(sessKey);
-			if (aggregateSessionValue != null && aggregateSessionValue.isArray()) {
-				((ArrayNode)aggregateSessionValue).add(newSessionIntValue);
-			} else {
-				// error - no aggregate.
-				LOG.error(String.format("Missing or corrupted value for merged session key '%s'", sessKey));
-			}
+		newDataPoint.put("events", incoming.get("events"));
+		
+		// TODO: do we need totals and event activity ratio?
+		
+		ArrayNode dataPoints = (ArrayNode)aggregate.get("dataPoints");
+		dataPoints.add(newDataPoint);
+	}
+
+	private Date parseDateString(String dateText) {
+		Date parsedDate = null;
+		try {
+			parsedDate = dateFormat.parse(dateText);
+		} catch (ParseException e) {
+			LOG.error("Error parsing client timestamp: " + dateText 
+					+ " (expecting something of the form 2000-01-01T00:00:01.515Z)");
 		}
-
-		// Now do ratio ones.
-		String[] ratioTypes = new String[]{"completed", "aborted", "current"};
-		for (String ratioType : ratioTypes) {
-			String totalField = ratioType + "SessionTime";
-			String activeField = ratioType + "SessionActiveTime";
-			String ratioField = ratioType + "SessionActivityRatio";
-			int totalValue = 0;
-			int activeValue = 0;
-			if (sessionsIn.has(totalField)) {
-				totalValue = sessionsIn.get(totalField).asInt(0);
-			} else {
-				// OK
-				LOG.debug(String.format("No incoming value for total '%s'", totalField));
-			}
-			if (sessionsIn.has(activeField)) {
-				activeValue = sessionsIn.get(activeField).asInt(0);
-			} else {
-				// OK
-				LOG.debug(String.format("No incoming value for active '%s'", activeField));
-			}
-
-			double ratio = 0.0;
-			if (totalValue > 0 && activeValue > 0) {
-				ratio = (double)activeValue / (double)totalValue;
-			}
-
-			JsonNode ratioList = sessions.get(ratioField);
-			if (ratioList != null && ratioList.isArray()) {
-				((ArrayNode)ratioList).add(ratio);
-			} else {
-				LOG.warn(String.format("No merged value found for ratio '%s'", ratioField));
-			}
-				
-		}
-
-		// Corrupted Events:
-		ArrayNode corruptedEvents = (ArrayNode)eventNode.get("corruptedEvents");
-		int numCorruptedEvents = 0;
-
-		JsonNode corruptedEventsIn = eventNodeIn.get("corruptedEvents");
-		numCorruptedEvents = corruptedEventsIn.asInt(0);
-
-		corruptedEvents.add(numCorruptedEvents);
+		return parsedDate;
 	}
 	
 	public Date getReferenceDate() {
@@ -307,7 +264,7 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		Date d;
 		try {
 			d = dateFormat.parse(referenceDate);
-			this.referenceDate = d;
+			this.setReferenceDate(d);
 		} catch (ParseException e) {
 			LOG.error("Error parsing reference date", e);
 		}
@@ -320,57 +277,53 @@ public class MetricsPingPreCommit implements PreCommitHook {
 		JsonNode env = generic.get("env");
 		if (env == null || !env.isObject()) return false;
 		
-		JsonNode simple = generic.get("simpleMeasurements");
-		if (simple == null || !simple.isObject()) return false;
-		
-		JsonNode events = generic.get("events");
-		if (events == null || !events.isObject()) return false;
-		
-		JsonNode sessions = events.get("sessions");
-		if (sessions == null || !sessions.isObject()) return false;
-		
+		return true;
+	}
+	
+	// Check if all specified nodeNames exist and are ArrayNode children
+	// of the given document.
+	private boolean isArrayChild(JsonNode document, String... nodeNames) {
+		for (String nodeName : nodeNames) {
+			JsonNode aNode = document.path(nodeName);
+			if (!aNode.isArray())
+				return false;
+		}
 		return true;
 	}
 
 	protected boolean isValidAggregate(JsonNode aggregate) {
 		if (!isValidAggregateOrInstance(aggregate)) return false;
 		if (aggregate == null || !aggregate.isObject()) return false;
-		
-		JsonNode pingTime = aggregate.path("pingTime");
-		if (!pingTime.isArray()) return false;
-		
-		JsonNode clockSkewNode = aggregate.path("clockSkew");
-		if (!clockSkewNode.isArray()) return false;
 
-		JsonNode versions = aggregate.path("versions");
-		if (!versions.isArray()) return false;
+		if (!isArrayChild(aggregate, "versions", "addons", "dataPoints"))
+			return false;
 		
-		// "events" checked for null in isValidAggregateOrInstance
-		JsonNode events = aggregate.get("events");
-		
-		JsonNode corruptedEvents = events.path("corruptedEvents");
-		if (!corruptedEvents.isArray()) return false;
-		
-		JsonNode search = events.path("search");
-		if (!search.isObject()) return false;
-		
-		JsonNode searchTotal = search.path("total");
-		if (!searchTotal.isObject()) return false;
+		// TODO: iterate dataPoints to make sure each one is valid?
 		
 		return true;
 	}
 	
 	protected boolean isValidInstance(JsonNode instance) {
 		if (!isValidAggregateOrInstance(instance)) return false;
+
+		JsonNode simple = instance.get("simpleMeasurements");
+		if (simple == null || !simple.isObject()) return false;
+		
+		JsonNode events = instance.get("events");
+		if (events == null || !events.isObject()) return false;
+		
+		JsonNode sessions = events.get("sessions");
+		if (sessions == null || !sessions.isObject()) return false;
 		
 		JsonNode uuid = instance.path("uuid");
 		if (!uuid.isValueNode()) return false;
 
 		JsonNode pingTime = instance.path("thisPingTime");
 		if(!pingTime.isValueNode()) return false;
+		
+		JsonNode lastPingTime = instance.path("lastPingTime");
+		if(!lastPingTime.isValueNode()) return false;
 
-		// "events" checked for null in isValidAggregateOrInstance
-		JsonNode events = instance.get("events");
 		JsonNode corruptedEvents = events.path("corruptedEvents");
 		if (!corruptedEvents.isValueNode()) return false;
 		
@@ -380,38 +333,11 @@ public class MetricsPingPreCommit implements PreCommitHook {
 	public JsonNode createEmptyAggregate() {
 		ObjectNode root = objectMapper.createObjectNode();
 //		root.put("uuid", "UNKNOWN");
-		root.put("pingTime", objectMapper.createArrayNode());
-		root.put("clockSkew", objectMapper.createArrayNode());
+		
 		root.put("env", objectMapper.createObjectNode());
 		root.put("versions", objectMapper.createArrayNode());
-		ObjectNode simple = objectMapper.createObjectNode();
-		root.put("simpleMeasurements", simple);
-		// TODO: setup histograms
-		ObjectNode events = objectMapper.createObjectNode();
-		ObjectNode search = objectMapper.createObjectNode();
-		ObjectNode sessions = objectMapper.createObjectNode();
-		events.put("search", search);
-		events.put("sessions", sessions);
-		events.put("corruptedEvents", objectMapper.createArrayNode());
-		root.put("events", events);
-		
-		for(String searchSource : searchSources) {
-			ObjectNode aNode = objectMapper.createObjectNode();
-			for(String engine : searchEngineBuckets) {
-				aNode.put(engine, objectMapper.createArrayNode());
-			}
-			search.put(searchSource, aNode);
-		}
-		
-		ObjectNode totalNode = objectMapper.createObjectNode();
-		for(String engine : searchEngineBuckets) {
-			totalNode.put(engine, 0);
-		}
-		search.put("total", totalNode);
-		
-		for(String sessionKey : sessionKeys) {
-			sessions.put(sessionKey, objectMapper.createArrayNode());
-		}
+		root.put("addons", objectMapper.createArrayNode());
+		root.put("dataPoints", objectMapper.createArrayNode());
 		
 		return root;
 	}

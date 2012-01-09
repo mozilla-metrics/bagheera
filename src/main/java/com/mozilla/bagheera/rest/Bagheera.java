@@ -25,6 +25,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
@@ -48,6 +49,11 @@ public class Bagheera {
 		// Set the number of acceptors
 		int acceptors = Integer.parseInt(System.getProperty("server.acceptors", "8"));
         scc.setAcceptors(acceptors);
+        // Set the number of threads
+        int numThreads = Integer.parseInt(System.getProperty("server.threads", "0"));
+        if (numThreads > 0) {
+            scc.setThreadPool(new QueuedThreadPool(numThreads));
+        }
         server.addConnector(scc);
         
 		ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.NO_SESSIONS);		
@@ -63,7 +69,7 @@ public class Bagheera {
 		server.setSendServerVersion(false);
 	    server.setSendDateHeader(false);
 	    server.setStopAtShutdown(true);
-		
+	    
 		boolean initHazelcast = Boolean.parseBoolean(System.getProperty("init.hazelcast.onstartup", "true"));
 		if (initHazelcast) {
 		    // Initialize Hazelcast now rather than waiting for the first request

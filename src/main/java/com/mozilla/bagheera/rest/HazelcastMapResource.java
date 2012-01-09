@@ -20,6 +20,7 @@
 package com.mozilla.bagheera.rest;
 
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -42,6 +43,8 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.log4j.Logger;
 
 import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.MapStore;
+import com.mozilla.bagheera.hazelcast.persistence.MapStoreRepository;
 import com.mozilla.bagheera.rest.interceptors.PreCommitHook;
 import com.mozilla.bagheera.rest.properties.WildcardProperties;
 import com.mozilla.bagheera.rest.stats.Stats;
@@ -64,6 +67,9 @@ public class HazelcastMapResource extends ResourceBase {
     
     // system independent newline
     public static String NEWLINE = System.getProperty("line.separator");
+    
+    // 1 day in milliseconds
+    private static final long DAY_IN_MILLIS = 86400000L;
     
     private Validator validator;
     private WildcardProperties props;
@@ -118,14 +124,15 @@ public class HazelcastMapResource extends ResourceBase {
 
         // Check the payload size versus any map specific restrictions
         if (!validator.isValidRequestSize(name, request.getContentLength())) {
+            LOG.warn("Tried to put a value larger than configured maximum for name:" + name);
             stats.numInvalidRequests.incrementAndGet();
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
 
         // Read in the JSON data straight from the request
-        BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 8192);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 32768);
         StringBuilder sb = new StringBuilder();
-        char[] buffer = new char[8192];
+        char[] buffer = new char[32768];
         int n;
         while((n = reader.read(buffer)) >= 0) {
             sb.append(buffer, 0, n);
@@ -158,7 +165,8 @@ public class HazelcastMapResource extends ResourceBase {
         Map<String, String> m = Hazelcast.getMap(name);
         m.put(id, data);
         stats.numPuts.incrementAndGet();
-
+        stats.lastUpdate = System.currentTimeMillis();
+        
         boolean postResponse = props.getWildcardProperty(name + POST_RESPONSE, false);
         if (postResponse) {
             return Response.created(URI.create(id)).build();
@@ -255,4 +263,28 @@ public class HazelcastMapResource extends ResourceBase {
         return resp;
     }
     
+    /**
+     * A RESTful way to do timed conditional closing of the underlying MapStore if it supports it.
+     * 
+     * @param name
+     * @return
+     */
+    @GET
+    @Path("close/{name}")
+    public Response mapClose(@PathParam("name") String name) {
+        Stats stats = rs.getStats(name);
+        if (stats.lastUpdate < (System.currentTimeMillis() - DAY_IN_MILLIS)) {
+            // Get the backing MapStore implementation and close it if possible
+            MapStore<String,String> ms = MapStoreRepository.getMapStore(name);
+            if (ms instanceof Closeable) {
+                try {
+                    ((Closeable) ms).close();
+                } catch (IOException e) {
+                    LOG.error("Error closing map name: " + name, e);
+                }
+            }
+        }
+        
+        return Response.ok().build();
+    }
 }
