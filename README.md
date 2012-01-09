@@ -71,9 +71,9 @@ All you need to do is add a section like this to the hazelcast.xml configuration
 
 Notice you can tweak the HBase connection pool size, table and column names as needed for different maps.
 
-### Hazelcast HdfsMapStore Configuration ###
+### Hazelcast SequenceFileMapStore/TextFileMapStore Configuration ###
 
-If you want to configure a Hazelcast Map to persist data to HDFS you can use the HdfsMapStore. It will write a SequenceFile with Text key/value pairs. Currently it will always use block compression. In the future we may add support for more compression codecs or alternative file formats. This MapStore will rollover and write new files every day or when _hazelcast.hdfs.max.filesize_ is reached. It will write files to the directory _hazelcast.hdfs.basedir/hazelcast.hdfs.dateformat/UUID_. Please note that _hazelcast.hdfs.max.filesize_ is only checked against a bytes written counter and not the actual filesize in HDFS. Actual filesize's will probably be much smaller than this number due to block compression. Here is an example section using this MapStore from hazelcast.xml configuration:
+If you want to configure a Hazelcast Map to persist data to HDFS you can use one of two implementations of HdfsMapStore. The SequenceFileMapStore will write a SequenceFile with Text key/value pairs and the TextFileMapStore will write only values ignoring the key altogether. SequenceFileMapStore will always use block compression whereas TextFileMapStore doesn't use any compression. In the future we may add support for more compression codecs or alternative file formats. Both MapStores will rollover and write new files every day or when _hazelcast.hdfs.max.filesize_ is reached. They will write files to the directory _hazelcast.hdfs.basedir/hazelcast.hdfs.dateformat/UUID_. Please note that _hazelcast.hdfs.max.filesize_ is only checked against a bytes written counter and not the actual filesize in HDFS. Actual filesize's will probably be much smaller than this number when using compression. Here is an example section using SequenceFileMapStore from hazelcast.xml configuration:
 
 	<map name="mymapname">
 		<time-to-live-seconds>20</time-to-live-seconds>
@@ -84,7 +84,7 @@ If you want to configure a Hazelcast Map to persist data to HDFS you can use the
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
 		<!-- HdfsMapStore -->
 		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.HdfsMapStore</class-name>
+			<class-name>com.mozilla.bagheera.hazelcast.persistence.SequenceFileMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
 			<property name="hazelcast.hdfs.basedir">/bagheera</property>
 			<property name="hazelcast.hdfs.dateformat">yyyy-MM-dd</property>
