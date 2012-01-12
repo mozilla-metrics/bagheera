@@ -172,8 +172,7 @@ Unfortunately for now you cannot use the same type of MapStore more than once, b
 To read more on Hazelcast configuration in general [check out their documentation](http://www.hazelcast.com/).
 
 ### License ###
-All aspects of this software written in Java are distributed under Apache Software License 2.0. See LICENSE file for full license text.  
-All aspects of this software written in Python are distributed under the [Mozilla Public License](http://www.mozilla.org/MPL/) MPL/LGPL/GPL tri-license.
+All aspects of this software are distributed under Apache Software License 2.0. See LICENSE file for full license text.
 
 ### Contributors ###
 
