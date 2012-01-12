@@ -45,7 +45,7 @@ public class StatsResource extends ResourceBase {
             sb.append("numForbiddenRequests=").append(stats.numForbiddenRequests.get()).append("\n");
             sb.append("numPuts=").append(stats.numPuts.get()).append("\n");
             sb.append("numGets=").append(stats.numGets.get()).append("\n");
-            sb.append("numDels=").append(stats.numDels.get());
+            sb.append("numDels=").append(stats.numDels.get()).append("\n");
         }
         
         return Response.ok(sb.toString(), MediaType.APPLICATION_JSON).build();
