@@ -19,10 +19,13 @@
  */
 package com.mozilla.bagheera.rest;
 
+import java.util.EnumSet;
 import java.util.Map;
 
+import org.eclipse.jetty.server.DispatcherType;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
@@ -57,6 +60,11 @@ public class Bagheera {
         server.addConnector(scc);
         
 		ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.NO_SESSIONS);		
+		
+		// Add the gzip filter
+		FilterHolder gzipHolder = new FilterHolder(org.apache.hadoop.hbase.rest.filter.GzipFilter.class);
+		gzipHolder.setInitParameter("mimeTypes", "application/json");
+		root.addFilter(gzipHolder, "/*", EnumSet.allOf(DispatcherType.class));
 		
 		ServletHolder jerseyHolder = new ServletHolder(ServletContainer.class);
 		jerseyHolder.setInitParameter("com.sun.jersey.config.property.resourceConfigClass", 

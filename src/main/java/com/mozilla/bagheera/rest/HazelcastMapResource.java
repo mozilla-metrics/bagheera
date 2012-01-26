@@ -38,6 +38,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.log4j.Logger;
@@ -273,18 +274,20 @@ public class HazelcastMapResource extends ResourceBase {
     @Path("close/{name}")
     public Response mapClose(@PathParam("name") String name) {
         Stats stats = rs.getStats(name);
+        ResponseBuilder resp = Response.notModified();
         if (stats.lastUpdate < (System.currentTimeMillis() - DAY_IN_MILLIS)) {
             // Get the backing MapStore implementation and close it if possible
             MapStore<String,String> ms = MapStoreRepository.getMapStore(name);
             if (ms instanceof Closeable) {
                 try {
                     ((Closeable) ms).close();
+                    resp = Response.ok();
                 } catch (IOException e) {
                     LOG.error("Error closing map name: " + name, e);
                 }
             }
         }
         
-        return Response.ok().build();
+        return resp.build();
     }
 }
