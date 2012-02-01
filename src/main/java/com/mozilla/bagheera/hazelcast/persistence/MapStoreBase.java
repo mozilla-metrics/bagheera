@@ -21,12 +21,16 @@ package com.mozilla.bagheera.hazelcast.persistence;
 
 import java.util.Properties;
 
+import org.apache.log4j.Logger;
+
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
 import com.mozilla.bagheera.json.JsonSmileConverter;
 
 public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
 
+    private static final Logger LOG = Logger.getLogger(MapStoreBase.class);
+    
     private static final String ALLOW_LOAD = "hazelcast.allow.load";
     private static final String ALLOW_LOAD_ALL = "hazelcast.allow.load.all";
     private static final String ALLOW_DELETE = "hazelcast.allow.delete";
@@ -50,6 +54,8 @@ public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
      * HazelcastInstance, java.util.Properties, java.lang.String)
      */
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+        LOG.info("Initializing map name: " + mapName);
+        
         this.mapName = mapName;
         this.allowLoad = Boolean.parseBoolean(properties.getProperty(ALLOW_LOAD, "false"));
         this.allowLoadAll = Boolean.parseBoolean(properties.getProperty(ALLOW_LOAD_ALL, "false"));

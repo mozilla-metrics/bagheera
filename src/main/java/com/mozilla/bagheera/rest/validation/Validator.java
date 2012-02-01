@@ -89,7 +89,7 @@ public class Validator {
                 isValid = true;
             } catch (JsonParseException e) {
                 // if this was hit we'll return below
-                LOG.error("Error parsing JSON", e);
+                LOG.error("Error parsing JSON");
             } finally {
                 if (parser != null) {
                     parser.close();
