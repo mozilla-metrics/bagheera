@@ -69,7 +69,7 @@ public class SequenceFileConsumer {
         LOG.info("Initializing writer for map: " + mapName);
         conf = new Configuration();
         conf.setBoolean("fs.automatic.close", false);
-        hdfs = FileSystem.get(conf);
+        hdfs = FileSystem.newInstance(conf);
         baseDir = new Path(baseDirPath);
         this.maxFileSize = maxFileSize;
         sdf = new SimpleDateFormat(dateFormat);
