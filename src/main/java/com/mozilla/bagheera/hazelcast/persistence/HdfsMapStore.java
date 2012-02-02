@@ -48,7 +48,7 @@ public abstract class HdfsMapStore extends MapStoreBase implements MapStore<Stri
     
         if (hdfs == null) {
             try {
-                hdfs = FileSystem.get(conf);
+                hdfs = FileSystem.newInstance(conf);
             } catch (IOException e) {
                 LOG.error("Error getting HDFS handle", e);
                 throw new RuntimeException(e);
