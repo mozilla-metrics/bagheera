@@ -153,7 +153,7 @@ public class HazelcastMapResource extends ResourceBase {
             if (preCommitClassName != null) {
                 try {
                     PreCommitHook pch = (PreCommitHook)Class.forName(preCommitClassName).newInstance();
-                    data = pch.preCommit(name, id, data);
+                    data = pch.preCommit(name, id, data, request);
                 } catch (Exception e) {
                     LOG.error("Exception caught during preCommit attempt", e);
                     // fail fast and return a 500

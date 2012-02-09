@@ -26,17 +26,23 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
+import com.maxmind.geoip.LookupService;
 import com.mozilla.bagheera.rest.properties.WildcardProperties;
 import com.mozilla.bagheera.rest.stats.Stats;
 import com.mozilla.bagheera.rest.validation.Validator;
 
 public class RESTSingleton {
     
+    private static final Logger LOG = Logger.getLogger(RESTSingleton.class);
+    
     private static RESTSingleton INSTANCE;
     
     private final WildcardProperties props;
     private final Map<String,Stats> statsMap;
     private final Validator validator;
+    private final LookupService geoIpLookupService;
     
     private RESTSingleton() {
         props = new WildcardProperties();
@@ -63,6 +69,24 @@ public class RESTSingleton {
         
         validator = new Validator(props);
         statsMap = new HashMap<String,Stats>();
+        
+        // Initialize GeoIP if needed.
+        String maxMindDbPath = props.getProperty("general.maxmind.db.path");
+        if (maxMindDbPath != null) {
+            geoIpLookupService = initializeGeoIpLookupService(maxMindDbPath);
+        } else {
+            geoIpLookupService = null;
+        }
+    }
+    
+    private LookupService initializeGeoIpLookupService(String maxMindDbPath) {
+        LookupService lookupService = null;
+        try {
+            lookupService = new LookupService(maxMindDbPath, LookupService.GEOIP_MEMORY_CACHE);
+        } catch (IOException e) {
+            LOG.error("Error initializing GeoIP service", e);
+        }
+        return lookupService;
     }
     
     public static RESTSingleton getInstance() {
@@ -95,4 +119,9 @@ public class RESTSingleton {
         
         return stats;
     }
+    
+    public LookupService getGeoIpLookupService() {
+        return geoIpLookupService;
+    }
+    
 }

@@ -19,8 +19,10 @@
  */
 package com.mozilla.bagheera.rest.interceptors;
 
+import javax.servlet.http.HttpServletRequest;
+
 public interface PreCommitHook {
     
-    public String preCommit(String mapName, String key, String value);
+    public String preCommit(String mapName, String key, String value, HttpServletRequest request);
     
 }
