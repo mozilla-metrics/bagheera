@@ -17,7 +17,9 @@ HAZELCAST_CONF=$2
 SERVER_THREADS=100
 SERVER_CLASS_NAME="com.mozilla.bagheera.rest.Bagheera"
 BAGHEERA_OPTS="-Dhazelcast.config=$HAZELCAST_CONF -Dhazelcast.jmx=true -Dserver.port=$SERVER_PORT -Dserver.threads=$SERVER_THREADS -Dbagheera.log.dir=$bin/../logs -Dcom.sun.management.jmxremote.port=$JMXREMOTE_PORT -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
-JAVA_OPTS="$BAGHEERA_OPTS -Xmx1000m -Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"
+GC_OPTS="-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -XX:+PrintGCApplicationStoppedTime -Xloggc:UNIQ_FILE_PER_INVOCATION"
+JAVA_OPTS="$BAGHEERA_OPTS -Xmx1000m -Xmx1000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC $GC_OPTS"
+
 export MALLOC_ARENA_MAX=4
 
 if [ "$BAGHEERA_USER" = "" ]; then
