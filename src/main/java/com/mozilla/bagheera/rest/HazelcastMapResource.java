@@ -19,11 +19,14 @@
  */
 package com.mozilla.bagheera.rest;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.Map;
 import java.util.UUID;
 
@@ -71,6 +74,11 @@ public class HazelcastMapResource extends ResourceBase {
     
     // 1 day in milliseconds
     private static final long DAY_IN_MILLIS = 86400000L;
+    
+    private static final Response NOT_ACCEPTABLE = Response.status(Status.NOT_ACCEPTABLE).header("connection", "close").build();
+    private static final Response FORBIDDEN = Response.status(Status.FORBIDDEN).header("connection", "close").build();
+    private static final Response SERVER_ERROR = Response.serverError().header("connection", "close").build();
+    private static final Response NO_CONTENT = Response.noContent().header("connection", "close").build();
     
     private Validator validator;
     private WildcardProperties props;
@@ -120,31 +128,56 @@ public class HazelcastMapResource extends ResourceBase {
             String remoteIpAddress = request.getRemoteAddr();
             LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
             stats.numInvalidRequests.incrementAndGet();
-            return Response.status(Status.NOT_ACCEPTABLE).build();
+            return NOT_ACCEPTABLE;
         }
 
         // Check the payload size versus any map specific restrictions
-        if (!validator.isValidRequestSize(name, request.getContentLength())) {
+        int contentLength = request.getContentLength();
+        if (!validator.isValidRequestSize(name, contentLength)) {
             LOG.warn("Tried to put a value larger than configured maximum for name:" + name);
             stats.numInvalidRequests.incrementAndGet();
-            return Response.status(Status.NOT_ACCEPTABLE).build();
+            return NOT_ACCEPTABLE;
         }
 
-        // Read in the JSON data straight from the request
-        BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()), 32768);
-        StringBuilder sb = new StringBuilder();
-        char[] buffer = new char[32768];
-        int n;
-        while((n = reader.read(buffer)) >= 0) {
-            sb.append(buffer, 0, n);
+        // Read and validate in the JSON data straight from the request
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(contentLength);
+        boolean validateJson = Boolean.parseBoolean(props.getWildcardProperty(name + Validator.VALIDATE_JSON, "true"));
+        if (validateJson) {
+            // JSON optimization: allow Jackson to do all of the reading/writing
+            try {
+                validator.validateJSONStream(name, request.getInputStream(), baos);
+            } catch (IOException e) {
+                LOG.error("Failed to read/validate request");
+                stats.numInvalidRequests.incrementAndGet(); 
+                return NOT_ACCEPTABLE;
+            }
+        } else {
+            ReadableByteChannel rbc = null;
+            WritableByteChannel wbc = null;
+            try {
+                int bufferSize = contentLength > 32384 ? 32384 : contentLength;
+                ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+                rbc = Channels.newChannel(request.getInputStream());
+                wbc = Channels.newChannel(baos);
+                while (rbc.read(buffer) != -1) {
+                    buffer.flip();
+                    wbc.write(buffer);
+                    buffer.clear();
+                }
+            } catch (IOException e) {
+                LOG.error("Failed to read request");
+                stats.numInvalidRequests.incrementAndGet(); 
+                return Response.serverError().header("connection", "close").build();
+            } finally {
+                if (rbc != null) {
+                    rbc.close();
+                }
+                if (wbc != null) {
+                    wbc.close();
+                }
+            }
         }
-        String data = sb.toString();
-        
-        // Validate JSON (open schema)
-        if (!validator.isValidJSON(name, data)) {
-            stats.numInvalidRequests.incrementAndGet(); 
-            return Response.status(Status.NOT_ACCEPTABLE).build();
-        }
+        String data = baos.toString();
         
         // If this needs to call preCommit do it here
         boolean preCommit = props.getWildcardProperty(name + PRE_COMMIT, false);
@@ -157,7 +190,7 @@ public class HazelcastMapResource extends ResourceBase {
                 } catch (Exception e) {
                     LOG.error("Exception caught during preCommit attempt", e);
                     // fail fast and return a 500
-                    return Response.serverError().build();
+                    return SERVER_ERROR;
                 }
             }
         }
@@ -170,10 +203,10 @@ public class HazelcastMapResource extends ResourceBase {
         
         boolean postResponse = props.getWildcardProperty(name + POST_RESPONSE, false);
         if (postResponse) {
-            return Response.created(URI.create(id)).build();
+            return Response.created(URI.create(id)).header("connection", "close").build();
         }
 
-        return Response.noContent().build();
+        return NO_CONTENT;
     }
 
     @GET
@@ -187,7 +220,7 @@ public class HazelcastMapResource extends ResourceBase {
         boolean allowGetAccess = Boolean.parseBoolean(props.getWildcardProperty(name + ALLOW_GET_ACCESS, "false"));
         if (!allowGetAccess) {
             stats.numForbiddenRequests.incrementAndGet();
-            return Response.status(Status.FORBIDDEN).build();
+            return FORBIDDEN;
         }
 
         // Check the map name to make sure it's valid
@@ -197,7 +230,7 @@ public class HazelcastMapResource extends ResourceBase {
             String remoteIpAddress = request.getRemoteAddr();
             LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
             stats.numInvalidRequests.incrementAndGet();
-            return Response.status(Status.NOT_ACCEPTABLE).build();
+            return NOT_ACCEPTABLE;
         }
         
         stats.numValidRequests.incrementAndGet();
@@ -207,9 +240,9 @@ public class HazelcastMapResource extends ResourceBase {
         
         Response resp = null;
         if (data != null) {
-            resp = Response.ok(data, MediaType.APPLICATION_JSON).build();
+            resp = Response.ok(data, MediaType.APPLICATION_JSON).header("connection", "close").build();
         } else {
-            resp = Response.status(Status.NOT_FOUND).build();
+            resp = Response.status(Status.NOT_FOUND).header("connection", "close").build();
         }
 
         return resp;
@@ -235,7 +268,7 @@ public class HazelcastMapResource extends ResourceBase {
         boolean allowAccess = Boolean.parseBoolean(props.getWildcardProperty(name + ALLOW_DEL_ACCESS, "false"));
         if (!allowAccess) {
             stats.numForbiddenRequests.incrementAndGet();
-            return Response.status(Status.FORBIDDEN).build();
+            return FORBIDDEN;
         }
 
         // Check the map name to make sure it's valid
@@ -245,7 +278,7 @@ public class HazelcastMapResource extends ResourceBase {
             String remoteIpAddress = request.getRemoteAddr();
             LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
             stats.numInvalidRequests.incrementAndGet();
-            return Response.status(Status.NOT_ACCEPTABLE).build();
+            return NOT_ACCEPTABLE;
         }
 
         stats.numValidRequests.incrementAndGet();    
@@ -255,10 +288,10 @@ public class HazelcastMapResource extends ResourceBase {
         
         Response resp = null;
         if (data != null) {
-            resp = Response.ok(id, MediaType.APPLICATION_JSON).build();
+            resp = Response.ok(id, MediaType.APPLICATION_JSON).header("connection", "close").build();
         } else {
             LOG.warn(String.format("Delete requested, but no record found for key \"%s\"", id));
-            resp = Response.status(Status.NOT_FOUND).build();
+            resp = Response.status(Status.NOT_FOUND).header("connection", "close").build();
         }
         
         return resp;
@@ -288,6 +321,6 @@ public class HazelcastMapResource extends ResourceBase {
             }
         }
         
-        return resp.build();
+        return resp.header("connection", "close").build();
     }
 }

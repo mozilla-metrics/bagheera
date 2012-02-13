@@ -48,7 +48,7 @@ public class StatsResource extends ResourceBase {
             sb.append("numDels=").append(stats.numDels.get()).append("\n");
         }
         
-        return Response.ok(sb.toString(), MediaType.APPLICATION_JSON).build();
+        return Response.ok(sb.toString(), MediaType.TEXT_PLAIN).header("connection", "close").build();
     }
 
     @GET
@@ -57,6 +57,6 @@ public class StatsResource extends ResourceBase {
         for (Map.Entry<String, Stats> entry : rs.getStatsMap().entrySet()) {
             entry.getValue().resetAll();
         }
-        return Response.ok().build();
+        return Response.ok().header("connection", "close").build();
     }
 }

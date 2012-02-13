@@ -20,11 +20,15 @@
 package com.mozilla.bagheera.rest.validation;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.JsonEncoding;
 import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 
@@ -66,6 +70,41 @@ public class Validator {
         }
         sb.append(")");
         this.validMapNames = Pattern.compile(sb.toString());
+    }
+    
+    /**
+     * Validate a JSON stream and write output JSON to specified OutputStream
+     * 
+     * @param mapName
+     * @param is
+     * @param os
+     * @return
+     * @throws IOException
+     */
+    public boolean validateJSONStream(String mapName, InputStream is, OutputStream os) throws IOException {
+        JsonParser parser = null;
+        JsonGenerator generator = null;
+        boolean isValid = false;
+        try {
+            parser = jsonFactory.createJsonParser(is);
+            generator = jsonFactory.createJsonGenerator(os, JsonEncoding.UTF8);
+            while (parser.nextToken() != null) {
+                generator.copyCurrentEvent(parser);
+            }
+            isValid = true;
+        } catch (JsonParseException e) {
+            // if this was hit we'll return below
+            LOG.error("Error parsing JSON");
+        } finally {
+            if (parser != null) {
+                parser.close();
+            }
+            if (generator != null) {
+                generator.close();
+            }
+        }
+        
+        return isValid;
     }
     
     /**

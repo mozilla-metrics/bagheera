@@ -128,7 +128,12 @@
       <artifactId>hazelcast</artifactId>
       <version>1.9.4.4</version>
     </dependency>
-
+    <dependency>
+      <groupId>com.hazelcast</groupId>
+      <artifactId>hazelcast-client</artifactId>
+      <version>1.9.4.4</version>
+    </dependency>
+    
     <!-- Cloudera Hadoop, HBase -->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
