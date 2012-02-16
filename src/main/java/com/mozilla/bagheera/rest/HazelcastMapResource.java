@@ -50,9 +50,9 @@ import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.MapStore;
 import com.mozilla.bagheera.hazelcast.persistence.MapStoreRepository;
 import com.mozilla.bagheera.rest.interceptors.PreCommitHook;
-import com.mozilla.bagheera.rest.properties.WildcardProperties;
 import com.mozilla.bagheera.rest.stats.Stats;
 import com.mozilla.bagheera.rest.validation.Validator;
+import com.mozilla.bagheera.util.WildcardProperties;
 
 /**
  * A REST resource that inserts data into Hazelcast maps.
@@ -126,7 +126,7 @@ public class HazelcastMapResource extends ResourceBase {
             // Get the user-agent and IP address
             String userAgent = request.getHeader("User-Agent");
             String remoteIpAddress = request.getRemoteAddr();
-            LOG.warn(String.format("Tried to access invalid map name - \"%s\" \"%s\")", remoteIpAddress, userAgent));
+            LOG.warn(String.format("Tried to access invalid map name: %s - \"%s\" \"%s\")", name, remoteIpAddress, userAgent));
             stats.numInvalidRequests.incrementAndGet();
             return NOT_ACCEPTABLE;
         }

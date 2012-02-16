@@ -74,29 +74,29 @@
 	<dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-core-asl</artifactId>
-      <version>1.9.2</version>
+      <version>1.9.4</version>
     </dependency>
 	<dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
-      <version>1.9.2</version>
+      <version>1.9.4</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-smile</artifactId>
-      <version>1.9.2</version>
+      <version>1.9.4</version>
     </dependency>
 
 	<!-- Jersey JAX-RS -->
 	<dependency>
       <groupId>com.sun.jersey</groupId>
       <artifactId>jersey-bundle</artifactId>
-      <version>1.8</version>
+      <version>1.11</version>
     </dependency>
 	<dependency>
       <groupId>com.sun.jersey.contribs</groupId>
       <artifactId>jersey-multipart</artifactId>
-      <version>1.8</version>
+      <version>1.11</version>
     </dependency>
     <dependency>
         <groupId>asm</groupId>
@@ -109,19 +109,27 @@
 	<dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-server</artifactId>
-      <version>7.4.4.v20110707</version>
+      <version>7.6.0.v20120127</version>
     </dependency>
 	<dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-servlet</artifactId>
-      <version>7.4.4.v20110707</version>
+      <version>7.6.0.v20120127</version>
     </dependency>
 	<dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-util</artifactId>
-      <version>7.4.4.v20110707</version>
+      <version>7.6.0.v20120127</version>
     </dependency>
 
+	<!-- Netty -->
+	<dependency>
+    	<groupId>io.netty</groupId>
+    	<artifactId>netty</artifactId>
+    	<version>3.3.1.Final</version>
+    	<scope>compile</scope>
+  	</dependency>
+  
 	<!-- Hazelcast -->
 	<dependency>
       <groupId>com.hazelcast</groupId>
@@ -300,20 +308,6 @@
       		<groupId>com.google.protobuf</groupId>
       	</exclusion>
       </exclusions>
-    </dependency>
-
-	<!-- ElasticSearch -->
-	<dependency>
-      <groupId>org.elasticsearch</groupId>
-      <artifactId>elasticsearch</artifactId>
-      <version>0.17.9</version>
-    </dependency>
-	
-	<!-- BDB -->
-	<dependency>
-      <groupId>com.sleepycat</groupId>
-      <artifactId>je</artifactId>
-      <version>4.1.10</version>
     </dependency>
 
 	<dependency>

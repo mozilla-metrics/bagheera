@@ -17,17 +17,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.rest.properties;
+package com.mozilla.bagheera.util;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.HashSet;
 import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
 
 public class WildcardProperties extends Properties {
 
     private static final long serialVersionUID = 8726833938438520686L;
+
+    private static final String WILDCARD = "*";
+    private static final char WILDCARD_CHAR = '*';
+    private Set<String> wildcardKeys = new HashSet<String>();
     
-    private final Pattern propertyPattern = Pattern.compile("^([^\\.]+)\\.(.*)");;
+    public void load(InputStream is) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+            if (!line.startsWith("#") && !line.trim().isEmpty()) {
+                String[] splits = line.split("=");
+                String k = splits[0];
+                if (k.contains(WILDCARD)) {
+                    int starIdx = k.indexOf(WILDCARD_CHAR);
+                    if (starIdx >= -1) {
+                        wildcardKeys.add(k);
+                    }
+                } 
+                put(k, splits[1]);
+            }
+        }
+    }
     
     /**
      * Get a property if it exists. If not check for wildcard property matches.
@@ -41,25 +65,15 @@ public class WildcardProperties extends Properties {
         if (containsKey(name)) {
             v = getProperty(name);
         } else {
-            for (Object k : keySet()) {
-                String ks = (String)k;
-                Matcher m = propertyPattern.matcher(ks);
-                if (m.find() && m.groupCount() == 2) {
-                    String propMapName = m.group(1);
-                    if (propMapName.contains("*")) {
-                        Pattern propPattern = Pattern.compile(ks.replaceAll("\\*", ".+"));
-                        Matcher m2 = propPattern.matcher(name);
-                        if (m2.find()) {
-                            v = getProperty(ks);
-                            break;
-                        }
-                    }
+            for (String pk : wildcardKeys) {                
+                int starIdx = pk.indexOf(WILDCARD_CHAR);
+                if (name.startsWith(pk.substring(0, starIdx)) && 
+                    name.endsWith(pk.substring(starIdx+1))) {
+                    v = getProperty(pk);
+                    setProperty(name, v);
+                    break;
                 }
             }
-        }
-        
-        if (v != null) {
-            setProperty(name, v);
         }
         
         return v;

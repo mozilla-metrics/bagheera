@@ -34,7 +34,7 @@ import org.codehaus.jackson.JsonParser;
 
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
-import com.mozilla.bagheera.rest.properties.WildcardProperties;
+import com.mozilla.bagheera.util.WildcardProperties;
 
 public class Validator {
     

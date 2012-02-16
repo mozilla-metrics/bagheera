@@ -29,9 +29,9 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import com.maxmind.geoip.LookupService;
-import com.mozilla.bagheera.rest.properties.WildcardProperties;
 import com.mozilla.bagheera.rest.stats.Stats;
 import com.mozilla.bagheera.rest.validation.Validator;
+import com.mozilla.bagheera.util.WildcardProperties;
 
 public class RESTSingleton {
     

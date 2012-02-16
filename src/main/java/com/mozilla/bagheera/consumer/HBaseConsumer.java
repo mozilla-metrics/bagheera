@@ -37,7 +37,7 @@ public class HBaseConsumer {
     private int workerPoolSize = 8;
     
     private HTablePool hbasePool;
-    private int hbasePoolSize = 50;
+    private int hbasePoolSize = 40;
     
     private final byte[] tableName;
     private final byte[] family;
@@ -50,7 +50,7 @@ public class HBaseConsumer {
     private IMap<String, String> nsMap;
     
     public HBaseConsumer(String mapName, String tableName, String family, String qualifier, boolean prefixDate, 
-                         String hzGroupName, String hzGroupPassword) {
+                         String hzGroupName, String hzGroupPassword, String[] hzClients) {
         workerPool = Executors.newFixedThreadPool(workerPoolSize);
         
         this.tableName = Bytes.toBytes(tableName);
@@ -60,7 +60,7 @@ public class HBaseConsumer {
         hbasePool = new HTablePool(conf, hbasePoolSize);
         this.prefixDate = prefixDate;
         
-        HazelcastInstance client = HazelcastClient.newHazelcastClient(hzGroupName, hzGroupPassword, "localhost:5701");
+        HazelcastInstance client = HazelcastClient.newHazelcastClient(hzGroupName, hzGroupPassword, hzClients);
         nsMap = client.getMap(mapName);
     }
     
@@ -145,7 +145,8 @@ public class HBaseConsumer {
             CommandLine cmd = parser.parse(options, args);
             consumer = new HBaseConsumer(cmd.getOptionValue("map"), cmd.getOptionValue("table", cmd.getOptionValue("map")), cmd.getOptionValue("family","data"), 
                                          cmd.getOptionValue("qualifier","json"), Boolean.parseBoolean(cmd.getOptionValue("prefixdate","true")),
-                                         cmd.getOptionValue("groupname","bagheera"), cmd.getOptionValue("grouppassword","bagheera"));
+                                         cmd.getOptionValue("groupname","bagheera"), cmd.getOptionValue("grouppassword","bagheera"),
+                                         cmd.getOptionValue("hzservers","localhost:5701").split(","));
             consumer.poll();            
         } catch (ParseException e) {
             System.out.println(e.getMessage());
