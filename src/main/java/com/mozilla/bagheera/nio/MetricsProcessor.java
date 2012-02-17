@@ -111,7 +111,7 @@ public class MetricsProcessor {
                 
                 // Delete the key specified by the X-Obsolete-Document header
                 if (obsoleteDocId != null) {
-                    hcMap.remove(id);
+                    hcMap.remove(obsoleteDocId);
                 }
                 status = HttpResponseStatus.CREATED;
             } else {
