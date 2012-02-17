@@ -177,6 +177,6 @@ All aspects of this software are distributed under Apache Software License 2.0. 
 ### Contributors ###
 
 * Xavier Stevens ([@xstevens](http://twitter.com/xstevens))
-* Daniel Einspanjer ([@deinspanjer](http://twitter/deinspanjer))
+* Daniel Einspanjer ([@deinspanjer](http://twitter.com/deinspanjer))
 * Anurag Phadke ([@anuragphadke](http://twitter.com/anuragphadke))
-* Mark Reid
+* Mark Reid ([@reid_write](http://twitter.com/reid_write))
