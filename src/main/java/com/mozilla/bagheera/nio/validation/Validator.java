@@ -51,7 +51,9 @@ public class Validator implements NamespaceValidator, UriValidator, JsonValidato
         }
         nsPatternBuilder.append(")");
         uriPatternBuilder.append(")/*([^/]*)");
+        LOG.info("Namespace pattern: " + nsPatternBuilder.toString());
         validNamespacePattern = Pattern.compile(nsPatternBuilder.toString());
+        LOG.info("URI pattern: " + uriPatternBuilder.toString());
         validUriPattern = Pattern.compile(uriPatternBuilder.toString());
         
         jsonFactory = new JsonFactory();

@@ -168,19 +168,20 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
-        Throwable cause = e.getCause();
-        LOG.error(cause.getMessage());
-        
+        Throwable cause = e.getCause();        
         HttpResponse response = null;
         if (cause instanceof InvalidJsonException) {
+            LOG.error(cause.getMessage());
             response = new DefaultHttpResponse(HTTP_1_1, NOT_ACCEPTABLE);
         } else if (cause instanceof TooLongFrameException) {
             response = new DefaultHttpResponse(HTTP_1_1, REQUEST_ENTITY_TOO_LARGE);
         } else if (cause instanceof InvalidPathException) {
             response = new DefaultHttpResponse(HTTP_1_1, NOT_FOUND);
         } else if (cause instanceof SecurityException) {
+            LOG.error(cause.getMessage());
             response = new DefaultHttpResponse(HTTP_1_1, FORBIDDEN);
-        } else {        
+        } else {
+            LOG.error(cause.getMessage());
             response = new DefaultHttpResponse(HTTP_1_1, INTERNAL_SERVER_ERROR);
         }
         

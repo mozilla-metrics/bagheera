@@ -25,7 +25,7 @@ if [ "$HBASE_CONF" = "" ]; then
 fi
 
 if [ -d "/var/run/bagheera" ]; then
-    PIDFILE="/var/run/bagheera/hbase_consumer-$ARGS_HASH.pid"
+    PIDFILE="/var/run/bagheera/hbase_consumer-$CONSUMER_HASH.pid"
 else
     PIDFILE="$bin/../bagheera.pid"
 fi
