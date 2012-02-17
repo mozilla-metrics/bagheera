@@ -74,8 +74,6 @@ public class MetricsProcessor {
     
     private boolean isValidDocument(JsonNode document) {
         if (document == null || !document.isObject()) return false;
-        JsonNode env = document.get("env");
-        if (env == null || !env.isObject()) return false;
 
         JsonNode dataPoints = document.get("dataPoints");
         if (dataPoints == null || !dataPoints.isObject()) return false;
