@@ -78,10 +78,14 @@ public class HBaseConsumer {
                     for (String k : nsMap.keySet()) {
                         String v = nsMap.remove(k);
                         if (v != null) {
-                            byte[] rowId = prefixDate ? IdUtil.bucketizeId(k) : Bytes.toBytes(k);
-                            Put p = new Put(rowId);
-                            p.add(family, qualifier, Bytes.toBytes(v));
-                            puts.add(p);
+                            try {
+                                byte[] rowId = prefixDate ? IdUtil.bucketizeId(k) : Bytes.toBytes(k);
+                                Put p = new Put(rowId);
+                                p.add(family, qualifier, Bytes.toBytes(v));
+                                puts.add(p);
+                            } catch (NumberFormatException e) {
+                                LOG.error("Encountered bad key: " + k, e);
+                            }
                             if (puts.size() >= batchSize) break;
                         }
                     }

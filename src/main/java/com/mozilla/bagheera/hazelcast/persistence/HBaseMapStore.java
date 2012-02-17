@@ -282,15 +282,18 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         HTableInterface table = null;
         try {
             table = pool.getTable(tableName);
-            
-            byte[] rowId = prefixDate ? IdUtil.bucketizeId(key) : Bytes.toBytes(key);
-            Put p = new Put(rowId);
-            if (outputFormatType == StoreFormatType.SMILE) {
-                p.add(family, qualifier, jsonSmileConverter.convertToSmile(value));
-            } else {
-                p.add(family, qualifier, Bytes.toBytes(value));
+            try {
+                byte[] rowId = prefixDate ? IdUtil.bucketizeId(key) : Bytes.toBytes(key);
+                Put p = new Put(rowId);
+                if (outputFormatType == StoreFormatType.SMILE) {
+                    p.add(family, qualifier, jsonSmileConverter.convertToSmile(value));
+                } else {
+                    p.add(family, qualifier, Bytes.toBytes(value));
+                }
+                table.put(p);
+            } catch (NumberFormatException nfe) {
+                LOG.error("Encountered bad key: " + key, nfe);
             }
-            table.put(p);
         } catch (IOException e) {
             LOG.error("Error during put", e);
         } finally {
@@ -311,14 +314,18 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         try {
             List<Put> puts = new ArrayList<Put>(pairs.size());
             for (Map.Entry<String, String> pair : pairs.entrySet()) {
-                byte[] rowId = prefixDate ? IdUtil.bucketizeId(pair.getKey()) : Bytes.toBytes(pair.getKey());
-                Put p = new Put(rowId);
-                if (outputFormatType == StoreFormatType.SMILE) {
-                    p.add(family, qualifier, jsonSmileConverter.convertToSmile(pair.getValue()));
-                } else {
-                    p.add(family, qualifier, Bytes.toBytes(pair.getValue()));
+                try {
+                    byte[] rowId = prefixDate ? IdUtil.bucketizeId(pair.getKey()) : Bytes.toBytes(pair.getKey());
+                    Put p = new Put(rowId);
+                    if (outputFormatType == StoreFormatType.SMILE) {
+                        p.add(family, qualifier, jsonSmileConverter.convertToSmile(pair.getValue()));
+                    } else {
+                        p.add(family, qualifier, Bytes.toBytes(pair.getValue()));
+                    }
+                    puts.add(p);
+                } catch (NumberFormatException nfe) {
+                    LOG.error("Encountered bad key: " + pair.getKey(), nfe);
                 }
-                puts.add(p);
             }
             
             table = (HTable) pool.getTable(tableName);

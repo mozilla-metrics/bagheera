@@ -19,15 +19,15 @@
  */
 package com.mozilla.bagheera.nio.codec.http;
 
-public class SecurityException extends Exception {
+public class HttpSecurityException extends Exception {
 
     private static final long serialVersionUID = 480106127340879943L;
 
-    public SecurityException(String message) {
+    public HttpSecurityException(String message) {
         super(message);
     }
     
-    public SecurityException(String message, Throwable cause) {
+    public HttpSecurityException(String message, Throwable cause) {
         super(message, cause);
     }
 }

@@ -46,10 +46,9 @@ public class JsonFilter extends SimpleChannelUpstreamHandler {
             if (content.readable()) {
                 if (!jsonValidator.isValidJson(content.toString(CharsetUtil.UTF_8))) {
                     throw new InvalidJsonException("Invalid JSON");
-                } else {
-                    Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
                 }
             }
+            Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
         } else {
             ctx.sendUpstream(e);
         }

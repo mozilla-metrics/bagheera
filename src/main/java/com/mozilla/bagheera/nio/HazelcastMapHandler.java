@@ -53,6 +53,7 @@ import org.jboss.netty.util.CharsetUtil;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.IMap;
+import com.mozilla.bagheera.nio.codec.http.HttpSecurityException;
 import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
 import com.mozilla.bagheera.nio.codec.http.PathDecoder;
 import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
@@ -68,7 +69,6 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
 
     // REST endpoints
     private static final String ENDPOINT_SUBMIT = "submit";
-    private static final String ENDPOINT_STATS = "stats";
     
     // Specialized REST namespaces
     private static final String NS_METRICS = "metrics";
@@ -80,9 +80,9 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     }
  
     private void handlePost(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
-        HttpResponseStatus status = NOT_FOUND;
+        HttpResponseStatus status = NOT_ACCEPTABLE;
         ChannelBuffer content = request.getContent();
-        if (content.readable()) {
+        if (content.readable() && content.readableBytes() > 0) {
             if (NS_METRICS.equals(namespace)) {
                 status = metricsProcessor.process(m, id, content.toString(CharsetUtil.UTF_8), 
                                                   e.getChannel().getRemoteAddress().toString(), 
@@ -152,9 +152,6 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                     } else {
                         writeResponse(NOT_FOUND, e, null);
                     }
-                } else if (endpoint != null && ENDPOINT_STATS.equals("endpoint")) {
-                    // TODO: implement stats 
-                    writeResponse(OK, e, null);
                 } else {
                     String userAgent = request.getHeader("User-Agent");
                     String remoteIpAddress = e.getChannel().getRemoteAddress().toString();
@@ -177,7 +174,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
             response = new DefaultHttpResponse(HTTP_1_1, REQUEST_ENTITY_TOO_LARGE);
         } else if (cause instanceof InvalidPathException) {
             response = new DefaultHttpResponse(HTTP_1_1, NOT_FOUND);
-        } else if (cause instanceof SecurityException) {
+        } else if (cause instanceof HttpSecurityException) {
             LOG.error(cause.getMessage());
             response = new DefaultHttpResponse(HTTP_1_1, FORBIDDEN);
         } else {

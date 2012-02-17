@@ -37,10 +37,11 @@ public class BagheeraNio {
     private static final Logger LOG = Logger.getLogger(BagheeraNio.class);
     
     public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
+    private static final int DEFAULT_IO_THREADS = Runtime.getRuntime().availableProcessors() * 2;
     
     public static void main(String[] args) {
         int port = Integer.parseInt(System.getProperty("server.port", "8080"));
-        
+ 
         // Initialize Hazelcast now rather than waiting for the first request
         Hazelcast.getDefaultInstance();
         Config config = Hazelcast.getConfig();
@@ -54,12 +55,14 @@ public class BagheeraNio {
         
         // HTTP
         NioServerSocketChannelFactory channelFactory = new NioServerSocketChannelFactory(
-                Executors.newCachedThreadPool(), Executors.newCachedThreadPool());
+                Executors.newCachedThreadPool(), Executors.newFixedThreadPool(DEFAULT_IO_THREADS));
         ServerBootstrap sb = new ServerBootstrap(channelFactory);
         HttpServerPipelineFactory pipeFactory;
         try {
             pipeFactory = new HttpServerPipelineFactory(config.getMapConfigs().keySet());
             sb.setPipelineFactory(pipeFactory);
+            sb.setOption("tcpNoDelay", true);
+            sb.setOption("keepAlive", false);
             sb.bind(new InetSocketAddress(port));
         } catch (IOException e) {
             LOG.error("Error initializing pipeline factory", e);

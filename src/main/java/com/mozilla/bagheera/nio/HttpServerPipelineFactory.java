@@ -36,7 +36,7 @@ import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
 
 import com.mozilla.bagheera.nio.codec.http.AccessFilter;
 import com.mozilla.bagheera.nio.codec.http.ContentLengthFilter;
-import com.mozilla.bagheera.nio.codec.http.UriPatternFilter;
+import com.mozilla.bagheera.nio.codec.http.RootResponse;
 import com.mozilla.bagheera.nio.codec.json.JsonFilter;
 import com.mozilla.bagheera.nio.validation.Validator;
 import com.mozilla.bagheera.util.WildcardProperties;
@@ -76,13 +76,14 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         ChannelPipeline pipeline = Channels.pipeline();
         
         pipeline.addLast("decoder", new HttpRequestDecoder());
+        pipeline.addLast("rootResponse", new RootResponse());
+        pipeline.addLast("statsHandler", new StatsHandler());
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
-        pipeline.addLast("inflater", new HttpContentDecompressor());
-        pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("uriFilter", new UriPatternFilter(validator));
         pipeline.addLast("accessFilter", new AccessFilter(validator, HazelcastMapHandler.NAMESPACE_PATH_IDX, props));
+        pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("jsonValidaton", new JsonFilter(validator));
+        pipeline.addLast("encoder", new HttpResponseEncoder());
         pipeline.addLast("handler", new HazelcastMapHandler(metricsProcessor));
         
         return pipeline;

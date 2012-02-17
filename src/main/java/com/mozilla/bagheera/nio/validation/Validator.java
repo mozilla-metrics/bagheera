@@ -38,7 +38,7 @@ public class Validator implements NamespaceValidator, UriValidator, JsonValidato
     
     public Validator(final Set<String> validMapNames) {
         StringBuilder nsPatternBuilder = new StringBuilder("(");
-        StringBuilder uriPatternBuilder = new StringBuilder("/(submit|stats)/(");
+        StringBuilder uriPatternBuilder = new StringBuilder("/submit/(");
         int i=0, size=validMapNames.size();
         for (String name : validMapNames) {
             nsPatternBuilder.append(name.replaceAll("\\*", ".+"));
