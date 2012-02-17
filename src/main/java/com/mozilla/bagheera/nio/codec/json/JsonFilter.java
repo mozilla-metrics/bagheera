@@ -19,9 +19,6 @@
  */
 package com.mozilla.bagheera.nio.codec.json;
 
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.JsonParser;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.Channels;
@@ -30,33 +27,27 @@ import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.util.CharsetUtil;
 
+import com.mozilla.bagheera.nio.validation.JsonValidator;
+
 public class JsonFilter extends SimpleChannelUpstreamHandler {
  
-    private final JsonFactory jsonFactory;
+    private final JsonValidator jsonValidator;
     
-    public JsonFilter() {
-        this.jsonFactory = new JsonFactory();
+    public JsonFilter(JsonValidator jsonValidator) {
+        this.jsonValidator = jsonValidator;
     }
     
+    @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
         if (msg instanceof HttpRequest) {
             HttpRequest request = (HttpRequest)e.getMessage();
-            JsonParser parser = null;
-            try {
-                ChannelBuffer content = request.getContent();
-                if (content.readable()) {
-                    parser = jsonFactory.createJsonParser(content.toString(CharsetUtil.UTF_8));
-                    while (parser.nextToken() != null) {
-                        // noop
-                    }
-                }
-                Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
-            } catch (JsonParseException ex) {
-                throw new InvalidJsonException("JSON parse error");             
-            } finally {
-                if (parser != null) {
-                    parser.close();
+            ChannelBuffer content = request.getContent();
+            if (content.readable()) {
+                if (!jsonValidator.isValidJson(content.toString(CharsetUtil.UTF_8))) {
+                    throw new InvalidJsonException("Invalid JSON");
+                } else {
+                    Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
                 }
             }
         } else {

@@ -47,6 +47,7 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
         this.props = props;
     }
     
+    @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
         if (msg instanceof HttpRequest) {
@@ -58,7 +59,9 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
                 String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
                 throw new SecurityException(String.format("Tried to access invalid resource: %s - \"%s\" \"%s\"", ns, remoteIpAddress, userAgent));
             }
-            if (request.getMethod() == HttpMethod.GET) {
+            if (request.getMethod() == HttpMethod.POST) {
+                // noop
+            } else if (request.getMethod() == HttpMethod.GET) {
                 boolean allowGetAccess = Boolean.parseBoolean(props.getWildcardProperty(ns + ALLOW_GET_ACCESS, "false"));
                 if (!allowGetAccess) {
                     String userAgent = request.getHeader("User-Agent");
@@ -72,6 +75,10 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
                     String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
                     throw new SecurityException(String.format("Tried to access DELETE method for resource %s - \"%s\" \"%s\"", ns, remoteIpAddress, userAgent));
                 }
+            } else {
+                String userAgent = request.getHeader("User-Agent");
+                String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
+                throw new SecurityException(String.format("Tried to access DELETE method for resource %s - \"%s\" \"%s\"", ns, remoteIpAddress, userAgent));
             }
             Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
         } else {

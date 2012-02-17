@@ -1,24 +1,14 @@
 #!/bin/bash
 
-function usage() {
-  echo "Usage: $0 <server-port> <hazelcast-config-path>"
-  exit 1
-}
-
-# Print usage if incorrect number of args
-[[ $# -ne 2 ]] && usage
-
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
-SERVER_PORT=$1
-JMXREMOTE_PORT=8081
-HAZELCAST_CONF=$2
-SERVER_CLASS_NAME="com.mozilla.bagheera.nio.BagheeraNio"
+MAIN_CLASS_NAME="com.mozilla.bagheera.consumer.HBaseConsumer"
 NOW=`date "+%Y%m%d%H%M%S"`
-BAGHEERA_OPTS="-Dhazelcast.config=$HAZELCAST_CONF -Dhazelcast.jmx=true -Dserver.port=$SERVER_PORT -Dlog4j.defaultInitOverride=true -Dlog4j.configuration=$bin/../conf/bagheera-log4j.properties -Dbagheera.log.dir=$bin/../logs -Dcom.sun.management.jmxremote.port=$JMXREMOTE_PORT -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
-GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/gc.log.$NOW"
-JAVA_OPTS="$BAGHEERA_OPTS -Xss128k -Xms2000m -Xmx2000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:NewRatio=3 $GC_OPTS"
+CONSUMER_HASH=`echo -n \"$@\" | md5sum | cut -f1 -d' '`
+CONSUMER_OPTS="-Dbagheera.log.dir=$bin/../logs -Dconsumer.hash=$CONSUMER_HASH"
+GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/hbase_consumer-gc.log.$NOW"
+JAVA_OPTS="$CONSUMER_OPTS -Xss128k -Xmx1000m -XX:+UseParallelGC"
 
 export MALLOC_ARENA_MAX=4
 
@@ -35,7 +25,7 @@ if [ "$HBASE_CONF" = "" ]; then
 fi
 
 if [ -d "/var/run/bagheera" ]; then
-    PIDFILE="/var/run/bagheera/bagheera.pid"
+    PIDFILE="/var/run/bagheera/hbase_consumer-$ARGS_HASH.pid"
 else
     PIDFILE="$bin/../bagheera.pid"
 fi
@@ -70,10 +60,10 @@ if [ ! -d $bin/../logs ]; then
 fi
 
 if [ "$DAEMON_DETACHED" = false ]; then
-    java $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME
+    java $JAVA_OPTS -cp $CLASSPATH $MAIN_CLASS_NAME "$@"
     RETVAL=$?
 else
-    nohup java $JAVA_OPTS -cp $CLASSPATH $SERVER_CLASS_NAME > $bin/../logs/bagheera.out 2>&1 < /dev/null &
+    nohup java $JAVA_OPTS -cp $CLASSPATH $MAIN_CLASS_NAME "$@" > $bin/../logs/hbase_consumer-$CONSUMER_HASH.out 2>&1 < /dev/null &
     PID=$!
     RETVAL=$?
 

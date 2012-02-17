@@ -35,6 +35,7 @@ public class UriPatternFilter  extends SimpleChannelUpstreamHandler {
         this.uriValidator = uriValidator;
     }
     
+    @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
         if (msg instanceof HttpRequest) {

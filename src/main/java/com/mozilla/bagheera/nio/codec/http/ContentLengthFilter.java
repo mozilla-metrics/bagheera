@@ -37,6 +37,7 @@ public class ContentLengthFilter extends SimpleChannelUpstreamHandler {
         this.maxContentLength = maxContentLength;
     }
     
+    @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
         if (msg instanceof HttpMessage) {

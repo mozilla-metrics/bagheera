@@ -40,7 +40,8 @@ import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
-import com.hazelcast.core.Hazelcast;
+import com.hazelcast.client.HazelcastClient;
+import com.hazelcast.core.HazelcastInstance;
 
 public class SequenceFileConsumer {
 
@@ -48,7 +49,7 @@ public class SequenceFileConsumer {
     
     private static final long DAY_IN_MILLIS = 86400000L;
     
-    private long sleepTime = 5000L;
+    private long sleepTime = 1000L;
     
     // HDFS related member vars
     private Configuration conf;
@@ -65,7 +66,8 @@ public class SequenceFileConsumer {
     // Hazelcast related member vars
     private Map<String, String> nsMap;
 
-    public SequenceFileConsumer(String mapName, String baseDirPath, String dateFormat, long maxFileSize) throws IOException {
+    public SequenceFileConsumer(String mapName, String baseDirPath, String dateFormat, long maxFileSize,
+                                String hzGroupName, String hzGroupPassword, String[] hzClients) throws IOException {
         LOG.info("Initializing writer for map: " + mapName);
         conf = new Configuration();
         conf.setBoolean("fs.automatic.close", false);
@@ -79,7 +81,9 @@ public class SequenceFileConsumer {
         } else {
             baseDir = new Path(baseDirPath + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
         }        
-        nsMap = Hazelcast.getMap(mapName);
+        
+        HazelcastInstance client = HazelcastClient.newHazelcastClient(hzGroupName, hzGroupPassword, hzClients);
+        nsMap = client.getMap(mapName);
     }
     
     private void initWriter() throws IOException {
@@ -184,7 +188,10 @@ public class SequenceFileConsumer {
         options.addOption(new Option("o", "outputdir", true, "Base output directory path."));
         options.addOption(new Option("df", "dateformat", true, "Output subdirectories date format."));
         options.addOption(new Option("fs", "filesize", true, "Maximum output file size."));
-
+        options.addOption(new Option("gn", "groupname", true, "Hazelcast group name."));
+        options.addOption(new Option("gp", "grouppassword", true, "Hazelcast group password."));
+        options.addOption(new Option("hzservers", true, "Hazelcast server list."));
+        
         CommandLineParser parser = new GnuParser();
         SequenceFileConsumer consumer = null;
         try {
@@ -192,7 +199,9 @@ public class SequenceFileConsumer {
             consumer = new SequenceFileConsumer(mapName.getValue(), 
                                                 cmd.getOptionValue("outputdir", "/bagheera"),
                                                 cmd.getOptionValue("dateformat", "yyyy-MM-dd"),
-                                                Long.parseLong(cmd.getOptionValue("filesize", "1073741824")));
+                                                Long.parseLong(cmd.getOptionValue("filesize", "1073741824")),
+                                                cmd.getOptionValue("groupname","bagheera"), cmd.getOptionValue("grouppassword","bagheera"),
+                                                cmd.getOptionValue("hzservers","localhost:5701").split(","));
             consumer.poll();            
         } catch (ParseException e) {
             System.out.println(e.getMessage());

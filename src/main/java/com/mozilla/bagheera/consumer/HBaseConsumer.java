@@ -93,7 +93,6 @@ public class HBaseConsumer {
                     throw new RuntimeException(e);
                 }
             } else {
-                LOG.info("Sleeping for " + sleepTime + "ms");
                 Thread.sleep(sleepTime);
             }
         }
@@ -138,6 +137,7 @@ public class HBaseConsumer {
         options.addOption(new Option("p", "prefixdate", false, "Prefix key with salted date."));
         options.addOption(new Option("gn", "groupname", true, "Hazelcast group name."));
         options.addOption(new Option("gp", "grouppassword", true, "Hazelcast group password."));
+        options.addOption(new Option("hzservers", true, "Hazelcast server list."));
         
         CommandLineParser parser = new GnuParser();
         HBaseConsumer consumer = null;

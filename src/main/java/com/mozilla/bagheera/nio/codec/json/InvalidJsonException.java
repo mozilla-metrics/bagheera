@@ -19,7 +19,9 @@
  */
 package com.mozilla.bagheera.nio.codec.json;
 
-public class InvalidJsonException extends Exception {
+import java.io.IOException;
+
+public class InvalidJsonException extends IOException {
 
     private static final long serialVersionUID = -3575427769547846171L;
 

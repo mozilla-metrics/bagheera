@@ -43,12 +43,12 @@ import com.mozilla.bagheera.util.WildcardProperties;
 
 public class HttpServerPipelineFactory implements ChannelPipelineFactory {
 
+    private final WildcardProperties props;    
+    private final int maxContentLength;
     private final Validator validator;
     private final MetricsProcessor metricsProcessor;
-    private final WildcardProperties props;
-    private final int maxContentLength;
     
-    public HttpServerPipelineFactory(Set<String> validNamespaces, String maxmindPath) throws IOException {
+    public HttpServerPipelineFactory(Set<String> validNamespaces) throws IOException {
         props = new WildcardProperties();
         InputStream in = null;
         try {
@@ -65,7 +65,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         }
         
         validator = new Validator(validNamespaces);
-        metricsProcessor = new MetricsProcessor(maxmindPath);
+        metricsProcessor = new MetricsProcessor(props.getProperty("maxmind.db.path"));
         maxContentLength = Integer.parseInt(props.getProperty("max.content.length","1048576"));
     }
     
@@ -82,7 +82,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("encoder", new HttpResponseEncoder());
         pipeline.addLast("uriFilter", new UriPatternFilter(validator));
         pipeline.addLast("accessFilter", new AccessFilter(validator, HazelcastMapHandler.NAMESPACE_PATH_IDX, props));
-        pipeline.addLast("jsonValidaton", new JsonFilter());
+        pipeline.addLast("jsonValidaton", new JsonFilter(validator));
         pipeline.addLast("handler", new HazelcastMapHandler(metricsProcessor));
         
         return pipeline;

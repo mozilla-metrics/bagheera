@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 The Apache Software Foundation
+ * Copyright 2012 Mozilla Foundation
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -17,22 +17,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.rest;
+package com.mozilla.bagheera.nio.validation;
 
-import javax.ws.rs.core.CacheControl;
+import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
 
-public class ResourceBase {
-	
-	private static CacheControl cacheControl;
-	static {
-		cacheControl = new CacheControl();
-		cacheControl.setNoCache(true);
-		cacheControl.setNoTransform(false);
-	}
-
-	RESTSingleton rs;
-	
-	public ResourceBase() {
-	    rs = RESTSingleton.getInstance();
-	}
+public interface JsonValidator {
+    
+    public boolean isValidJson(String json) throws InvalidJsonException;
+    
 }

@@ -40,7 +40,6 @@ public class BagheeraNio {
     
     public static void main(String[] args) {
         int port = Integer.parseInt(System.getProperty("server.port", "8080"));
-        String maxmindPath = System.getProperty("maxmind.db.path");
         
         // Initialize Hazelcast now rather than waiting for the first request
         Hazelcast.getDefaultInstance();
@@ -59,7 +58,7 @@ public class BagheeraNio {
         ServerBootstrap sb = new ServerBootstrap(channelFactory);
         HttpServerPipelineFactory pipeFactory;
         try {
-            pipeFactory = new HttpServerPipelineFactory(config.getMapConfigs().keySet(), maxmindPath);
+            pipeFactory = new HttpServerPipelineFactory(config.getMapConfigs().keySet());
             sb.setPipelineFactory(pipeFactory);
             sb.bind(new InetSocketAddress(port));
         } catch (IOException e) {
