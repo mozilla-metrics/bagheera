@@ -35,6 +35,8 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.UUID;
 
+import com.mozilla.bagheera.metrics.HttpMetric;
+import com.mozilla.bagheera.metrics.MetricsManager;
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
@@ -80,76 +82,25 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     private static final String NS_METRICS = "metrics";
     
     private MetricsProcessor metricsProcessor;
-    private HashMap<String, HttpMetrics> httpMetricsMap = new HashMap<String, HttpMetrics>();
-    
-    private final class HttpMetrics {
-        public final String namespace;
-        public final Counter totalReqsCount, failedReqsCount, successfulReqsCount;
-        public final Counter totalReqsSize, failedReqsSize, successfulReqsSize;
-        
-        HttpMetrics(String namespace) {
-            if ((namespace == null) || (namespace == ""))
-                this.namespace = "global";
-            else            
-                this.namespace = namespace;
-
-            String name_prefix = "bagheera." + this.namespace + ".";
-            this.totalReqsCount = Metrics.newCounter(new MetricName(HazelcastMapHandler.class, name_prefix + "total_reqs_count"));
-            this.failedReqsCount = Metrics.newCounter(new MetricName(HazelcastMapHandler.class, name_prefix + "failed_reqs_count"));
-            this.successfulReqsCount = Metrics.newCounter(new MetricName(HazelcastMapHandler.class, name_prefix + "successful_reqs_count"));
-            this.totalReqsSize = Metrics.newCounter(new MetricName(HazelcastMapHandler.class, name_prefix + "total_reqs_size"));
-            this.failedReqsSize = Metrics.newCounter(new MetricName(HazelcastMapHandler.class, name_prefix + "failed_reqs_size"));
-            this.successfulReqsSize = Metrics.newCounter(new MetricName(HazelcastMapHandler.class, name_prefix + "successful_reqs_size"));
-        }
-    }
- 
-    private void updateFailed(HttpMetrics metric, Integer size) {
-        HttpMetrics global_metric = getHttpMetrics("global");
-        
-        metric.failedReqsCount.inc();
-        metric.failedReqsSize.inc(size);
-        metric.totalReqsCount.inc();
-        metric.totalReqsSize.inc(size);
-        
-        global_metric.failedReqsCount.inc();
-        global_metric.failedReqsSize.inc(size);
-        global_metric.totalReqsCount.inc();
-        global_metric.totalReqsSize.inc(size);
-    }
-    
-    private void updateSuccessful(HttpMetrics metric, Integer size) {
-        HttpMetrics global_metric = getHttpMetrics("global");
-
-        metric.successfulReqsCount.inc();
-        metric.successfulReqsSize.inc(size);
-        metric.totalReqsCount.inc();
-        metric.totalReqsSize.inc(size);
-
-        global_metric.successfulReqsCount.inc();
-        global_metric.successfulReqsSize.inc(size);
-        global_metric.totalReqsCount.inc();
-        global_metric.totalReqsSize.inc(size);
-    }
-    
-    private synchronized HttpMetrics getHttpMetrics(String namespace) {
-        if (this.httpMetricsMap.containsKey(namespace))
-            return this.httpMetricsMap.get(namespace);
-        else {
-            HttpMetrics m = new HttpMetrics(namespace);
-            this.httpMetricsMap.put(namespace, m);
-            return m;
-        }
-    }
 
     public HazelcastMapHandler(MetricsProcessor metricsProcessor) {
         this.metricsProcessor = metricsProcessor;
     }
  
+    private void updateFailed(String namespace, int size) {
+        MetricsManager.getInstance().getHttpMetricForNamespace(namespace).updateFailed(size);
+        MetricsManager.getInstance().getGlobalHttpMetric().updateFailed(size);
+    }
+
+    private void updateSuccesssful(String namespace, int size) {
+        MetricsManager.getInstance().getHttpMetricForNamespace(namespace).updateSuccessful(size);
+        MetricsManager.getInstance().getGlobalHttpMetric().updateSuccessful(size);
+    }
+
     private void handlePost(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
         HttpResponseStatus status = NOT_ACCEPTABLE;
         ChannelBuffer content = request.getContent();
-        HttpMetrics ns_metric = getHttpMetrics(namespace);
-        
+
         if (content.readable() && content.readableBytes() > 0) {
             if (NS_METRICS.equals(namespace)) {
                 status = metricsProcessor.process(m, id, content.toString(CharsetUtil.UTF_8), 
@@ -162,10 +113,10 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
         }
 
         if (status != CREATED) {
-            updateFailed(ns_metric, content.readableBytes());
+            updateFailed(namespace, content.readableBytes());
         }
         else {
-            updateSuccessful(ns_metric, content.readableBytes());
+            updateSuccesssful(namespace, content.readableBytes());
         }
 
         writeResponse(status, e, URI.create(id).toString());
@@ -208,7 +159,6 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
-        HttpMetrics metric = this.getHttpMetrics("global");
 
         if (msg instanceof HttpRequest) {
             HttpRequest request = (HttpRequest) e.getMessage();

@@ -16,6 +16,9 @@ import org.apache.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.Properties;
 import java.io.InputStream;
@@ -23,10 +26,14 @@ import java.io.InputStream;
 import com.yammer.metrics.core.Counter;
 
 public class MetricsManager {
+    private static final String METRICS_NAME_PREFIX = "bagheera";
+    private static final String GLOBAL_HTTP_METRIC_ID = METRICS_NAME_PREFIX + "." + "global";
+
     private static final Logger LOG = Logger.getLogger(MetricsManager.class);
     private static MetricsManager instance = null;
     private static final String METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
     private final Properties MetricsConfig;
+    private ConcurrentMap<String, HttpMetric> httpMetrics;
     
     private MetricsManager() {
         Properties prop = new Properties();
@@ -102,9 +109,45 @@ public class MetricsManager {
                 getConfigParam("ganglia.host"), Integer.parseInt(getConfigParam("ganglia.port")));
     }
 
+    private void configureHttpMetrics() {
+        httpMetrics = new ConcurrentHashMap<String, HttpMetric> ();
+        HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
+        httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
+    }
+
     public void run() throws Exception {
         this.configureHealthChecks();
         this.configureWebServer();
         this.configureReporters();
+        this.configureHttpMetrics();
+    }
+
+    private String namespaceToId(String namespace) {
+        return METRICS_NAME_PREFIX + ".ns." + namespace;
+    }
+
+    public HttpMetric getGlobalHttpMetric() {
+        return getHttpMetricForId(GLOBAL_HTTP_METRIC_ID);
+    }
+
+    private HttpMetric getHttpMetricForId(String id) {
+        final HttpMetric metric = httpMetrics.get(id);
+
+        if (metric == null) {
+            final HttpMetric newMetric = httpMetrics.putIfAbsent(id, new HttpMetric(id));
+            if (newMetric == null) {
+                return httpMetrics.get(id);
+            }
+            else {
+                return newMetric;
+            }
+        }
+        else {
+            return metric;
+        }
+    }
+
+    public HttpMetric getHttpMetricForNamespace(String namespace) {
+        return getHttpMetricForId(namespaceToId(namespace));
     }
 }
