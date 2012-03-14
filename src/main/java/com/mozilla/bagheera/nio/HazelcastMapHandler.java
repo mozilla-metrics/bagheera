@@ -92,7 +92,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
         MetricsManager.getInstance().getGlobalHttpMetric().updateFailed(size);
     }
 
-    private void updateSuccesssful(String namespace, int size) {
+    private void updateSuccessful(String namespace, int size) {
         MetricsManager.getInstance().getHttpMetricForNamespace(namespace).updateSuccessful(size);
         MetricsManager.getInstance().getGlobalHttpMetric().updateSuccessful(size);
     }
@@ -116,7 +116,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
             updateFailed(namespace, content.readableBytes());
         }
         else {
-            updateSuccesssful(namespace, content.readableBytes());
+            updateSuccessful(namespace, content.readableBytes());
         }
 
         writeResponse(status, e, URI.create(id).toString());
