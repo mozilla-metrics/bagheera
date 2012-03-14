@@ -176,10 +176,10 @@ public class Rrd4jReporter extends AbstractPollingReporter implements
         }
     }
 
-    private void processMetric(MetricName name, DsType metric_type, Double value, String units) throws IOException {
+    private void processMetric(MetricName name, DsType metricType, Double value, String units) throws IOException {
         RrdDb db = this.getDBHandle(name);
         if (db == null) {
-            db = createDB(name, metric_type);
+            db = createDB(name, metricType);
         }
 
         try {
