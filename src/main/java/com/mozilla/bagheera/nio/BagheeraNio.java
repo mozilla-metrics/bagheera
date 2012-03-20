@@ -19,11 +19,13 @@
  */
 package com.mozilla.bagheera.nio;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
+import com.mozilla.bagheera.metrics.MetricsManager;
 import org.apache.log4j.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
@@ -38,10 +40,12 @@ public class BagheeraNio {
     
     public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
     private static final int DEFAULT_IO_THREADS = Runtime.getRuntime().availableProcessors() * 2;
-    
-    public static void main(String[] args) {
+
+    public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(System.getProperty("server.port", "8080"));
- 
+
+        /* setup metrics collection, reporting etc */
+        MetricsManager.getInstance().run();
         // Initialize Hazelcast now rather than waiting for the first request
         Hazelcast.getDefaultInstance();
         Config config = Hazelcast.getConfig();

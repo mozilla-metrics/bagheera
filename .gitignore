@@ -38,3 +38,7 @@ logs
 ehthumbs.db
 Icon?
 Thumbs.db
+
+# IntelliJ Idea project files
+.idea
+*.iml

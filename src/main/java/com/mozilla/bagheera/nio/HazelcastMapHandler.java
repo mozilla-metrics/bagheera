@@ -32,8 +32,11 @@ import static org.jboss.netty.handler.codec.http.HttpResponseStatus.REQUEST_ENTI
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.UUID;
 
+import com.mozilla.bagheera.metrics.HttpMetric;
+import com.mozilla.bagheera.metrics.MetricsManager;
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
@@ -58,6 +61,11 @@ import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
 import com.mozilla.bagheera.nio.codec.http.PathDecoder;
 import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
 
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Counter;
+import com.yammer.metrics.core.MetricName;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
 
     private static final Logger LOG = Logger.getLogger(HazelcastMapHandler.class);
@@ -74,14 +82,25 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     private static final String NS_METRICS = "metrics";
     
     private MetricsProcessor metricsProcessor;
-    
+
     public HazelcastMapHandler(MetricsProcessor metricsProcessor) {
         this.metricsProcessor = metricsProcessor;
     }
  
+    private void updateFailed(String namespace, int size) {
+        MetricsManager.getInstance().getHttpMetricForNamespace(namespace).updateFailed(size);
+        MetricsManager.getInstance().getGlobalHttpMetric().updateFailed(size);
+    }
+
+    private void updateSuccessful(String namespace, int size) {
+        MetricsManager.getInstance().getHttpMetricForNamespace(namespace).updateSuccessful(size);
+        MetricsManager.getInstance().getGlobalHttpMetric().updateSuccessful(size);
+    }
+
     private void handlePost(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
         HttpResponseStatus status = NOT_ACCEPTABLE;
         ChannelBuffer content = request.getContent();
+
         if (content.readable() && content.readableBytes() > 0) {
             if (NS_METRICS.equals(namespace)) {
                 status = metricsProcessor.process(m, id, content.toString(CharsetUtil.UTF_8), 
@@ -92,11 +111,20 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                 status = CREATED;
             }
         }
+
+        if (status != CREATED) {
+            updateFailed(namespace, content.readableBytes());
+        }
+        else {
+            updateSuccessful(namespace, content.readableBytes());
+        }
+
         writeResponse(status, e, URI.create(id).toString());
     }
     
     private void handleGet(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
         String v = m.get(id);
+
         if (v != null) {
             writeResponse(OK, e, m.get(id));
         } else {
@@ -130,37 +158,40 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-            Object msg = e.getMessage();
-            if (msg instanceof HttpRequest) {
-                HttpRequest request = (HttpRequest) e.getMessage();
-                PathDecoder pd = new PathDecoder(request.getUri());
-                String endpoint = pd.getPathElement(ENDPOINT_PATH_IDX);
-                if (endpoint != null && ENDPOINT_SUBMIT.equals(endpoint)) {
-                    String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
-                    String id = pd.getPathElement(ID_PATH_IDX);
-                    if (id == null) {
-                        id = UUID.randomUUID().toString();
-                    }
-                    
-                    IMap<String,String> m = Hazelcast.getMap(namespace);
-                    if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
-                        handlePost(e, request, namespace, id, m);
-                    } else if (request.getMethod() == HttpMethod.GET) {
-                        handleGet(e, request, namespace, id, m);
-                    } else if (request.getMethod() == HttpMethod.DELETE) {
-                        handleDelete(e, request, namespace, id, m);
-                    } else {
-                        writeResponse(NOT_FOUND, e, null);
-                    }
+        Object msg = e.getMessage();
+
+        if (msg instanceof HttpRequest) {
+            HttpRequest request = (HttpRequest) e.getMessage();
+            PathDecoder pd = new PathDecoder(request.getUri());
+            String endpoint = pd.getPathElement(ENDPOINT_PATH_IDX);
+
+            if (endpoint != null && ENDPOINT_SUBMIT.equals(endpoint)) {
+                String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
+                String id = pd.getPathElement(ID_PATH_IDX);
+                if (id == null) {
+                    id = UUID.randomUUID().toString();
+                }
+
+                IMap<String,String> m = Hazelcast.getMap(namespace);
+
+                if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
+                    handlePost(e, request, namespace, id, m);
+                } else if (request.getMethod() == HttpMethod.GET) {
+                    handleGet(e, request, namespace, id, m);
+                } else if (request.getMethod() == HttpMethod.DELETE) {
+                    handleDelete(e, request, namespace, id, m);
                 } else {
-                    String userAgent = request.getHeader("User-Agent");
-                    String remoteIpAddress = e.getChannel().getRemoteAddress().toString();
-                    LOG.warn(String.format("Tried to access invalid resource - \"%s\" \"%s\"", remoteIpAddress, userAgent));
-                    writeResponse(NOT_ACCEPTABLE, e, null);
+                    writeResponse(NOT_FOUND, e, null);
                 }
             } else {
-                writeResponse(INTERNAL_SERVER_ERROR, e, null);
+                String userAgent = request.getHeader("User-Agent");
+                String remoteIpAddress = e.getChannel().getRemoteAddress().toString();
+                LOG.warn(String.format("Tried to access invalid resource - \"%s\" \"%s\"", remoteIpAddress, userAgent));
+                writeResponse(NOT_ACCEPTABLE, e, null);
             }
+        } else {
+            writeResponse(INTERNAL_SERVER_ERROR, e, null);
+        }
     }
 
     @Override
