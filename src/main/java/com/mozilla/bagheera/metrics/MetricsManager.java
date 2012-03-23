@@ -1,151 +1,120 @@
+/*
+ * Copyright 2012 Mozilla Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.mozilla.bagheera.metrics;
 
-import com.yammer.metrics.reporting.ConsoleReporter;
-import com.yammer.metrics.reporting.GangliaReporter;
-
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import com.yammer.metrics.reporting.MetricsServlet;
-import com.yammer.metrics.reporting.HealthCheckServlet;
-import com.yammer.metrics.util.DeadlockHealthCheck;
-import com.yammer.metrics.HealthChecks;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.ServletHolder;
-
-import org.apache.log4j.Logger;
-import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.io.InputStream;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.Properties;
-import java.io.InputStream;
 
-import com.yammer.metrics.core.Counter;
+import com.yammer.metrics.HealthChecks;
+import com.yammer.metrics.reporting.GangliaReporter;
+import com.yammer.metrics.reporting.GraphiteReporter;
+import com.yammer.metrics.util.DeadlockHealthCheck;
 
 public class MetricsManager {
+
+    private static final String METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
+    private static final String METRICS_PROPERTIES_PREFIX = "bagheera.metrics.";
     private static final String METRICS_NAME_PREFIX = "bagheera";
     private static final String GLOBAL_HTTP_METRIC_ID = METRICS_NAME_PREFIX + "." + "global";
 
-    private static final Logger LOG = Logger.getLogger(MetricsManager.class);
     private static MetricsManager instance = null;
-    private static final String METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
-    private final Properties MetricsConfig;
-    private ConcurrentMap<String, HttpMetric> httpMetrics;
-    
-    private MetricsManager() {
-        Properties prop = new Properties();
-        InputStream in = getClass().getResourceAsStream(METRICS_PROPERTIES_RESOURCE_NAME);
 
+    private final Properties props;
+    private ConcurrentMap<String, HttpMetric> httpMetrics;
+
+    private MetricsManager() {
+        props = new Properties();
+        InputStream in = getClass().getResourceAsStream(METRICS_PROPERTIES_RESOURCE_NAME);
         try {
-            prop.load(in);
+            props.load(in);
             in.close();
         } catch (IOException e) {
             throw new IllegalArgumentException("Could not find the properites file: " + METRICS_PROPERTIES_RESOURCE_NAME);
         }
         
-        MetricsConfig = prop;
-    }        
-
-    public synchronized static MetricsManager getInstance() {
-        if(instance == null) {
-            instance = new MetricsManager();
-        }
-        return instance;
+        configureHealthChecks();
+        configureReporters();
+        configureHttpMetrics();
     }
 
     private void configureHealthChecks() {
         HealthChecks.register(new DeadlockHealthCheck());
     }
-
-    public String getConfigParam(String name) {
-        return getConfigParam(name, null);
-    }
     
-    public String getConfigParam(String name, String defval) {
-        return MetricsConfig.getProperty("bagheera.metrics." + name, defval);
-    }
-    
-    private void configureWebServer() throws Exception {
-        Integer port = Integer.parseInt(getConfigParam("webserver.port"));
-        String host = getConfigParam("webserver.host");
-        InetSocketAddress addr;
-        
-        if (host == null)
-            addr = new InetSocketAddress(port);
-        else
-            addr = new InetSocketAddress(host, port);
-        
-        Server server = new Server(addr);
-        ServletContextHandler handler = new ServletContextHandler(ServletContextHandler.SESSIONS);
-        handler.setContextPath("/");
-        
-        handler.addServlet(MetricsServlet.class, "/metrics");
-        handler.addServlet(HealthCheckServlet.class, "/health");
-
-        ServletHolder holder = new ServletHolder(DefaultServlet.class);
-        holder.setInitParameter("dirAllowed", "true");
-        holder.setInitParameter("resourceBase",getConfigParam("webserver.static.path"));
-        holder.setInitParameter("pathInfoOnly", "true");
-        handler.addServlet(holder, "/static/*");
-
-        server.setHandler(handler);
-        server.start();
-    }
-
     private void configureReporters() {
-        if (Boolean.parseBoolean(getConfigParam("rrd.enable")))
-            Rrd4jReporter.enable(
-                Integer.parseInt(getConfigParam("rrd.db.update.secs")),
-                TimeUnit.SECONDS,
-                new File(getConfigParam("rrd.db.path")),
-                new File(getConfigParam("rrd.graph.path")),
-                Integer.parseInt(getConfigParam("rrd.graph.update.secs")));
-        
-        if (Boolean.parseBoolean(getConfigParam("ganglia.enable")))
+        if (Boolean.parseBoolean(getConfigParam("ganglia.enable"))) {
             GangliaReporter.enable(Long.parseLong(getConfigParam("ganglia.update.secs")), TimeUnit.SECONDS,
-                getConfigParam("ganglia.host"), Integer.parseInt(getConfigParam("ganglia.port")));
+                    getConfigParam("ganglia.host"), Integer.parseInt(getConfigParam("ganglia.port")));
+        }
+        if (Boolean.parseBoolean(getConfigParam("graphite.enable"))) {
+            GraphiteReporter.enable(Long.parseLong(getConfigParam("graphite.update.secs")), TimeUnit.SECONDS,
+                    getConfigParam("graphite.host"), Integer.parseInt(getConfigParam("graphite.port")));
+        }
     }
 
     private void configureHttpMetrics() {
-        httpMetrics = new ConcurrentHashMap<String, HttpMetric> ();
+        httpMetrics = new ConcurrentHashMap<String, HttpMetric>();
         HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
         httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
-    }
-
-    public void run() throws Exception {
-        this.configureHealthChecks();
-        this.configureWebServer();
-        this.configureReporters();
-        this.configureHttpMetrics();
     }
 
     private String namespaceToId(String namespace) {
         return METRICS_NAME_PREFIX + ".ns." + namespace;
     }
-
-    public HttpMetric getGlobalHttpMetric() {
-        return getHttpMetricForId(GLOBAL_HTTP_METRIC_ID);
-    }
-
+    
     private HttpMetric getHttpMetricForId(String id) {
         final HttpMetric metric = httpMetrics.get(id);
-
         if (metric == null) {
             final HttpMetric newMetric = httpMetrics.putIfAbsent(id, new HttpMetric(id));
             if (newMetric == null) {
                 return httpMetrics.get(id);
-            }
-            else {
+            } else {
                 return newMetric;
             }
-        }
-        else {
+        } else {
             return metric;
         }
     }
+    
+    public synchronized static MetricsManager getInstance() {
+        if (instance == null) {
+            instance = new MetricsManager();
+        }
+        return instance;
+    }
+
+    public String getConfigParam(String name) {
+        return getConfigParam(name, null);
+    }
+
+    public String getConfigParam(String name, String defval) {
+        return props.getProperty(METRICS_PROPERTIES_PREFIX + name, defval);
+    }
+
+    public HttpMetric getGlobalHttpMetric() {
+        return getHttpMetricForId(GLOBAL_HTTP_METRIC_ID);
+    }    
 
     public HttpMetric getHttpMetricForNamespace(String namespace) {
         return getHttpMetricForId(namespaceToId(namespace));

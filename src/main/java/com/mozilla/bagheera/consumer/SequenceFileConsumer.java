@@ -40,6 +40,7 @@ import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
+import com.hazelcast.client.ClientConfig;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.core.HazelcastInstance;
 
@@ -82,7 +83,10 @@ public class SequenceFileConsumer {
             baseDir = new Path(baseDirPath + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
         }        
         
-        HazelcastInstance client = HazelcastClient.newHazelcastClient(hzGroupName, hzGroupPassword, hzClients);
+        ClientConfig config = new ClientConfig();
+        config.addAddress(hzClients);
+        config.getGroupConfig().setName(hzGroupName).setPassword(hzGroupPassword);
+        HazelcastInstance client = HazelcastClient.newHazelcastClient(config);
         nsMap = client.getMap(mapName);
     }
     

@@ -32,11 +32,8 @@ import static org.jboss.netty.handler.codec.http.HttpResponseStatus.REQUEST_ENTI
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.net.URI;
-import java.util.HashMap;
 import java.util.UUID;
 
-import com.mozilla.bagheera.metrics.HttpMetric;
-import com.mozilla.bagheera.metrics.MetricsManager;
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
@@ -56,15 +53,11 @@ import org.jboss.netty.util.CharsetUtil;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.IMap;
+import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.nio.codec.http.HttpSecurityException;
 import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
 import com.mozilla.bagheera.nio.codec.http.PathDecoder;
 import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
-
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Counter;
-import com.yammer.metrics.core.MetricName;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
 
@@ -82,21 +75,25 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     private static final String NS_METRICS = "metrics";
     
     private MetricsProcessor metricsProcessor;
-
+    private MetricsManager metricsManager;
+    
     public HazelcastMapHandler(MetricsProcessor metricsProcessor) {
         this.metricsProcessor = metricsProcessor;
+        this.metricsManager = MetricsManager.getInstance();
     }
  
-    private void updateFailed(String namespace, int size) {
-        MetricsManager.getInstance().getHttpMetricForNamespace(namespace).updateFailed(size);
-        MetricsManager.getInstance().getGlobalHttpMetric().updateFailed(size);
+    private void updateRequestMetrics(String namespace, String method, int size) {
+        metricsManager.getHttpMetricForNamespace(namespace).updateRequestMetrics(method, size);
+        metricsManager.getGlobalHttpMetric().updateRequestMetrics(method, size);
     }
 
-    private void updateSuccessful(String namespace, int size) {
-        MetricsManager.getInstance().getHttpMetricForNamespace(namespace).updateSuccessful(size);
-        MetricsManager.getInstance().getGlobalHttpMetric().updateSuccessful(size);
+    private void updateResponseMetrics(String namespace, int status) {
+        if (namespace != null) {
+            metricsManager.getHttpMetricForNamespace(namespace).updateResponseMetrics(status);
+        }
+        metricsManager.getGlobalHttpMetric().updateResponseMetrics(status);
     }
-
+    
     private void handlePost(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
         HttpResponseStatus status = NOT_ACCEPTABLE;
         ChannelBuffer content = request.getContent();
@@ -112,36 +109,33 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
             }
         }
 
-        if (status != CREATED) {
-            updateFailed(namespace, content.readableBytes());
-        }
-        else {
-            updateSuccessful(namespace, content.readableBytes());
-        }
-
-        writeResponse(status, e, URI.create(id).toString());
+        updateRequestMetrics(namespace, request.getMethod().getName(), content.readableBytes());
+        writeResponse(status, e, namespace, URI.create(id).toString());
     }
     
     private void handleGet(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
         String v = m.get(id);
-
         if (v != null) {
-            writeResponse(OK, e, m.get(id));
+            updateRequestMetrics(namespace, request.getMethod().getName(), v.length());
+            writeResponse(OK, e, namespace, m.get(id));
         } else {
-            writeResponse(NO_CONTENT, e, null);
+            updateRequestMetrics(namespace, request.getMethod().getName(), 0);
+            writeResponse(NO_CONTENT, e, namespace, null);
         }
     }
     
     private void handleDelete(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {  
         String v = m.remove(id);
         if (v != null) {
-            writeResponse(OK, e, null);
+            updateRequestMetrics(namespace, request.getMethod().getName(), 0);
+            writeResponse(OK, e, namespace, null);
         } else {
-            writeResponse(NO_CONTENT, e, null);
+            updateRequestMetrics(namespace, request.getMethod().getName(), 0);
+            writeResponse(NO_CONTENT, e, namespace, null);
         }
     }
     
-    private void writeResponse(HttpResponseStatus status, MessageEvent e, String entity) {
+    private void writeResponse(HttpResponseStatus status, MessageEvent e, String namespace, String entity) {
         // Build the response object.
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, status);
         response.addHeader(CONTENT_TYPE, "plain/text");
@@ -154,6 +148,8 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
         // Write response
         ChannelFuture future = e.getChannel().write(response);
         future.addListener(ChannelFutureListener.CLOSE);
+        
+        updateResponseMetrics(namespace, response.getStatus().getCode());
     }
     
     @Override
@@ -173,7 +169,6 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                 }
 
                 IMap<String,String> m = Hazelcast.getMap(namespace);
-
                 if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
                     handlePost(e, request, namespace, id, m);
                 } else if (request.getMethod() == HttpMethod.GET) {
@@ -181,16 +176,16 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                 } else if (request.getMethod() == HttpMethod.DELETE) {
                     handleDelete(e, request, namespace, id, m);
                 } else {
-                    writeResponse(NOT_FOUND, e, null);
+                    writeResponse(NOT_FOUND, e, namespace, null);
                 }
             } else {
                 String userAgent = request.getHeader("User-Agent");
                 String remoteIpAddress = e.getChannel().getRemoteAddress().toString();
                 LOG.warn(String.format("Tried to access invalid resource - \"%s\" \"%s\"", remoteIpAddress, userAgent));
-                writeResponse(NOT_ACCEPTABLE, e, null);
+                writeResponse(NOT_ACCEPTABLE, e, null, null);
             }
         } else {
-            writeResponse(INTERNAL_SERVER_ERROR, e, null);
+            writeResponse(INTERNAL_SERVER_ERROR, e, null, null);
         }
     }
 
@@ -216,6 +211,8 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
         response.addHeader(CONTENT_TYPE, "plain/text");
         ChannelFuture future = e.getChannel().write(response);
         future.addListener(ChannelFutureListener.CLOSE);
+        
+        updateResponseMetrics(null, response.getStatus().getCode());
     }
     
 }

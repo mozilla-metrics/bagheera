@@ -1,40 +1,72 @@
+/*
+ * Copyright 2012 Mozilla Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.mozilla.bagheera.metrics;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Counter;
+import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
 
 public class HttpMetric {
-    public final String id;
-    private Counter totalReqsCount, failedReqsCount, successfulReqsCount;
-    private Counter totalReqsSize, failedReqsSize, successfulReqsSize;
 
+    private final String id;
+    
+    private Meter requests, throughput;
+    private ConcurrentMap<String,Meter> methods;
+    private ConcurrentMap<Integer,Counter> responseCodeCounts;
+    
     HttpMetric(String id) {
         this.id = id;
-        this.configureMetrics();
+        configureMetrics();
     }
     
     private void configureMetrics() {
-        this.totalReqsCount = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".total_reqs_count"));
-        this.failedReqsCount = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".failed_reqs_count"));
-        this.successfulReqsCount = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".successful_reqs_count"));
-        this.totalReqsSize = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".total_reqs_size"));
-        this.failedReqsSize = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".failed_reqs_size"));
-        this.successfulReqsSize = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".successful_reqs_size"));
+        requests = Metrics.newMeter(new MetricName(this.getClass(), this.id + ".requests"), "requests", TimeUnit.SECONDS);
+        throughput = Metrics.newMeter(new MetricName(this.getClass(), this.id + ".throughput"), "bytes", TimeUnit.SECONDS);
+        methods = new ConcurrentHashMap<String,Meter>();
+        responseCodeCounts = new ConcurrentHashMap<Integer,Counter>();
     }
 
-    public void updateFailed(Integer size) {
-        this.failedReqsCount.inc();
-        this.failedReqsSize.inc(size);
-        this.totalReqsCount.inc();
-        this.totalReqsSize.inc(size);
-
+    public void updateRequestMetrics(String method, int contentSize) {
+        requests.mark();
+        throughput.mark(contentSize);
+        if (methods.containsKey(method)) {
+            methods.get(method).mark();
+        } else {
+            Meter methodMeter = Metrics.newMeter(new MetricName(this.getClass(), this.id + ".method." + method), "requests", TimeUnit.SECONDS);
+            methodMeter.mark();
+            methods.put(method, methodMeter);
+        }
     }
-
-    public void updateSuccessful(Integer size) {
-        this.successfulReqsCount.inc();
-        this.successfulReqsSize.inc(size);
-        this.totalReqsCount.inc();
-        this.totalReqsSize.inc(size);
+    
+    public void updateResponseMetrics(int status) {
+        if (responseCodeCounts.containsKey(status)) {
+            responseCodeCounts.get(status).inc();
+        } else {
+            Counter statusCounter = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".response." + status));
+            statusCounter.inc();
+            responseCodeCounts.put(status, statusCounter);
+        }
     }
 }

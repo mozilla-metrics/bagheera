@@ -19,13 +19,11 @@
  */
 package com.mozilla.bagheera.nio;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
-import com.mozilla.bagheera.metrics.MetricsManager;
 import org.apache.log4j.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
@@ -33,6 +31,7 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
+import com.mozilla.bagheera.metrics.MetricsManager;
 
 public class BagheeraNio {
 
@@ -43,9 +42,11 @@ public class BagheeraNio {
 
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(System.getProperty("server.port", "8080"));
-
-        /* setup metrics collection, reporting etc */
-        MetricsManager.getInstance().run();
+        boolean tcpNoDelay = Boolean.parseBoolean(System.getProperty("server.tcpnodelay", "false"));
+        
+        // Initialize metrics collection, reporting, etc.
+        MetricsManager.getInstance();
+        
         // Initialize Hazelcast now rather than waiting for the first request
         Hazelcast.getDefaultInstance();
         Config config = Hazelcast.getConfig();
@@ -65,7 +66,7 @@ public class BagheeraNio {
         try {
             pipeFactory = new HttpServerPipelineFactory(config.getMapConfigs().keySet());
             sb.setPipelineFactory(pipeFactory);
-            sb.setOption("tcpNoDelay", true);
+            sb.setOption("tcpNoDelay", tcpNoDelay);
             sb.setOption("keepAlive", false);
             sb.bind(new InetSocketAddress(port));
         } catch (IOException e) {

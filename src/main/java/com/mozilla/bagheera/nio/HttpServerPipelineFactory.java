@@ -77,7 +77,6 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         
         pipeline.addLast("decoder", new HttpRequestDecoder());
         pipeline.addLast("rootResponse", new RootResponse());
-        pipeline.addLast("statsHandler", new StatsHandler());
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
         pipeline.addLast("accessFilter", new AccessFilter(validator, HazelcastMapHandler.NAMESPACE_PATH_IDX, props));
