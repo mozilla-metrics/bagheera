@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<hazelcast xmlns="http://www.hazelcast.com/schema/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.hazelcast.com/schema/config hazelcast-basic.xsd">
+<hazelcast xmlns="http://www.hazelcast.com/schema/config"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.hazelcast.com/schema/config
+           http://www.hazelcast.com/schema/config/hazelcast-config-2.0.xsd">
 	<group>
 		<name>bagheera</name>
 		<password>bagheera</password>
@@ -25,10 +28,23 @@
 		<keep-alive-seconds>60</keep-alive-seconds>
 	</executor-service>
 	<map name="telemetry">
-		<backup-count>1</backup-count>
+		<time-to-live-seconds>1</time-to-live-seconds>
+		<backup-count>0</backup-count>
 		<eviction-policy>NONE</eviction-policy>
 		<max-size>0</max-size>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
+		<map-store enabled="true">
+		<class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
+			<write-delay-seconds>1</write-delay-seconds>
+			<properties>
+				<property name="hazelcast.hbase.key.prefix.date">true</property>
+				<property name="hazelcast.hbase.pool.size">40</property>
+				<property name="hazelcast.hbase.table">telemetry_test</property>
+				<property name="hazelcast.hbase.column.family">data</property>
+				<property name="hazelcast.hbase.column.qualifier">json</property>
+				<property name="hazelcast.store.format">json</property>
+			</properties>
+		</map-store>
 	</map>
 	<map name="testpilot_*">
 		<time-to-live-seconds>20</time-to-live-seconds>
@@ -40,22 +56,11 @@
 		<map-store enabled="true">
 			<class-name>com.mozilla.bagheera.hazelcast.persistence.SequenceFileMapStore</class-name>
 			<write-delay-seconds>5</write-delay-seconds>
-			<property name="hazelcast.hdfs.basedir">/bagheera</property>
-			<property name="hazelcast.hdfs.dateformat">yyyy-MM-dd</property>
-			<property name="hazelcast.hdfs.max.filesize">1073741824</property>
-		</map-store>
-	</map>
-	<map name="metrics">
-		<time-to-live-seconds>20</time-to-live-seconds>
-		<backup-count>1</backup-count>
-		<eviction-policy>NONE</eviction-policy>
-		<max-size>0</max-size>
-		<eviction-percentage>25</eviction-percentage>
-		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<!-- NoOp -->
-		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.NoOpMapStore</class-name>
-			<write-delay-seconds>5</write-delay-seconds>
+			<properties>
+				<property name="hazelcast.hdfs.basedir">/bagheera</property>
+				<property name="hazelcast.hdfs.dateformat">yyyy-MM-dd</property>
+				<property name="hazelcast.hdfs.max.filesize">1073741824</property>
+			</properties>
 		</map-store>
 	</map>
 </hazelcast>

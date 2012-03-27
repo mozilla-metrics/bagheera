@@ -70,6 +70,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
 
         Configuration conf = HBaseConfiguration.create();
         for (String name : properties.stringPropertyNames()) {
+            LOG.info("property name: " + name + " value: " + properties.getProperty(name));
             if (name.startsWith("hbase.") || name.startsWith("hadoop.") || name.startsWith("zookeeper.")) {
                 conf.set(name, properties.getProperty(name));
             }
@@ -80,7 +81,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         tableName = Bytes.toBytes(properties.getProperty("hazelcast.hbase.table", mapName));
         family = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.family", "data"));
         qualifier = Bytes.toBytes(properties.getProperty("hazelcast.hbase.column.qualifier", "json"));
-
+        
         pool = new HTablePool(conf, hbasePoolSize);
         
         try {

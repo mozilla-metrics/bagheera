@@ -42,8 +42,8 @@ public class HttpMetric {
     }
     
     private void configureMetrics() {
-        requests = Metrics.newMeter(new MetricName(this.getClass(), this.id + ".requests"), "requests", TimeUnit.SECONDS);
-        throughput = Metrics.newMeter(new MetricName(this.getClass(), this.id + ".throughput"), "bytes", TimeUnit.SECONDS);
+        requests = Metrics.newMeter(new MetricName(HttpMetric.class, this.id + ".requests"), "requests", TimeUnit.SECONDS);
+        throughput = Metrics.newMeter(new MetricName(HttpMetric.class, this.id + ".throughput"), "bytes", TimeUnit.SECONDS);
         methods = new ConcurrentHashMap<String,Meter>();
         responseCodeCounts = new ConcurrentHashMap<Integer,Counter>();
     }
@@ -54,7 +54,7 @@ public class HttpMetric {
         if (methods.containsKey(method)) {
             methods.get(method).mark();
         } else {
-            Meter methodMeter = Metrics.newMeter(new MetricName(this.getClass(), this.id + ".method." + method), "requests", TimeUnit.SECONDS);
+            Meter methodMeter = Metrics.newMeter(new MetricName(HttpMetric.class, this.id + ".method." + method), "requests", TimeUnit.SECONDS);
             methodMeter.mark();
             methods.put(method, methodMeter);
         }
@@ -64,7 +64,7 @@ public class HttpMetric {
         if (responseCodeCounts.containsKey(status)) {
             responseCodeCounts.get(status).inc();
         } else {
-            Counter statusCounter = Metrics.newCounter(new MetricName(this.getClass(), this.id + ".response." + status));
+            Counter statusCounter = Metrics.newCounter(new MetricName(HttpMetric.class, this.id + ".response." + status));
             statusCounter.inc();
             responseCodeCounts.put(status, statusCounter);
         }

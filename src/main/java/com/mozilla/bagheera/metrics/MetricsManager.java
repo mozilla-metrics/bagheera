@@ -78,7 +78,7 @@ public class MetricsManager {
         HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
         httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
     }
-
+    
     private String namespaceToId(String namespace) {
         return METRICS_NAME_PREFIX + ".ns." + namespace;
     }
