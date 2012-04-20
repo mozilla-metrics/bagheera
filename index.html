@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Bagheera : A REST API for Mozilla Metrics services." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Bagheera</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/mozilla-metrics/bagheera">Fork Me on GitHub</a>
+
+          <h1 id="project_title">Bagheera</h1>
+          <h2 id="project_tagline">A REST API for Mozilla Metrics services.</h2>
+
+          <section id="downloads">
+            <a class="zip_download_link" href="https://github.com/mozilla-metrics/bagheera/zipball/master">Download this project as a .zip file</a>
+            <a class="tar_download_link" href="https://github.com/mozilla-metrics/bagheera/tarball/master">Download this project as a tar.gz file</a>
+          </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>Bagheera</h1>
+
+<p>Version: 0.5  </p>
+
+<h4>REST service for Mozilla Metrics. This service currently uses Hazelcast's distributed in-memory map. The maps can be automatically persisted (Push model) using Hazelcast's persistence classes to persist the map data to various data sinks. We also now provide some consumer implementations to pull data from the maps (Push/Pull model i.e. Pub/Sub).</h4>
+
+<h3>Version Compatability</h3>
+
+<p>This code is built with the following assumptions.  You may get mixed results if you deviate from these versions.</p>
+
+<ul>
+<li>
+<a href="http://hadoop.apache.org">Hadoop</a> 0.20.2+</li>
+<li>
+<a href="http://hbase.apache.org">HBase</a> 0.90+</li>
+<li>
+<a href="http://www.hazelcast.com/">Hazelcast</a> 2.0+</li>
+</ul><h3>Building</h3>
+
+<p>To make a jar you can do:  </p>
+
+<p><code>mvn package</code></p>
+
+<p>The jar file is then located under <code>target</code>.</p>
+
+<h3>Running an instance</h3>
+
+<p>In order to run bagheera on another machine you will probably want to use the <em>dist</em> assembly like so: need to deploy the following to your deployment target which I'll call <code>BAGHEERA_HOME</code>.</p>
+
+<p><code>mvn assembly:assembly</code></p>
+
+<p>The zip file now under the <code>target</code> directory should be deployed to <code>BAGHEERA_HOME</code> on the remote server.</p>
+
+<p>To run Bagheera you can use <code>bin/bagheera</code> or copy the init.d script by the same name from <code>bin/init.d</code> to <code>/etc/init.d</code>. The init script assumes an installation of bagheera at <code>/usr/lib/bagheera</code>, but this can be modified by changing the <code>BAGHEERA_HOME</code> variable near the top of that script. Here is an example of using the regular bagheera script:</p>
+
+<p><code>bin/bagheera 8080 conf/hazelcast.xml.example</code></p>
+
+<p>If you start up multiple instances Hazelcast will auto-discover other instances assuming your network and hazelcast.xml are setup to do so.</p>
+
+<h3>REST Request Format</h3>
+
+<p>Bagheera takes POST data on <em>/map/mymapname/unique-id</em>. Depending on how <em>mymapname</em> is configured in the Hazelcast configuration file, it may write to different sources. That is explained further below.</p>
+
+<p>Here's a quick rundown of HTTP return codes that Bagheera could send back (this isn't comprehensive but rather the most common ones):</p>
+
+<ul>
+<li>201 Created - returned if everything was submitted successfully (default)</li>
+<li>406 Not Acceptable - returned if the POST failed validation in some manner</li>
+<li>500 Server Error - something went horribly wrong and you should check the logs</li>
+</ul><h3>Hazelcast HBaseMapStore Configuration</h3>
+
+<p>Suppose you've created a table called 'mytable' in HBase like so:</p>
+
+<p><code>create 'mytable', {NAME =&gt; 'data', COMPRESSION =&gt; 'LZO', VERSIONS =&gt; '1', TTL =&gt; '2147483647', BLOCKSIZE =&gt; '65536', IN_MEMORY =&gt; 'false', BLOCKCACHE =&gt; 'true'}</code></p>
+
+<p>All you need to do is add a section like this to the hazelcast.xml configuration file:</p>
+
+<pre><code>&lt;map name="mytable"&gt;
+    &lt;time-to-live-seconds&gt;20&lt;/time-to-live-seconds&gt;
+    &lt;backup-count&gt;1&lt;/backup-count&gt;
+    &lt;eviction-policy&gt;NONE&lt;/eviction-policy&gt;
+    &lt;max-size&gt;0&lt;/max-size&gt;
+    &lt;eviction-percentage&gt;25&lt;/eviction-percentage&gt;
+    &lt;merge-policy&gt;hz.ADD_NEW_ENTRY&lt;/merge-policy&gt;
+    &lt;!-- HBaseMapStore --&gt;
+    &lt;map-store enabled="true"&gt;
+        &lt;class-name&gt;com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore&lt;/class-name&gt;
+        &lt;write-delay-seconds&gt;5&lt;/write-delay-seconds&gt;
+        &lt;properties&gt;
+            &lt;property name="hazelcast.hbase.pool.size"&gt;20&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.table"&gt;mytable&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.column.family"&gt;data&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.column.qualifier"&gt;json&lt;/property&gt;
+        &lt;/properties&gt;
+    &lt;/map-store&gt;
+&lt;/map&gt;
+</code></pre>
+
+<p>Notice you can tweak the HBase connection pool size, table and column names as needed for different maps.</p>
+
+<h3>Hazelcast SequenceFileMapStore/TextFileMapStore Configuration</h3>
+
+<p>If you want to configure a Hazelcast Map to persist data to HDFS you can use one of two implementations of HdfsMapStore. The SequenceFileMapStore will write a SequenceFile with Text key/value pairs and the TextFileMapStore will write only values ignoring the key altogether. SequenceFileMapStore will always use block compression whereas TextFileMapStore doesn't use any compression. In the future we may add support for more compression codecs or alternative file formats. Both MapStores will rollover and write new files every day or when <em>hazelcast.hdfs.max.filesize</em> is reached. They will write files to the directory <em>hazelcast.hdfs.basedir/hazelcast.hdfs.dateformat/UUID</em>. Please note that <em>hazelcast.hdfs.max.filesize</em> is only checked against a bytes written counter and not the actual filesize in HDFS. Actual filesize's will probably be much smaller than this number when using compression. Here is an example section using SequenceFileMapStore from hazelcast.xml configuration:</p>
+
+<pre><code>&lt;map name="mymapname"&gt;
+    &lt;time-to-live-seconds&gt;20&lt;/time-to-live-seconds&gt;
+    &lt;backup-count&gt;1&lt;/backup-count&gt;
+    &lt;eviction-policy&gt;NONE&lt;/eviction-policy&gt;
+    &lt;max-size&gt;0&lt;/max-size&gt;
+    &lt;eviction-percentage&gt;25&lt;/eviction-percentage&gt;
+    &lt;merge-policy&gt;hz.ADD_NEW_ENTRY&lt;/merge-policy&gt;
+    &lt;!-- HdfsMapStore --&gt;
+    &lt;map-store enabled="true"&gt;
+        &lt;class-name&gt;com.mozilla.bagheera.hazelcast.persistence.SequenceFileMapStore&lt;/class-name&gt;
+        &lt;write-delay-seconds&gt;5&lt;/write-delay-seconds&gt;
+        &lt;properties&gt;
+            &lt;property name="hazelcast.hdfs.basedir"&gt;/bagheera&lt;/property&gt;
+            &lt;property name="hazelcast.hdfs.dateformat"&gt;yyyy-MM-dd&lt;/property&gt;
+            &lt;property name="hazelcast.hdfs.max.filesize"&gt;1073741824&lt;/property&gt;
+        &lt;/properties&gt;
+    &lt;/map-store&gt;
+&lt;/map&gt;
+</code></pre>
+
+<h3>Hazelcast CompositeMapStore Configuration</h3>
+
+<p>The idea behind this store is that if you have data being inserted into HBase already you could post a row ID via REST to a map. Once the ID is received and the MapStore persistence is triggered we then want to take a column value from a HBase column and send that value to ElasticSearch for indexing. Here is an example section using this MapStore from hazelcast.xml configuration:</p>
+
+<pre><code>&lt;map name="mymapname"&gt;
+    &lt;time-to-live-seconds&gt;20&lt;/time-to-live-seconds&gt;
+    &lt;backup-count&gt;1&lt;/backup-count&gt;
+    &lt;eviction-policy&gt;NONE&lt;/eviction-policy&gt;
+    &lt;max-size&gt;0&lt;/max-size&gt;
+    &lt;eviction-percentage&gt;25&lt;/eviction-percentage&gt;
+    &lt;merge-policy&gt;hz.ADD_NEW_ENTRY&lt;/merge-policy&gt;
+    &lt;!-- CompositeMapStore --&gt;
+    &lt;map-store enabled="true"&gt;
+        &lt;class-name&gt;com.mozilla.bagheera.hazelcast.persistence.CompositeMapStore&lt;/class-name&gt;
+        &lt;write-delay-seconds&gt;5&lt;/write-delay-seconds&gt;
+        &lt;properties&gt;
+            &lt;property name="hazelcast.composite.load.class.name"&gt;com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore&lt;/property&gt;
+            &lt;property name="hazelcast.composite.store.class.name"&gt;com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore&lt;/property&gt;
+            &lt;property name="hazelcast.elasticsearch.config.path"&gt;elasticsearch-socorro.yml&lt;/property&gt;
+            &lt;property name="hazelcast.elasticsearch.index"&gt;socorro&lt;/property&gt;
+            &lt;property name="hazelcast.elasticsearch.type.name"&gt;crash_reports&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.pool.size"&gt;20&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.table"&gt;crash_reports&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.column.family"&gt;processed_data&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.column.qualifier"&gt;json&lt;/property&gt;
+        &lt;/properties&gt;
+    &lt;/map-store&gt;
+&lt;/map&gt;
+</code></pre>
+
+<p>Unfortunately for now you cannot use the same type of MapStore as both the load MapStore and store MapStore (i.e. two HBaseMapStore(s)), because the configuration parameters don't allow for it. We hope to find a somewhat clean solution for this in the future.</p>
+
+<h3>Hazelcast MultipleMapStore Configuration</h3>
+
+<p>This store is for when you have data you want to store in multiple data stores. Unlike CompositeMapStore this doesn't retrieve anything it only stores to all configured MapStore(s). Here is an example configuration using ElasticSearch and HBase:</p>
+
+<pre><code>&lt;map name="mymapname"&gt;
+    &lt;time-to-live-seconds&gt;20&lt;/time-to-live-seconds&gt;
+    &lt;backup-count&gt;1&lt;/backup-count&gt;
+    &lt;eviction-policy&gt;NONE&lt;/eviction-policy&gt;
+    &lt;max-size&gt;0&lt;/max-size&gt;
+    &lt;eviction-percentage&gt;25&lt;/eviction-percentage&gt;
+    &lt;merge-policy&gt;hz.ADD_NEW_ENTRY&lt;/merge-policy&gt;
+    &lt;!-- MultipleMapStore --&gt;
+    &lt;map-store enabled="true"&gt;
+        &lt;class-name&gt;com.mozilla.bagheera.hazelcast.persistence.MultiMapStore&lt;/class-name&gt;
+        &lt;write-delay-seconds&gt;5&lt;/write-delay-seconds&gt;
+        &lt;properties&gt;
+            &lt;property name="hazelcast.multi.store.class.name.1"&gt;com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore&lt;/property&gt;
+            &lt;property name="hazelcast.multi.store.class.name.2"&gt;com.mozilla.bagheera.hazelcast.persistence.ElasticSearchMapStore&lt;/property&gt;
+            &lt;property name="hazelcast.elasticsearch.config.path"&gt;elasticsearch-socorro.yml&lt;/property&gt;
+            &lt;property name="hazelcast.elasticsearch.index"&gt;socorro&lt;/property&gt;
+            &lt;property name="hazelcast.elasticsearch.type.name"&gt;crash_reports&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.pool.size"&gt;20&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.table"&gt;crash_reports&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.column.family"&gt;processed_data&lt;/property&gt;
+            &lt;property name="hazelcast.hbase.column.qualifier"&gt;json&lt;/property&gt;
+        &lt;/properties&gt;
+    &lt;/map-store&gt;
+&lt;/map&gt;
+</code></pre>
+
+<p>To read more on Hazelcast configuration in general <a href="http://www.hazelcast.com/">check out their documentation</a>.</p>
+
+<h3>License</h3>
+
+<p>All aspects of this software are distributed under Apache Software License 2.0. See LICENSE file for full license text.</p>
+
+<h3>Contributors</h3>
+
+<ul>
+<li>Xavier Stevens (<a href="http://twitter.com/xstevens">@xstevens</a>)</li>
+<li>Daniel Einspanjer (<a href="http://twitter.com/deinspanjer">@deinspanjer</a>)</li>
+<li>Anurag Phadke (<a href="http://twitter.com/anuragphadke">@anuragphadke</a>)</li>
+<li>Mark Reid (<a href="http://twitter.com/reid_write">@reid_write</a>)</li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Bagheera maintained by <a href="https://github.com/mozilla-metrics">mozilla-metrics</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
