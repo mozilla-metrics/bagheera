@@ -83,7 +83,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("jsonValidaton", new JsonFilter(validator));
         pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("handler", new HazelcastMapHandler(metricsProcessor));
+        pipeline.addLast("handler", new HazelcastMapHandler(validator, metricsProcessor));
         
         return pipeline;
     }

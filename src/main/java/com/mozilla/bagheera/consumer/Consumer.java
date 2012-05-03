@@ -17,29 +17,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.codec.http;
+package com.mozilla.bagheera.consumer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+public interface Consumer {
 
-public class PathDecoder {
-
-    private Pattern pathPattern = Pattern.compile("/([^/]+)");
-    private List<String> pathElements = new ArrayList<String>();
-    
-    public PathDecoder(String uri) {
-        Matcher m = pathPattern.matcher(uri);
-        while (m.find()) {
-            if (m.groupCount() > 0) {
-                pathElements.add(m.group(1));
-            }
-        }
-    }
-
-    public String getPathElement(int idx) {
-        return idx < pathElements.size() ? pathElements.get(idx) : null;
-    }
+    public void poll();
     
 }

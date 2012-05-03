@@ -3,7 +3,7 @@
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
-MAIN_CLASS_NAME="com.mozilla.bagheera.consumer.NoOpConsumer"
+MAIN_CLASS_NAME="com.mozilla.bagheera.consumer.hazelcast.HazelcastNoOpConsumer"
 NOW=`date "+%Y%m%d%H%M%S"`
 CONSUMER_HASH=`echo -n \"$@\" | md5sum | cut -f1 -d' '`
 CONSUMER_OPTS="-Dbagheera.log.dir=$bin/../logs -Dconsumer.hash=$CONSUMER_HASH"

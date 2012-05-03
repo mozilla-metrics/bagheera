@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.consumer;
+package com.mozilla.bagheera.consumer.hazelcast;
 
 import java.io.IOException;
 
@@ -33,36 +33,41 @@ import com.hazelcast.client.ClientConfig;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
+import com.mozilla.bagheera.consumer.Consumer;
 
-public class NoOpConsumer {
+public class HazelcastNoOpConsumer implements Consumer {
 
-    private static final Logger LOG = Logger.getLogger(NoOpConsumer.class);
+    private static final Logger LOG = Logger.getLogger(HazelcastNoOpConsumer.class);
 
     private long sleepTime = 1000L;
     
     // Hazelcast related member vars
     private IMap<String, String> nsMap;
     
-    public NoOpConsumer(String mapName, String hzGroupName, String hzGroupPassword, String[] hzClients) {
+    public HazelcastNoOpConsumer(String namespace, String hzGroupName, String hzGroupPassword, String[] hzClients) {
         ClientConfig config = new ClientConfig();
         config.addAddress(hzClients);
         config.getGroupConfig().setName(hzGroupName).setPassword(hzGroupPassword);
         HazelcastInstance client = HazelcastClient.newHazelcastClient(config);
-        nsMap = client.getMap(mapName);
+        nsMap = client.getMap(namespace);
     }
     
-    public void poll() throws InterruptedException {
-        while (true) {
-            if (!nsMap.isEmpty()) {
+    public void poll() {
+        try {
+            while (true) {
+                if (!nsMap.isEmpty()) {
                     for (String k : nsMap.keySet()) {
                         String v = nsMap.remove(k);
                         if (v != null) {
                             LOG.info(k + " => " + v.length());
                         }
                     }
-            } else {
-                Thread.sleep(sleepTime);
+                } else {
+                    Thread.sleep(sleepTime);
+                }
             }
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted while polling", e);
         }
     }
     
@@ -77,7 +82,7 @@ public class NoOpConsumer {
         
         CommandLineParser parser = new GnuParser();
         CommandLine cmd = parser.parse(options, args);
-        NoOpConsumer consumer = new NoOpConsumer(cmd.getOptionValue("map"), 
+        HazelcastNoOpConsumer consumer = new HazelcastNoOpConsumer(cmd.getOptionValue("map"), 
                                                  cmd.getOptionValue("groupname","bagheera"), 
                                                  cmd.getOptionValue("grouppassword","bagheera"), 
                                                  cmd.getOptionValue("hzservers","localhost:5701").split(","));

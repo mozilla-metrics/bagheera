@@ -58,6 +58,7 @@ import com.mozilla.bagheera.nio.codec.http.HttpSecurityException;
 import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
 import com.mozilla.bagheera.nio.codec.http.PathDecoder;
 import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
+import com.mozilla.bagheera.nio.validation.IdValidator;
 
 public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
 
@@ -74,10 +75,12 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     // Specialized REST namespaces
     private static final String NS_METRICS = "metrics";
     
+    private IdValidator idValidator;
     private MetricsProcessor metricsProcessor;
     private MetricsManager metricsManager;
     
-    public HazelcastMapHandler(MetricsProcessor metricsProcessor) {
+    public HazelcastMapHandler(IdValidator idValidator, MetricsProcessor metricsProcessor) {
+        this.idValidator = idValidator;
         this.metricsProcessor = metricsProcessor;
         this.metricsManager = MetricsManager.getInstance();
     }
@@ -104,7 +107,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                                                   e.getChannel().getRemoteAddress().toString(), 
                                                   request.getHeader("X-Obsolete-Document"));
             } else {
-                m.put(id, content.toString(CharsetUtil.UTF_8));
+                m.putAsync(id, content.toString(CharsetUtil.UTF_8));
                 status = CREATED;
             }
         }
@@ -124,7 +127,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
         }
     }
     
-    private void handleDelete(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {  
+    private void handleDelete(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
         String v = m.remove(id);
         if (v != null) {
             updateRequestMetrics(namespace, request.getMethod().getName(), 0);
@@ -164,19 +167,27 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
             if (endpoint != null && ENDPOINT_SUBMIT.equals(endpoint)) {
                 String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
                 String id = pd.getPathElement(ID_PATH_IDX);
+                boolean validId = false;
                 if (id == null) {
                     id = UUID.randomUUID().toString();
+                    validId = true;
+                } else {
+                    validId = idValidator.isValidId(id);
                 }
 
-                IMap<String,String> m = Hazelcast.getMap(namespace);
-                if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
-                    handlePost(e, request, namespace, id, m);
-                } else if (request.getMethod() == HttpMethod.GET) {
-                    handleGet(e, request, namespace, id, m);
-                } else if (request.getMethod() == HttpMethod.DELETE) {
-                    handleDelete(e, request, namespace, id, m);
+                if (validId) {
+                    IMap<String,String> m = Hazelcast.getMap(namespace);
+                    if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
+                        handlePost(e, request, namespace, id, m);
+                    } else if (request.getMethod() == HttpMethod.GET) {
+                        handleGet(e, request, namespace, id, m);
+                    } else if (request.getMethod() == HttpMethod.DELETE) {
+                        handleDelete(e, request, namespace, id, m);
+                    } else {
+                        writeResponse(NOT_FOUND, e, namespace, null);
+                    }
                 } else {
-                    writeResponse(NOT_FOUND, e, namespace, null);
+                    writeResponse(NOT_ACCEPTABLE, e, namespace, null);
                 }
             } else {
                 String userAgent = request.getHeader("User-Agent");

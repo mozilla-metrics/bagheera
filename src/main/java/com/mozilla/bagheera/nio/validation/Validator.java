@@ -21,6 +21,7 @@ package com.mozilla.bagheera.nio.validation;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
@@ -28,7 +29,7 @@ import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 
-public class Validator implements NamespaceValidator, UriValidator, JsonValidator {
+public class Validator implements NamespaceValidator, UriValidator, JsonValidator, IdValidator {
 
     private static final Logger LOG = Logger.getLogger(Validator.class);
     
@@ -93,6 +94,15 @@ public class Validator implements NamespaceValidator, UriValidator, JsonValidato
         return isValid;
     }
     
-    
-    
+    public boolean isValidId(String id) {
+        boolean isValid = false;
+        try {
+            UUID.fromString(id);
+            isValid = true;
+        } catch (IllegalArgumentException e) {
+            LOG.error("Invalid ID: " + id);
+        }
+        
+        return isValid;
+    }
 }

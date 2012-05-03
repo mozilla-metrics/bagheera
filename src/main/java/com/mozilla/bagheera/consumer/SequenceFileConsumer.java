@@ -22,16 +22,8 @@ package com.mozilla.bagheera.consumer;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Map;
 import java.util.UUID;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -40,36 +32,28 @@ import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
-import com.hazelcast.client.ClientConfig;
-import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.core.HazelcastInstance;
-
-public class SequenceFileConsumer {
+public abstract class SequenceFileConsumer implements Consumer {
 
     private static final Logger LOG = Logger.getLogger(SequenceFileConsumer.class);
     
-    private static final long DAY_IN_MILLIS = 86400000L;
+    protected static final long DAY_IN_MILLIS = 86400000L;
     
-    private long sleepTime = 1000L;
+    protected long sleepTime = 1000L;
     
     // HDFS related member vars
-    private Configuration conf;
-    private FileSystem hdfs;
-    private Path baseDir;
-    private SequenceFile.Writer writer;
-    private Text outputKey = new Text();
-    private Text outputValue = new Text();
-    private long prevRolloverMillis = 0L;
-    private long bytesWritten = 0L;
-    private long maxFileSize = 0L;
-    private SimpleDateFormat sdf;
-    
-    // Hazelcast related member vars
-    private Map<String, String> nsMap;
+    protected Configuration conf;
+    protected FileSystem hdfs;
+    protected Path baseDir;
+    protected SequenceFile.Writer writer;
+    protected Text outputKey = new Text();
+    protected Text outputValue = new Text();
+    protected long prevRolloverMillis = 0L;
+    protected long bytesWritten = 0L;
+    protected long maxFileSize = 0L;
+    protected SimpleDateFormat sdf;
 
-    public SequenceFileConsumer(String mapName, String baseDirPath, String dateFormat, long maxFileSize,
-                                String hzGroupName, String hzGroupPassword, String[] hzClients) throws IOException {
-        LOG.info("Initializing writer for map: " + mapName);
+    public SequenceFileConsumer(String namespace, String baseDirPath, String dateFormat, long maxFileSize) throws IOException {
+        LOG.info("Initializing writer for map: " + namespace);
         conf = new Configuration();
         conf.setBoolean("fs.automatic.close", false);
         hdfs = FileSystem.newInstance(conf);
@@ -78,19 +62,13 @@ public class SequenceFileConsumer {
         sdf = new SimpleDateFormat(dateFormat);
         Calendar cal = Calendar.getInstance();
         if (!baseDirPath.endsWith(Path.SEPARATOR)) {
-            baseDir = new Path(baseDirPath + Path.SEPARATOR + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
+            baseDir = new Path(baseDirPath + Path.SEPARATOR + namespace + Path.SEPARATOR + sdf.format(cal.getTime()));
         } else {
-            baseDir = new Path(baseDirPath + mapName + Path.SEPARATOR + sdf.format(cal.getTime()));
-        }        
-        
-        ClientConfig config = new ClientConfig();
-        config.addAddress(hzClients);
-        config.getGroupConfig().setName(hzGroupName).setPassword(hzGroupPassword);
-        HazelcastInstance client = HazelcastClient.newHazelcastClient(config);
-        nsMap = client.getMap(mapName);
+            baseDir = new Path(baseDirPath + namespace + Path.SEPARATOR + sdf.format(cal.getTime()));
+        }
     }
     
-    private void initWriter() throws IOException {
+    protected void initWriter() throws IOException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Thread " + Thread.currentThread().getId() + " - initWriter() called");
         }
@@ -113,7 +91,7 @@ public class SequenceFileConsumer {
         prevRolloverMillis = prev.getTimeInMillis();
     }
     
-    private synchronized void checkRollover() throws IOException {
+    protected synchronized void checkRollover() throws IOException {
         boolean getNewFile = false;
         Calendar now = Calendar.getInstance();
         if (maxFileSize != 0 && bytesWritten >= maxFileSize) {
@@ -129,7 +107,7 @@ public class SequenceFileConsumer {
         }
     }
     
-    private synchronized void closeWriter() throws IOException {
+    protected synchronized void closeWriter() throws IOException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Thread " + Thread.currentThread().getId() + " - closeWriter() called");
         }
@@ -145,6 +123,13 @@ public class SequenceFileConsumer {
     }
     
     public void close() {
+        if (writer != null) {
+            try {
+                writer.close();
+            } catch (IOException e) {
+                LOG.error("Error closing writer", e);
+            }
+        }
         if (hdfs != null) {
             try {
                 hdfs.close();
@@ -154,68 +139,8 @@ public class SequenceFileConsumer {
         }
     }
     
-    public void poll() throws InterruptedException {
-        while (true) {
-            if (nsMap.size() > 0) {
-                long startTime = System.currentTimeMillis(); 
-                try {
-                    checkRollover();
-                    for (String k : nsMap.keySet()) {
-                        String v = nsMap.remove(k);
-                        if (v != null) {
-                            outputKey.set(k);
-                            bytesWritten += outputKey.getLength();
-                            outputValue.set(v);
-                            bytesWritten += outputValue.getLength();
-                            writer.append(outputKey, outputValue);
-                        }
-                    }
-                } catch (IOException e) {
-                    LOG.error("IOException while writing key/value pair", e);
-                    throw new RuntimeException(e);
-                }
-                
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(String.format("Stored %d items in %d ms", nsMap.size(), (System.currentTimeMillis() - startTime)));
-                }
-            } else {
-                Thread.sleep(sleepTime);
-            }
-        }
+    public void poll() {
+        // This should be implemented by subclasses depending on the type of 
+        // queue or map that is being polled.
     }
-    
-    public static void main(String[] args) throws IOException, InterruptedException {
-        Options options = new Options();
-        Option mapName = new Option("m", "map", true, "Name of map in Hazelcast.");
-        mapName.setRequired(true);
-        options.addOption(mapName);
-        options.addOption(new Option("o", "outputdir", true, "Base output directory path."));
-        options.addOption(new Option("df", "dateformat", true, "Output subdirectories date format."));
-        options.addOption(new Option("fs", "filesize", true, "Maximum output file size."));
-        options.addOption(new Option("gn", "groupname", true, "Hazelcast group name."));
-        options.addOption(new Option("gp", "grouppassword", true, "Hazelcast group password."));
-        options.addOption(new Option("hzservers", true, "Hazelcast server list."));
-        
-        CommandLineParser parser = new GnuParser();
-        SequenceFileConsumer consumer = null;
-        try {
-            CommandLine cmd = parser.parse(options, args);
-            consumer = new SequenceFileConsumer(mapName.getValue(), 
-                                                cmd.getOptionValue("outputdir", "/bagheera"),
-                                                cmd.getOptionValue("dateformat", "yyyy-MM-dd"),
-                                                Long.parseLong(cmd.getOptionValue("filesize", "1073741824")),
-                                                cmd.getOptionValue("groupname","bagheera"), cmd.getOptionValue("grouppassword","bagheera"),
-                                                cmd.getOptionValue("hzservers","localhost:5701").split(","));
-            consumer.poll();            
-        } catch (ParseException e) {
-            System.out.println(e.getMessage());
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("SequenceFileConsumer", options);
-        } finally {
-            if (consumer != null) {
-                consumer.close();
-            }
-        }
-    }
-    
 }
