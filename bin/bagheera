@@ -16,7 +16,7 @@ JMXREMOTE_PORT=8081
 HAZELCAST_CONF=$2
 SERVER_CLASS_NAME="com.mozilla.bagheera.nio.BagheeraNio"
 NOW=`date "+%Y%m%d%H%M%S"`
-BAGHEERA_OPTS="-Dhazelcast.config=$HAZELCAST_CONF -Dhazelcast.jmx=true -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs -Dcom.sun.management.jmxremote.port=$JMXREMOTE_PORT -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+BAGHEERA_OPTS="-Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs -Dcom.sun.management.jmxremote.port=$JMXREMOTE_PORT -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
 GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/gc.log.$NOW"
 JAVA_OPTS="$BAGHEERA_OPTS -Xss128k -Xms3000m -Xmx3000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:NewRatio=3 $GC_OPTS"
 
