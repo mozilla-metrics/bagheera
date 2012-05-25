@@ -35,8 +35,7 @@ public class MetricsManager {
 
     private static final String METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
     private static final String METRICS_PROPERTIES_PREFIX = "bagheera.metrics.";
-    private static final String METRICS_NAME_PREFIX = "bagheera";
-    private static final String GLOBAL_HTTP_METRIC_ID = METRICS_NAME_PREFIX + "." + "global";
+    private static final String GLOBAL_HTTP_METRIC_ID = "global";
 
     private static MetricsManager instance = null;
 
@@ -80,7 +79,7 @@ public class MetricsManager {
     }
     
     private String namespaceToId(String namespace) {
-        return METRICS_NAME_PREFIX + ".ns." + namespace;
+        return "ns." + namespace;
     }
     
     private HttpMetric getHttpMetricForId(String id) {
