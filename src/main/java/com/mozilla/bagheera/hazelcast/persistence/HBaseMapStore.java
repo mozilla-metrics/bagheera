@@ -89,7 +89,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             if (!hbaseAdmin.tableExists(tableName)) {
                 HTableDescriptor desc = new HTableDescriptor(tableName);
                 HColumnDescriptor columnDesc = new HColumnDescriptor(family);
-                columnDesc.setCompressionType(Algorithm.LZO);
+                columnDesc.setCompressionType(Algorithm.SNAPPY);
                 columnDesc.setBlockCacheEnabled(true);
                 columnDesc.setBlocksize(65536);
                 columnDesc.setInMemory(false);
