@@ -1,6 +1,6 @@
 # Bagheera #
 
-Version: 0.5  
+Version: 0.6-SNAPSHOT  
 
 #### REST service for Mozilla Metrics. This service currently uses Hazelcast as a distributed in-memory map with short TTLs. Then provides an implementation for Hazelcast MapStore to persist the map data to various data sinks. ####
 
