@@ -29,6 +29,7 @@ import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
 import com.mozilla.bagheera.nio.validation.Validator;
+import com.mozilla.bagheera.util.HttpUtil;
 import com.mozilla.bagheera.util.WildcardProperties;
 
 
@@ -45,7 +46,7 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
         this.validator = validator;
         this.nsPathIdx = nsPathIdx;
         this.props = props;
-    }
+    }    
     
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
@@ -55,7 +56,7 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
             // Check URI
             if (!validator.isValidUri(request.getUri())) {
                 String userAgent = request.getHeader("User-Agent");
-                String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
+                String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                 throw new InvalidPathException(String.format("Tried to access invalid resource: %s - \"%s\" \"%s\"", request.getUri(), remoteIpAddress, userAgent));
             }
             // Check Namespace
@@ -63,7 +64,7 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
             String ns = rpd.getPathElement(nsPathIdx);
             if (ns == null) {
                 String userAgent = request.getHeader("User-Agent");
-                String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
+                String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                 throw new InvalidPathException(String.format("Tried to access invalid resource: - \"%s\" \"%s\"", remoteIpAddress, userAgent));
             }
             // Check POST/GET/DELETE Access
@@ -73,19 +74,19 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
                 boolean allowGetAccess = Boolean.parseBoolean(props.getWildcardProperty(ns + ALLOW_GET_ACCESS, "false"));
                 if (!allowGetAccess) {
                     String userAgent = request.getHeader("User-Agent");
-                    String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
+                    String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                     throw new HttpSecurityException(String.format("Tried to access GET method for resource: %s - \"%s\" \"%s\"", ns, remoteIpAddress, userAgent));
                 }
             } else if (request.getMethod() == HttpMethod.DELETE) {
                 boolean allowDelAccess = Boolean.parseBoolean(props.getWildcardProperty(ns + ALLOW_DELETE_ACCESS, "false"));
                 if (!allowDelAccess) {
                     String userAgent = request.getHeader("User-Agent");
-                    String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
+                    String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                     throw new HttpSecurityException(String.format("Tried to access DELETE method for resource %s - \"%s\" \"%s\"", ns, remoteIpAddress, userAgent));
                 }
             } else {
                 String userAgent = request.getHeader("User-Agent");
-                String remoteIpAddress = ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress();
+                String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                 throw new HttpSecurityException(String.format("Tried to access invalid method for resource %s - \"%s\" \"%s\"", ns, remoteIpAddress, userAgent));
             }
             Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());

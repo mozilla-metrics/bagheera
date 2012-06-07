@@ -31,6 +31,7 @@ import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.UUID;
 
@@ -59,6 +60,7 @@ import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
 import com.mozilla.bagheera.nio.codec.http.PathDecoder;
 import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
 import com.mozilla.bagheera.nio.validation.IdValidator;
+import com.mozilla.bagheera.util.HttpUtil;
 
 public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
 
@@ -187,11 +189,17 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                         writeResponse(NOT_FOUND, e, namespace, null);
                     }
                 } else {
+                    String userAgent = request.getHeader("User-Agent");
+                    String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
+                    LOG.warn(String.format("Submitted an invalid ID - \"%s\" \"%s\"", remoteIpAddress, userAgent));
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Submission body: " + request.getContent().toString(CharsetUtil.UTF_8));
+                    }
                     writeResponse(NOT_ACCEPTABLE, e, namespace, null);
                 }
             } else {
                 String userAgent = request.getHeader("User-Agent");
-                String remoteIpAddress = e.getChannel().getRemoteAddress().toString();
+                String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                 LOG.warn(String.format("Tried to access invalid resource - \"%s\" \"%s\"", remoteIpAddress, userAgent));
                 writeResponse(NOT_ACCEPTABLE, e, null, null);
             }
