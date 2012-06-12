@@ -20,7 +20,6 @@
 package com.mozilla.bagheera.nio.validation;
 
 import java.io.IOException;
-import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -37,11 +36,14 @@ public class Validator implements NamespaceValidator, UriValidator, JsonValidato
     private final Pattern validUriPattern;
     private final JsonFactory jsonFactory;
     
-    public Validator(final Set<String> validMapNames) {
+    public Validator(final String[] validNamespaces) {
+        if (validNamespaces == null || validNamespaces.length == 0) {
+            throw new IllegalArgumentException("No valid namespace was specified");
+        }
         StringBuilder nsPatternBuilder = new StringBuilder("(");
         StringBuilder uriPatternBuilder = new StringBuilder("/submit/(");
-        int i=0, size=validMapNames.size();
-        for (String name : validMapNames) {
+        int i=0, size=validNamespaces.length;
+        for (String name : validNamespaces) {
             nsPatternBuilder.append(name.replaceAll("\\*", ".+"));
             uriPatternBuilder.append(name.replaceAll("\\*", ".+"));
             if ((i+1) < size) {

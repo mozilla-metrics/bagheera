@@ -23,10 +23,16 @@ import org.jboss.netty.handler.codec.http.HttpRequest;
 
 public class HttpUtil {
 
-    public static final String HTTP_X_FORWARDED_FOR = "X-Forwarded-For";
+    // header fields
+    public static final String USER_AGENT = "User-Agent";
+    public static final String X_FORWARDED_FOR = "X-Forwarded-For";
+    
+    public static String getUserAgent(HttpRequest request) {
+        return request.getHeader(USER_AGENT);
+    }
     
     public static String getRemoteAddr(HttpRequest request, String channelRemoteAddr) {
-        String ipAddr = request.getHeader(HTTP_X_FORWARDED_FOR);
+        String ipAddr = request.getHeader(X_FORWARDED_FOR);
         return ipAddr == null ? channelRemoteAddr : ipAddr;
     }
     

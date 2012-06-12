@@ -19,12 +19,7 @@
  */
 package com.mozilla.bagheera.nio;
 
-import static com.mozilla.bagheera.nio.BagheeraNio.PROPERTIES_RESOURCE_NAME;
-
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Set;
 
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
@@ -39,34 +34,25 @@ import com.mozilla.bagheera.nio.codec.http.ContentLengthFilter;
 import com.mozilla.bagheera.nio.codec.http.RootResponse;
 import com.mozilla.bagheera.nio.codec.json.JsonFilter;
 import com.mozilla.bagheera.nio.validation.Validator;
+import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.WildcardProperties;
 
 public class HttpServerPipelineFactory implements ChannelPipelineFactory {
-
+    
     private final WildcardProperties props;    
     private final int maxContentLength;
     private final Validator validator;
-    private final MetricsProcessor metricsProcessor;
+    private final Producer producer;
     
-    public HttpServerPipelineFactory(Set<String> validNamespaces) throws IOException {
-        props = new WildcardProperties();
-        InputStream in = null;
-        try {
-            URL propUrl = getClass().getResource(PROPERTIES_RESOURCE_NAME);
-            if (propUrl == null) {
-                throw new IllegalArgumentException("Could not find the properites file: " + PROPERTIES_RESOURCE_NAME);
-            }
-            in = propUrl.openStream();
-            props.load(in);
-        } finally {
-            if (in != null) {
-                in.close();
-            }
+    public HttpServerPipelineFactory(WildcardProperties props, Producer producer) throws IOException {
+        this.props = props;
+        String validNsStr = props.getProperty("valid.namespaces");
+        if (validNsStr == null) {
+            throw new IllegalArgumentException("No valid.namespaces in properties");
         }
-        
-        validator = new Validator(validNamespaces);
-        metricsProcessor = new MetricsProcessor(props.getProperty("maxmind.db.path"));
-        maxContentLength = Integer.parseInt(props.getProperty("max.content.length","1048576"));
+        this.validator = new Validator(validNsStr.split(","));
+        this.maxContentLength = Integer.parseInt(props.getProperty("max.content.length","1048576"));
+        this.producer = producer;
     }
     
     /* (non-Javadoc)
@@ -79,11 +65,11 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("rootResponse", new RootResponse());
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
-        pipeline.addLast("accessFilter", new AccessFilter(validator, HazelcastMapHandler.NAMESPACE_PATH_IDX, props));
+        pipeline.addLast("accessFilter", new AccessFilter(validator, SubmissionHandler.NAMESPACE_PATH_IDX, props));
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("jsonValidaton", new JsonFilter(validator));
         pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("handler", new HazelcastMapHandler(validator, metricsProcessor));
+        pipeline.addLast("handler", new SubmissionHandler(validator, producer));
         
         return pipeline;
     }

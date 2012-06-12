@@ -26,11 +26,6 @@
 			<url>http://mozilla-metrics.github.com/maven2/snapshots</url>
 		</repository>
 		<repository>
-			<id>java.net</id>
-			<url>http://download.java.net/maven/2</url>
-			<name>java.net Maven Repository</name>
-		</repository>
-		<repository>
 			<id>cdh.release.repo</id>
 			<url>https://repository.cloudera.com/content/repositories/releases</url>
 			<name>Cloudera Releases Repository</name>
@@ -44,9 +39,9 @@
 			<name>Sonatype's OSS Maven Repository</name>
 		</repository>
 		<repository>
-			<id>oracle</id>
-			<url>http://download.oracle.com/maven</url>
-			<name>Oracle's Maven Repository</name>
+			<id>maven.twttr</id>
+			<url>http://maven.twttr.com</url>
+			<name>Twitter's Maven Repository</name>
 		</repository>
 	</repositories>
 
@@ -107,18 +102,6 @@
 			<artifactId>netty</artifactId>
 			<version>3.4.5.Final</version>
 			<scope>compile</scope>
-		</dependency>
-
-		<!-- Hazelcast -->
-		<dependency>
-			<groupId>com.hazelcast</groupId>
-			<artifactId>hazelcast</artifactId>
-			<version>2.1</version>
-		</dependency>
-		<dependency>
-			<groupId>com.hazelcast</groupId>
-			<artifactId>hazelcast-client</artifactId>
-			<version>2.1</version>
 		</dependency>
 
 		<!-- Cloudera Hadoop, HBase -->
@@ -357,6 +340,58 @@
 			<artifactId>metrics-graphite</artifactId>
 			<version>2.1.2</version>
 		</dependency>
+		
+		<!-- Kafka -->
+		<dependency>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>zkclient</artifactId>
+			<version>0.1</version>
+			<scope>system</scope>
+			<systemPath>${basedir}/lib/zkclient-20110412.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka</artifactId>
+			<version>0.7.0</version>
+			<scope>system</scope>
+			<systemPath>${basedir}/lib/kafka-0.7.0.jar</systemPath>
+		</dependency>
+		
+		<!-- Snappy -->
+		<dependency>
+			<groupId>org.xerial.snappy</groupId>
+			<artifactId>snappy-java</artifactId>
+			<version>1.0.4.1</version>
+			<scope>compile</scope>
+		</dependency>
+		
+		<!-- Protobuf -->
+		<dependency>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java</artifactId>
+			<version>2.3.0</version>
+		</dependency>
+		
+		<!-- Finagle -->
+		<dependency>
+			<groupId>com.twitter</groupId>
+			<artifactId>finagle-core_2.9.1</artifactId>
+			<version>4.0.2</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.twitter</groupId>
+			<artifactId>finagle-http_2.9.1</artifactId>
+			<version>4.0.2</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.scala-lang</groupId>
+			<artifactId>scala-library</artifactId>
+			<version>2.9.2</version>
+		</dependency>
+		
 	</dependencies>
 
 	<build>

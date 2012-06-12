@@ -20,18 +20,24 @@
 package com.mozilla.bagheera.nio;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.util.Map;
+import java.net.URL;
+import java.util.Properties;
 import java.util.concurrent.Executors;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.group.ChannelGroup;
+import org.jboss.netty.channel.group.ChannelGroupFuture;
+import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.MapConfig;
-import com.hazelcast.core.Hazelcast;
 import com.mozilla.bagheera.metrics.MetricsManager;
+import com.mozilla.bagheera.producer.KafkaProducer;
+import com.mozilla.bagheera.producer.Producer;
+import com.mozilla.bagheera.util.WildcardProperties;
 
 public class BagheeraNio {
 
@@ -40,6 +46,8 @@ public class BagheeraNio {
     public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
     private static final int DEFAULT_IO_THREADS = Runtime.getRuntime().availableProcessors() * 2;
 
+    static final ChannelGroup allChannels = new DefaultChannelGroup(BagheeraNio.class.getName());
+    
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(System.getProperty("server.port", "8080"));
         boolean tcpNoDelay = Boolean.parseBoolean(System.getProperty("server.tcpnodelay", "false"));
@@ -47,28 +55,61 @@ public class BagheeraNio {
         // Initialize metrics collection, reporting, etc.
         MetricsManager.getInstance();
         
-        // Initialize Hazelcast now rather than waiting for the first request
-        Hazelcast.getDefaultInstance();
-        Config config = Hazelcast.getConfig();
-        for (Map.Entry<String, MapConfig> entry : config.getMapConfigs().entrySet()) {
-            String mapName = entry.getKey();
-            // If the map contains a wildcard then we need to wait to initialize
-            if (!mapName.contains("*")) {
-                Hazelcast.getMap(entry.getKey());
+        // Initalize properties and producer
+        WildcardProperties props = new WildcardProperties();
+        Properties kafkaProps = new Properties();
+        InputStream in = null;
+        try {
+            URL propUrl = BagheeraNio.class.getResource(PROPERTIES_RESOURCE_NAME);
+            if (propUrl == null) {
+                throw new IllegalArgumentException("Could not find the properites file: " + PROPERTIES_RESOURCE_NAME);
+            }
+            in = propUrl.openStream();
+            props.load(in);
+            in.close();
+            
+            propUrl = BagheeraNio.class.getResource("/kafka.properties");
+            if (propUrl == null) {
+                throw new IllegalArgumentException("Could not find the properites file: " + "/kafka.properties");
+            }
+            
+            in = propUrl.openStream();
+            kafkaProps.load(in);
+        } finally {
+            if (in != null) {
+                in.close();
             }
         }
+        final Producer producer = new KafkaProducer(kafkaProps);
         
-        // HTTP
-        NioServerSocketChannelFactory channelFactory = new NioServerSocketChannelFactory(
-                Executors.newCachedThreadPool(), Executors.newFixedThreadPool(DEFAULT_IO_THREADS));
+        // HTTP server setup
+        final NioServerSocketChannelFactory channelFactory = new NioServerSocketChannelFactory(
+                Executors.newCachedThreadPool(), Executors.newFixedThreadPool(DEFAULT_IO_THREADS)) {
+            @Override
+            public void releaseExternalResources() {
+                super.releaseExternalResources();
+                if (producer != null) {
+                    LOG.info("Closing producer resource...");
+                    producer.close();
+                }
+            }
+        };
         ServerBootstrap sb = new ServerBootstrap(channelFactory);
         HttpServerPipelineFactory pipeFactory;
         try {
-            pipeFactory = new HttpServerPipelineFactory(config.getMapConfigs().keySet());
+            pipeFactory = new HttpServerPipelineFactory(props, producer);
             sb.setPipelineFactory(pipeFactory);
             sb.setOption("tcpNoDelay", tcpNoDelay);
             sb.setOption("keepAlive", false);
-            sb.bind(new InetSocketAddress(port));
+            Channel ch = sb.bind(new InetSocketAddress(port));
+            allChannels.add(ch);
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+               public void run() {
+                   ChannelGroupFuture future = allChannels.close();
+                   future.awaitUninterruptibly();
+                   channelFactory.releaseExternalResources();
+               }
+            });
         } catch (IOException e) {
             LOG.error("Error initializing pipeline factory", e);
         }
