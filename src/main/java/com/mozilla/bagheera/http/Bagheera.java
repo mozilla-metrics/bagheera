@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio;
+package com.mozilla.bagheera.http;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,14 +39,14 @@ import com.mozilla.bagheera.producer.KafkaProducer;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.WildcardProperties;
 
-public class BagheeraNio {
+public class Bagheera {
 
-    private static final Logger LOG = Logger.getLogger(BagheeraNio.class);
+    private static final Logger LOG = Logger.getLogger(Bagheera.class);
     
     public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
     private static final int DEFAULT_IO_THREADS = Runtime.getRuntime().availableProcessors() * 2;
 
-    static final ChannelGroup allChannels = new DefaultChannelGroup(BagheeraNio.class.getName());
+    static final ChannelGroup allChannels = new DefaultChannelGroup(Bagheera.class.getName());
     
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(System.getProperty("server.port", "8080"));
@@ -60,7 +60,7 @@ public class BagheeraNio {
         Properties kafkaProps = new Properties();
         InputStream in = null;
         try {
-            URL propUrl = BagheeraNio.class.getResource(PROPERTIES_RESOURCE_NAME);
+            URL propUrl = Bagheera.class.getResource(PROPERTIES_RESOURCE_NAME);
             if (propUrl == null) {
                 throw new IllegalArgumentException("Could not find the properites file: " + PROPERTIES_RESOURCE_NAME);
             }
@@ -68,7 +68,7 @@ public class BagheeraNio {
             props.load(in);
             in.close();
             
-            propUrl = BagheeraNio.class.getResource("/kafka.properties");
+            propUrl = Bagheera.class.getResource("/kafka.properties");
             if (propUrl == null) {
                 throw new IllegalArgumentException("Could not find the properites file: " + "/kafka.properties");
             }

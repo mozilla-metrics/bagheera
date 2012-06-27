@@ -90,17 +90,12 @@
 			<artifactId>jackson-mapper-asl</artifactId>
 			<version>1.9.7</version>
 		</dependency>
-		<dependency>
-			<groupId>org.codehaus.jackson</groupId>
-			<artifactId>jackson-smile</artifactId>
-			<version>1.9.7</version>
-		</dependency>
 
 		<!-- Netty -->
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty</artifactId>
-			<version>3.4.5.Final</version>
+			<version>3.5.1.Final</version>
 			<scope>compile</scope>
 		</dependency>
 
@@ -344,54 +339,16 @@
 		<!-- Kafka -->
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
-			<artifactId>zkclient</artifactId>
-			<version>0.1</version>
-			<scope>system</scope>
-			<systemPath>${basedir}/lib/zkclient-20110412.jar</systemPath>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.kafka</groupId>
-			<artifactId>kafka</artifactId>
+			<artifactId>kafka-core</artifactId>
 			<version>0.7.0</version>
-			<scope>system</scope>
-			<systemPath>${basedir}/lib/kafka-0.7.0.jar</systemPath>
 		</dependency>
-		
-		<!-- Snappy -->
-		<dependency>
-			<groupId>org.xerial.snappy</groupId>
-			<artifactId>snappy-java</artifactId>
-			<version>1.0.4.1</version>
-			<scope>compile</scope>
-		</dependency>
-		
-		<!-- Protobuf -->
-		<dependency>
-			<groupId>com.google.protobuf</groupId>
-			<artifactId>protobuf-java</artifactId>
-			<version>2.3.0</version>
-		</dependency>
-		
-		<!-- Finagle -->
-		<dependency>
-			<groupId>com.twitter</groupId>
-			<artifactId>finagle-core_2.9.1</artifactId>
-			<version>4.0.2</version>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.twitter</groupId>
-			<artifactId>finagle-http_2.9.1</artifactId>
-			<version>4.0.2</version>
-			<scope>compile</scope>
-		</dependency>
-
+		<!-- 
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
 			<version>2.9.2</version>
 		</dependency>
-		
+		 -->
 	</dependencies>
 
 	<build>

@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio;
+package com.mozilla.bagheera.http;
 
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
@@ -53,14 +53,11 @@ import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.jboss.netty.util.CharsetUtil;
 
+import com.mozilla.bagheera.http.json.InvalidJsonException;
 import com.mozilla.bagheera.metrics.MetricsManager;
-import com.mozilla.bagheera.nio.codec.http.HttpSecurityException;
-import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
-import com.mozilla.bagheera.nio.codec.http.PathDecoder;
-import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
-import com.mozilla.bagheera.nio.validation.IdValidator;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.HttpUtil;
+import com.mozilla.bagheera.validation.Validator;
 
 public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
@@ -77,12 +74,12 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     // Specialized REST namespaces
     private static final String NS_METRICS = "metrics";
     
-    private IdValidator idValidator;
+    private Validator validator;
     private MetricsManager metricsManager;
     private Producer producer;
     
-    public SubmissionHandler(IdValidator idValidator, Producer producer) {
-        this.idValidator = idValidator;
+    public SubmissionHandler(Validator validator, Producer producer) {
+        this.validator = validator;
         this.metricsManager = MetricsManager.getInstance();
         this.producer = producer;
     }
@@ -145,7 +142,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     @Override
     public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
-        BagheeraNio.allChannels.add(e.getChannel());
+        Bagheera.allChannels.add(e.getChannel());
     }
     
     @Override
@@ -161,14 +158,14 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
                 String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
                 String id = pd.getPathElement(ID_PATH_IDX);
                 if ((request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) &&
-                    (id == null || idValidator.isValidId(id))) {
+                    (id == null || validator.isValidId(id))) {
                     if (id == null) {
                         id = UUID.randomUUID().toString();
                     }
                     handlePost(e, request, namespace, id);
                 } else if (request.getMethod() == HttpMethod.GET) {
                     writeResponse(METHOD_NOT_ALLOWED, e, namespace, null);
-                } else if (request.getMethod() == HttpMethod.DELETE && idValidator.isValidId(id)) {
+                } else if (request.getMethod() == HttpMethod.DELETE && validator.isValidId(id)) {
                     handleDelete(e, request, namespace, id);
                 } else {
                     String userAgent = request.getHeader("User-Agent");

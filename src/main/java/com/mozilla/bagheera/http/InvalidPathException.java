@@ -17,10 +17,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.validation;
+package com.mozilla.bagheera.http;
 
-public interface NamespaceValidator {
+public class InvalidPathException  extends Exception {
 
-    public boolean isValidNamespace(String ns);
+    private static final long serialVersionUID = -2753373949363309083L;
+
+    public InvalidPathException(String message) {
+        super(message);
+    }
+    
+    public InvalidPathException(String message, Throwable cause) {
+        super(message, cause);
+    }
     
 }

@@ -17,31 +17,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.codec.http;
+package com.mozilla.bagheera.http.json;
 
+import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.handler.codec.http.HttpRequest;
+import org.jboss.netty.util.CharsetUtil;
 
-import com.mozilla.bagheera.nio.validation.UriValidator;
+import com.mozilla.bagheera.validation.Validator;
 
-public class UriPatternFilter  extends SimpleChannelUpstreamHandler {
+public class JsonFilter extends SimpleChannelUpstreamHandler {
+ 
+    private final Validator validator;
     
-    private final UriValidator uriValidator;
-    
-    public UriPatternFilter(UriValidator uriValidator) {
-        this.uriValidator = uriValidator;
+    public JsonFilter(Validator validator) {
+        this.validator = validator;
     }
     
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
         if (msg instanceof HttpRequest) {
-            HttpRequest request = (HttpRequest) msg;
-            if (!uriValidator.isValidUri(request.getUri())) {
-                throw new InvalidPathException("Invalid path: " + request.getUri());
+            HttpRequest request = (HttpRequest)e.getMessage();
+            ChannelBuffer content = request.getContent();
+            if (content.readable()) {
+                if (!validator.isValidJson(content.toString(CharsetUtil.UTF_8))) {
+                    throw new InvalidJsonException("Invalid JSON");
+                }
             }
             Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
         } else {

@@ -17,12 +17,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.validation;
+package com.mozilla.bagheera.http;
 
-import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
+public class HttpSecurityException extends Exception {
 
-public interface JsonValidator {
+    private static final long serialVersionUID = 480106127340879943L;
+
+    public HttpSecurityException(String message) {
+        super(message);
+    }
     
-    public boolean isValidJson(String json) throws InvalidJsonException;
-    
+    public HttpSecurityException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

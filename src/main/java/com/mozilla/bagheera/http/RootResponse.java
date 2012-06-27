@@ -1,4 +1,4 @@
-package com.mozilla.bagheera.nio.codec.http;
+package com.mozilla.bagheera.http;
 
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;

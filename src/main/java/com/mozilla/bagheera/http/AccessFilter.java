@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.codec.http;
+package com.mozilla.bagheera.http;
 
 import java.net.InetSocketAddress;
 
@@ -28,9 +28,9 @@ import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
-import com.mozilla.bagheera.nio.validation.Validator;
 import com.mozilla.bagheera.util.HttpUtil;
 import com.mozilla.bagheera.util.WildcardProperties;
+import com.mozilla.bagheera.validation.Validator;
 
 
 public class AccessFilter extends SimpleChannelUpstreamHandler {

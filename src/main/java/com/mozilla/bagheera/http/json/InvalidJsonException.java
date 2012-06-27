@@ -17,10 +17,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.validation;
+package com.mozilla.bagheera.http.json;
 
-public interface UriValidator {
+import java.io.IOException;
 
-    public boolean isValidUri(String uri);
+public class InvalidJsonException extends IOException {
+
+    private static final long serialVersionUID = -3575427769547846171L;
+
+    public InvalidJsonException(String message) {
+        super(message);
+    }
+    
+    public InvalidJsonException(String message, Throwable cause) {
+        super(message, cause);
+    }
     
 }

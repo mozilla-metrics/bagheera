@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio;
+package com.mozilla.bagheera.http;
 
 import java.io.IOException;
 
@@ -29,13 +29,10 @@ import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
 import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
 
-import com.mozilla.bagheera.nio.codec.http.AccessFilter;
-import com.mozilla.bagheera.nio.codec.http.ContentLengthFilter;
-import com.mozilla.bagheera.nio.codec.http.RootResponse;
-import com.mozilla.bagheera.nio.codec.json.JsonFilter;
-import com.mozilla.bagheera.nio.validation.Validator;
+import com.mozilla.bagheera.http.json.JsonFilter;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.WildcardProperties;
+import com.mozilla.bagheera.validation.Validator;
 
 public class HttpServerPipelineFactory implements ChannelPipelineFactory {
     

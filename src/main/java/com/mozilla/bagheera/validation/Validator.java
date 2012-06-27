@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.validation;
+package com.mozilla.bagheera.validation;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -28,7 +28,7 @@ import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.JsonParser;
 
-public class Validator implements NamespaceValidator, UriValidator, JsonValidator, IdValidator {
+public class Validator {
 
     private static final Logger LOG = Logger.getLogger(Validator.class);
     

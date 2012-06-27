@@ -17,18 +17,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.nio.codec.http;
+package com.mozilla.bagheera.http;
 
-public class InvalidPathException  extends Exception {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-    private static final long serialVersionUID = -2753373949363309083L;
+public class PathDecoder {
 
-    public InvalidPathException(String message) {
-        super(message);
-    }
+    private Pattern pathPattern = Pattern.compile("/([^/]+)");
+    private List<String> pathElements = new ArrayList<String>();
     
-    public InvalidPathException(String message, Throwable cause) {
-        super(message, cause);
+    public PathDecoder(String uri) {
+        Matcher m = pathPattern.matcher(uri);
+        while (m.find()) {
+            if (m.groupCount() > 0) {
+                pathElements.add(m.group(1));
+            }
+        }
+    }
+
+    public String getPathElement(int idx) {
+        return idx < pathElements.size() ? pathElements.get(idx) : null;
     }
     
 }
