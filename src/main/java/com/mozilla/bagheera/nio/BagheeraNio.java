@@ -31,6 +31,7 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 import com.mozilla.bagheera.metrics.MetricsManager;
 
 public class BagheeraNio {
@@ -48,13 +49,14 @@ public class BagheeraNio {
         MetricsManager.getInstance();
         
         // Initialize Hazelcast now rather than waiting for the first request
-        Hazelcast.getDefaultInstance();
-        Config config = Hazelcast.getConfig();
-        for (Map.Entry<String, MapConfig> entry : config.getMapConfigs().entrySet()) {
+        //Config config = new Config();
+        //config.setInstanceName("bagheera");
+        HazelcastInstance hzInstance = Hazelcast.newHazelcastInstance(null);
+        for (Map.Entry<String, MapConfig> entry : hzInstance.getConfig().getMapConfigs().entrySet()) {
             String mapName = entry.getKey();
             // If the map contains a wildcard then we need to wait to initialize
             if (!mapName.contains("*")) {
-                Hazelcast.getMap(entry.getKey());
+                hzInstance.getMap(entry.getKey());
             }
         }
         
@@ -64,7 +66,7 @@ public class BagheeraNio {
         ServerBootstrap sb = new ServerBootstrap(channelFactory);
         HttpServerPipelineFactory pipeFactory;
         try {
-            pipeFactory = new HttpServerPipelineFactory(config.getMapConfigs().keySet());
+            pipeFactory = new HttpServerPipelineFactory(hzInstance.getConfig().getMapConfigs().keySet(), hzInstance);
             sb.setPipelineFactory(pipeFactory);
             sb.setOption("tcpNoDelay", tcpNoDelay);
             sb.setOption("keepAlive", false);

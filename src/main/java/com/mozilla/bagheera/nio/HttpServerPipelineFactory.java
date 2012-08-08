@@ -34,6 +34,7 @@ import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
 import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
 
+import com.hazelcast.core.HazelcastInstance;
 import com.mozilla.bagheera.nio.codec.http.AccessFilter;
 import com.mozilla.bagheera.nio.codec.http.ContentLengthFilter;
 import com.mozilla.bagheera.nio.codec.http.RootResponse;
@@ -43,12 +44,14 @@ import com.mozilla.bagheera.util.WildcardProperties;
 
 public class HttpServerPipelineFactory implements ChannelPipelineFactory {
 
+    private final HazelcastInstance hzInstance;
     private final WildcardProperties props;    
     private final int maxContentLength;
     private final Validator validator;
     private final MetricsProcessor metricsProcessor;
     
-    public HttpServerPipelineFactory(Set<String> validNamespaces) throws IOException {
+    public HttpServerPipelineFactory(Set<String> validNamespaces, HazelcastInstance hzInstance) throws IOException {
+        this.hzInstance = hzInstance;
         props = new WildcardProperties();
         InputStream in = null;
         try {
@@ -83,7 +86,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("jsonValidaton", new JsonFilter(validator));
         pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("handler", new HazelcastMapHandler(validator, metricsProcessor));
+        pipeline.addLast("handler", new HazelcastMapHandler(hzInstance, validator, metricsProcessor));
         
         return pipeline;
     }

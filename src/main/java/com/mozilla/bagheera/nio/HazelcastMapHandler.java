@@ -52,7 +52,7 @@ import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.jboss.netty.util.CharsetUtil;
 
-import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.nio.codec.http.HttpSecurityException;
@@ -77,11 +77,13 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     // Specialized REST namespaces
     private static final String NS_METRICS = "metrics";
     
+    private HazelcastInstance hzInstance;
     private IdValidator idValidator;
     private MetricsProcessor metricsProcessor;
     private MetricsManager metricsManager;
     
-    public HazelcastMapHandler(IdValidator idValidator, MetricsProcessor metricsProcessor) {
+    public HazelcastMapHandler(HazelcastInstance hzInstance, IdValidator idValidator, MetricsProcessor metricsProcessor) {
+        this.hzInstance = hzInstance;
         this.idValidator = idValidator;
         this.metricsProcessor = metricsProcessor;
         this.metricsManager = MetricsManager.getInstance();
@@ -178,7 +180,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                 }
 
                 if (validId) {
-                    IMap<String,String> m = Hazelcast.getMap(namespace);
+                    IMap<String,String> m = hzInstance.getMap(namespace);
                     if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
                         handlePost(e, request, namespace, id, m);
                     } else if (request.getMethod() == HttpMethod.GET) {

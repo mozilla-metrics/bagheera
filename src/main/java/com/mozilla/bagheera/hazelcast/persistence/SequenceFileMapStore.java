@@ -181,14 +181,8 @@ public class SequenceFileMapStore extends HdfsMapStore implements MapStore<Strin
         try {
         	outputKey.set(key);
         	bytesWritten += outputKey.getLength();
-        	if (outputFormatType == StoreFormatType.SMILE) {
-        		byte[] smileBytes = jsonSmileConverter.convertToSmile(value);
-        		((BytesWritable)outputValue).set(smileBytes, 0, smileBytes.length);
-        		bytesWritten += smileBytes.length;
-            } else {
-            	((Text)outputValue).set(value);
-            	bytesWritten += ((Text)outputValue).getLength();
-            }
+           	((Text)outputValue).set(value);
+           	bytesWritten += ((Text)outputValue).getLength();
         	
             checkRollover();
             writer.append(outputKey, outputValue);
@@ -215,14 +209,8 @@ public class SequenceFileMapStore extends HdfsMapStore implements MapStore<Strin
             for (Map.Entry<String, String> pair : pairs.entrySet()) {
             	outputKey.set(pair.getKey());
             	bytesWritten += outputKey.getLength();
-            	if (outputFormatType == StoreFormatType.SMILE) {
-            		byte[] smileBytes = jsonSmileConverter.convertToSmile(pair.getValue());
-            		((BytesWritable)outputValue).set(smileBytes, 0, smileBytes.length);
-            		bytesWritten += smileBytes.length;
-                } else {
-                	((Text)outputValue).set(pair.getValue());
-                	bytesWritten += ((Text)outputValue).getLength();
-                }
+               	((Text)outputValue).set(pair.getValue());
+               	bytesWritten += ((Text)outputValue).getLength();
 
                 writer.append(outputKey, outputValue);
             }

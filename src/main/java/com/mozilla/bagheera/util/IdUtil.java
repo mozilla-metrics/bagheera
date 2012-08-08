@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Random;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
@@ -38,7 +37,6 @@ public class IdUtil {
 	public static final int HEX_BUCKETS = 16;
 
 	public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyyMMdd");
-	private static final Random RAND = new Random();
 
 	/**
 	 * @return
@@ -68,31 +66,6 @@ public class IdUtil {
         }
 	    
 		return nonRandByteBucketizeId(id, Calendar.getInstance().getTime());
-	}
-
-	/**
-	 * Takes a given id and prefixes it with a byte character and the date
-	 * @param id
-	 * @param d
-	 * @return
-	 * @throws IOException
-	 */
-	public static byte[] randByteBucketizeId(String id, Date d) throws IOException {
-	    if (id == null) {
-	        throw new IllegalArgumentException("id cannot be null");
-	    }
-	    if (d == null) {
-            throw new IllegalArgumentException("date cannot be null");
-        }
-	    
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		byte[] randByte = new byte[1];
-		RAND.nextBytes(randByte);
-		baos.write(randByte);
-		baos.write(SDF.format(d).getBytes());
-		baos.write(id.getBytes());
-
-		return baos.toByteArray();
 	}
 	
 	/**
@@ -126,31 +99,7 @@ public class IdUtil {
 
 		return baos.toByteArray();
 	}
-	
-	/**
-	 * Takes a given id and prefixes it with a hex character and the date
-	 * @param id
-	 * @param d
-	 * @return
-	 * @throws IOException
-	 */
-	public static byte[] randHexBucketizeId(String id, Date d) throws IOException {
-	    if (id == null) {
-            throw new IllegalArgumentException("id cannot be null");
-        }
-        if (d == null) {
-            throw new IllegalArgumentException("date cannot be null");
-        }
-        
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		int bucket = RAND.nextInt(HEX_BUCKETS);
-		baos.write(Integer.toHexString(bucket).getBytes());
-		baos.write(SDF.format(d).getBytes());
-		baos.write(id.getBytes());
 
-		return baos.toByteArray();
-	}
-	
 	/**
 	 * Takes a given id and prefixes it with a hex character and the date in a non-random fashion
 	 * @param id

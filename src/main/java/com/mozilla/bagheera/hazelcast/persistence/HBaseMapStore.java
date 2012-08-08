@@ -84,8 +84,9 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         
         pool = new HTablePool(conf, hbasePoolSize);
         
+        HBaseAdmin hbaseAdmin = null;
         try {
-            HBaseAdmin hbaseAdmin = new HBaseAdmin(conf);
+            hbaseAdmin = new HBaseAdmin(conf);
             if (!hbaseAdmin.tableExists(tableName)) {
                 HTableDescriptor desc = new HTableDescriptor(tableName);
                 HColumnDescriptor columnDesc = new HColumnDescriptor(family);
@@ -100,8 +101,16 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         } catch (Exception e) {
             throw new RuntimeException("Error creating table!", e);
+        } finally {
+            if (hbaseAdmin != null) {
+                try {
+                    hbaseAdmin.close();
+                } catch (IOException e) {
+                    LOG.error("Failed to close HBaseAdmin handle", e);
+                }
+            }
         }
-        
+
         // register with MapStoreRepository
         MapStoreRepository.addMapStore(mapName, this);
     }
@@ -132,11 +141,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 Result r = table.get(g);
                 byte[] value = r.getValue(family, qualifier);
                 if (value != null) {
-                    if (outputFormatType == StoreFormatType.SMILE) {
-                        retval = jsonSmileConverter.convertFromSmile(value);
-                    } else {
-                        retval = new String(value);
-                    }
+                    retval = new String(value);
                 }
             } catch (IOException e) {
                 LOG.error("Value did not exist for row: " + key, e);
@@ -173,11 +178,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 for (Result r : result) {
                     byte[] value = r.getValue(family, qualifier);
                     if (value != null) {
-                        if (outputFormatType == StoreFormatType.SMILE) {
-                            kvMap.put(new String(r.getRow()), jsonSmileConverter.convertFromSmile(r.getValue(family, qualifier)));
-                        } else {
-                            kvMap.put(new String(r.getRow()), new String(r.getValue(family, qualifier)));
-                        }
+                        kvMap.put(new String(r.getRow()), new String(r.getValue(family, qualifier)));
                     }
                 }
             } catch (IOException e) {
@@ -200,12 +201,12 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         Set<String> keySet = null;
         if (allowLoadAll) {
             keySet = new HashSet<String>();
-            HTableInterface hti = null;
+            HTableInterface table = null;
             try {
-                hti = pool.getTable(tableName);
+                table = pool.getTable(tableName);
                 Scan s = new Scan();
                 s.addColumn(family, qualifier);
-                ResultScanner rs = hti.getScanner(s);
+                ResultScanner rs = table.getScanner(s);
                 Result r = null;
                 while ((r = rs.next()) != null) {
                     String k = new String(r.getRow());
@@ -214,8 +215,8 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             } catch (IOException e) {
                 LOG.error("IOException while loading all keys", e);
             } finally {
-                if (hti != null) {
-                    pool.putTable(hti);
+                if (table != null) {
+                    pool.putTable(table);
                 }
             }
         }
@@ -286,11 +287,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             try {
                 byte[] rowId = prefixDate ? IdUtil.bucketizeId(key) : Bytes.toBytes(key);
                 Put p = new Put(rowId);
-                if (outputFormatType == StoreFormatType.SMILE) {
-                    p.add(family, qualifier, jsonSmileConverter.convertToSmile(value));
-                } else {
-                    p.add(family, qualifier, Bytes.toBytes(value));
-                }
+                p.add(family, qualifier, Bytes.toBytes(value));
                 table.put(p);
             } catch (NumberFormatException nfe) {
                 LOG.error("Encountered bad key: " + key, nfe);
@@ -298,7 +295,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         } catch (IOException e) {
             LOG.error("Error during put", e);
         } finally {
-            if (table != null) {
+            if (pool != null && table != null) {
                 pool.putTable(table);
             }
         }
@@ -318,11 +315,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 try {
                     byte[] rowId = prefixDate ? IdUtil.bucketizeId(pair.getKey()) : Bytes.toBytes(pair.getKey());
                     Put p = new Put(rowId);
-                    if (outputFormatType == StoreFormatType.SMILE) {
-                        p.add(family, qualifier, jsonSmileConverter.convertToSmile(pair.getValue()));
-                    } else {
-                        p.add(family, qualifier, Bytes.toBytes(pair.getValue()));
-                    }
+                    p.add(family, qualifier, Bytes.toBytes(pair.getValue()));
                     puts.add(p);
                 } catch (NumberFormatException nfe) {
                     LOG.error("Encountered bad key: " + pair.getKey(), nfe);
@@ -336,7 +329,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         } catch (IOException e) {
             LOG.error("Error during puts", e);
         } finally {
-            if (table != null) {
+            if (pool != null && table != null) {
                 pool.putTable(table);
             }
         }

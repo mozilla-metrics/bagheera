@@ -34,33 +34,8 @@
 		<max-size>0</max-size>
 		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
 		<map-store enabled="true">
-		<class-name>com.mozilla.bagheera.hazelcast.persistence.HBaseMapStore</class-name>
+		<class-name>com.mozilla.bagheera.hazelcast.persistence.NoOpMapStore</class-name>
 			<write-delay-seconds>1</write-delay-seconds>
-			<properties>
-				<property name="hazelcast.hbase.key.prefix.date">true</property>
-				<property name="hazelcast.hbase.pool.size">40</property>
-				<property name="hazelcast.hbase.table">telemetry_test</property>
-				<property name="hazelcast.hbase.column.family">data</property>
-				<property name="hazelcast.hbase.column.qualifier">json</property>
-				<property name="hazelcast.store.format">json</property>
-			</properties>
-		</map-store>
-	</map>
-	<map name="testpilot_*">
-		<time-to-live-seconds>20</time-to-live-seconds>
-		<backup-count>1</backup-count>
-		<eviction-policy>NONE</eviction-policy>
-		<max-size>0</max-size>
-		<eviction-percentage>25</eviction-percentage>
-		<merge-policy>hz.ADD_NEW_ENTRY</merge-policy>
-		<map-store enabled="true">
-			<class-name>com.mozilla.bagheera.hazelcast.persistence.SequenceFileMapStore</class-name>
-			<write-delay-seconds>5</write-delay-seconds>
-			<properties>
-				<property name="hazelcast.hdfs.basedir">/bagheera</property>
-				<property name="hazelcast.hdfs.dateformat">yyyy-MM-dd</property>
-				<property name="hazelcast.hdfs.max.filesize">1073741824</property>
-			</properties>
 		</map-store>
 	</map>
 </hazelcast>

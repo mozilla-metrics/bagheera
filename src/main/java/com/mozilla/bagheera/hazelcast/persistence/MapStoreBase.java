@@ -25,7 +25,6 @@ import org.apache.log4j.Logger;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
-import com.mozilla.bagheera.json.JsonSmileConverter;
 
 public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
 
@@ -42,7 +41,6 @@ public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
     
     protected enum StoreFormatType { JSON, SMILE };
     protected StoreFormatType outputFormatType = StoreFormatType.JSON;
-    protected JsonSmileConverter jsonSmileConverter;
     
     protected String mapName;
 
@@ -61,11 +59,9 @@ public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
         this.allowLoadAll = Boolean.parseBoolean(properties.getProperty(ALLOW_LOAD_ALL, "false"));
         this.allowDelete = Boolean.parseBoolean(properties.getProperty(ALLOW_DELETE, "false"));
         String storeFormat = properties.getProperty(STORE_FORMAT);
+        // json is the only type right now
         if ("json".equals(storeFormat)) {
             outputFormatType = StoreFormatType.JSON;
-        } else if ("smile".equals(storeFormat)) {
-            outputFormatType = StoreFormatType.SMILE;
-            jsonSmileConverter = new JsonSmileConverter();
         }
     }
 
