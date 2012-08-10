@@ -1,12 +1,12 @@
 #!/bin/bash
 
 function usage() {
-  echo "Usage: $0 <server-port> <hazelcast-config-path>"
+  echo "Usage: $0 <server-port>"
   exit 1
 }
 
 # Print usage if incorrect number of args
-[[ $# -ne 2 ]] && usage
+[[ $# -ne 1 ]] && usage
 
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
@@ -14,24 +14,16 @@ bin=`cd "$bin"; pwd`
 SERVER_PORT=$1
 JMXREMOTE_PORT=8081
 HAZELCAST_CONF=$2
-SERVER_CLASS_NAME="com.mozilla.bagheera.nio.BagheeraNio"
+SERVER_CLASS_NAME="com.mozilla.bagheera.http.Bagheera"
 NOW=`date "+%Y%m%d%H%M%S"`
-BAGHEERA_OPTS="-Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs -Dcom.sun.management.jmxremote.port=$JMXREMOTE_PORT -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+BAGHEERA_OPTS="-Dserver.port=$SERVER_PORT -Dbagheera.log.dir=$bin/../logs"
 GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/gc.log.$NOW"
-JAVA_OPTS="$BAGHEERA_OPTS -Xss128k -Xms3000m -Xmx3000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:NewRatio=3 $GC_OPTS"
+JAVA_OPTS="$BAGHEERA_OPTS -Xss128k -Xms2000m -Xmx2000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:NewRatio=3 -XX:+UseCompressedOops $GC_OPTS"
 
-export MALLOC_ARENA_MAX=4
+export MALLOC_ARENA_MAX=2
 
 if [ "$BAGHEERA_USER" = "" ]; then
     BAGHEERA_USER="$USER"
-fi
-
-if [ "$HADOOP_CONF" = "" ]; then
-    HADOOP_CONF="/etc/hadoop/conf"
-fi
-
-if [ "$HBASE_CONF" = "" ]; then
-    HBASE_CONF="/etc/hbase/conf"
 fi
 
 if [ -d "/var/run/bagheera" ]; then

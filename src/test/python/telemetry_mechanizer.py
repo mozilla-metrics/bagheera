@@ -17,29 +17,26 @@ under the License.
 """
 import mechanize
 import urllib2
-import uuid
 import random
 import time
 
-class Transaction:
+class Transaction(object):
     
     def __init__(self):
         self.custom_timers = {}
         self.servers = ["localhost"]
         self.url = "http://%s:8080/submit/telemetry"
-        self.content_type = "application/json"
-        self.post_headers = { "Content-Type": self.content_type }
-        self.post_data = read_data("telemetry.js")
+        self.post_headers = { "Content-Type": "application/json", "Content-Encoding": "gzip" }
+        self.post_data = self.read_data("telemetry.js.gz")
     
     def read_data(self, filename):
-        fin = open(filename, "r")
+        fin = open(filename, "rb")
         data = fin.read()
         fin.close()
         return data
     
     def run(self):
-        base_url = self.url % random.choice(self.servers)
-        post_url = "%s/%s" % (base_url, str(uuid.uuid4()))
+        post_url = self.url % random.choice(self.servers)
         request = urllib2.Request(post_url, self.post_data, self.post_headers)
         start_timer = time.time()
         response = urllib2.urlopen(request)
@@ -47,7 +44,7 @@ class Transaction:
         #self.custom_timers['response time'] = latency
         timer_key = 'response time %d' % (response.code)
         self.custom_timers[timer_key] = latency
-        assert(response.code == 200 or response.code == 201 or response.code == 204), 'Bad HTTP Response: %d' % (response.code)
+        assert(response.code == 201), 'Bad HTTP Response: %d' % (response.code)
         
 if __name__ == '__main__':
     trans = Transaction()
