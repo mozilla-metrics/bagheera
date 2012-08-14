@@ -26,22 +26,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
-import com.yammer.metrics.HealthChecks;
 import com.yammer.metrics.reporting.GangliaReporter;
 import com.yammer.metrics.reporting.GraphiteReporter;
-import com.yammer.metrics.util.DeadlockHealthCheck;
 
 public class MetricsManager {
 
     private static final String METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
     private static final String METRICS_PROPERTIES_PREFIX = "bagheera.metrics.";
-    private static final String GLOBAL_HTTP_METRIC_ID = "global";
+    private static final String GLOBAL = "global";
 
     private static MetricsManager instance = null;
 
     private final Properties props;
     private ConcurrentMap<String, HttpMetric> httpMetrics;
-
+    private ConcurrentMap<String, HazelcastMetric> hzMetrics;
+    
     private MetricsManager() {
         props = new Properties();
         InputStream in = getClass().getResourceAsStream(METRICS_PROPERTIES_RESOURCE_NAME);
@@ -52,13 +51,9 @@ public class MetricsManager {
             throw new IllegalArgumentException("Could not find the properites file: " + METRICS_PROPERTIES_RESOURCE_NAME);
         }
         
-        configureHealthChecks();
         configureReporters();
         configureHttpMetrics();
-    }
-
-    private void configureHealthChecks() {
-        HealthChecks.register(new DeadlockHealthCheck());
+        configureHazelcastMetrics();
     }
     
     private void configureReporters() {
@@ -74,8 +69,14 @@ public class MetricsManager {
 
     private void configureHttpMetrics() {
         httpMetrics = new ConcurrentHashMap<String, HttpMetric>();
-        HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
-        httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
+        HttpMetric h = new HttpMetric(GLOBAL);
+        httpMetrics.put(GLOBAL, h);
+    }
+    
+    private void configureHazelcastMetrics() {
+       hzMetrics = new ConcurrentHashMap<String, HazelcastMetric>();
+       HazelcastMetric hzMetric = new HazelcastMetric(GLOBAL);
+       hzMetrics.put(GLOBAL, hzMetric);
     }
     
     private String namespaceToId(String namespace) {
@@ -112,10 +113,29 @@ public class MetricsManager {
     }
 
     public HttpMetric getGlobalHttpMetric() {
-        return getHttpMetricForId(GLOBAL_HTTP_METRIC_ID);
+        return getHttpMetricForId(GLOBAL);
     }    
 
     public HttpMetric getHttpMetricForNamespace(String namespace) {
         return getHttpMetricForId(namespaceToId(namespace));
     }
+    
+    public HazelcastMetric getHazelcastMetricForId(String id) {
+        final HazelcastMetric metric = hzMetrics.get(id);
+        if (metric == null) {
+            final HazelcastMetric newMetric = hzMetrics.putIfAbsent(id, new HazelcastMetric(id));
+            if (newMetric == null) {
+                return hzMetrics.get(id);
+            } else {
+                return newMetric;
+            }
+        } else {
+            return metric;
+        }
+    }
+    
+    public HazelcastMetric getHazelcastMetricForNamespace(String namespace) {
+        return getHazelcastMetricForId(namespaceToId(namespace));
+    }
+    
 }

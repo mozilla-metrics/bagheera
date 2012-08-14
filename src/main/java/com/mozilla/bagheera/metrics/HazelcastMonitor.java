@@ -19,6 +19,7 @@
  */
 package com.mozilla.bagheera.metrics;
 
+import java.util.Map;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -26,15 +27,17 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 
-import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.Instance;
 import com.hazelcast.core.Instance.InstanceType;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.core.LifecycleEvent.LifecycleState;
 import com.hazelcast.core.LifecycleListener;
+import com.yammer.metrics.HealthChecks;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Gauge;
+import com.yammer.metrics.core.HealthCheck.Result;
 import com.yammer.metrics.core.MetricName;
 
 public class HazelcastMonitor implements LifecycleListener {
@@ -42,33 +45,41 @@ public class HazelcastMonitor implements LifecycleListener {
     private static final Logger LOG = Logger.getLogger(HazelcastMonitor.class);
     
     private static HazelcastMonitor INSTANCE;
+    private final HazelcastInstance hzInstance;
     private ScheduledExecutorService ses;
     private boolean isMonitoring;
     
-    private HazelcastMonitor() {
+    private HazelcastMonitor(HazelcastInstance hzInstance) {
         ses = Executors.newSingleThreadScheduledExecutor();
         isMonitoring = false;
+        this.hzInstance = hzInstance;
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
-                ses.shutdown();
-                try {
-                    if (ses.awaitTermination(10, TimeUnit.SECONDS)) {
-                        ses.shutdownNow();
-                        if (ses.awaitTermination(10, TimeUnit.SECONDS)) {
-                            LOG.error("Unable to shutdown hazelcast monitor");
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    ses.shutdownNow();
-                    Thread.currentThread().interrupt();
-                }
+                shutdown();
             }
         });
     }
     
-    public static HazelcastMonitor getInstance() {
+    public void shutdown() {
+        if (ses != null) {
+            ses.shutdown();
+            try {
+                if (!ses.awaitTermination(10, TimeUnit.SECONDS)) {
+                    ses.shutdownNow();
+                    if (!ses.awaitTermination(10, TimeUnit.SECONDS)) {
+                        LOG.error("Unable to shutdown hazelcast monitor");
+                    }
+                }
+            } catch (InterruptedException e) {
+                ses.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    
+    public static HazelcastMonitor getInstance(HazelcastInstance hzInstance) {
         if (INSTANCE == null) {
-            INSTANCE = new HazelcastMonitor();
+            INSTANCE = new HazelcastMonitor(hzInstance);
         }
         
         return INSTANCE;
@@ -85,18 +96,27 @@ public class HazelcastMonitor implements LifecycleListener {
         if (!isMonitoring) {
             ses.scheduleAtFixedRate(new TimerTask() {
                 public void run() {
-                    for (Instance instance : Hazelcast.getInstances()) {
+                    for (Instance instance : hzInstance.getInstances()) {
                         final String instanceId = (String)instance.getId();
                         if (InstanceType.MAP == instance.getInstanceType()) {
                             Metrics.newGauge(new MetricName(IMap.class, instanceId + ".size"), new Gauge<Integer>() {
                                 @Override
                                 public Integer value() {
-                                    IMap<?,?> m = Hazelcast.getMap(instanceId);
+                                    IMap<?,?> m = hzInstance.getMap(instanceId);
                                     return m.size();
                                 }
                             });
                         }
-                    } 
+                    }
+                    
+                    Map<String,Result> healthChecks = HealthChecks.runHealthChecks();
+                    for (Map.Entry<String,Result> entry : healthChecks.entrySet()) {
+                        String k = entry.getKey();
+                        Result r = entry.getValue();
+                        if (!r.isHealthy()) {
+                            LOG.error("ALERT: \"mapName:\"" + k + "\", " + r.getMessage());
+                        }
+                    }
                 }
             }, 1, 60, TimeUnit.SECONDS);
             isMonitoring = true;

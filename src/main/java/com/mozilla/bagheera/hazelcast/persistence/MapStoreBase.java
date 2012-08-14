@@ -25,6 +25,9 @@ import org.apache.log4j.Logger;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapLoaderLifecycleSupport;
+import com.mozilla.bagheera.metrics.HazelcastHealthCheck;
+import com.mozilla.bagheera.metrics.MetricsManager;
+import com.yammer.metrics.HealthChecks;
 
 public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
 
@@ -43,7 +46,9 @@ public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
     protected StoreFormatType outputFormatType = StoreFormatType.JSON;
     
     protected String mapName;
-
+    protected boolean isHealthy = true;
+    protected MetricsManager metricsManager;
+    
     /*
      * (non-Javadoc)
      *
@@ -63,6 +68,17 @@ public abstract class MapStoreBase implements MapLoaderLifecycleSupport {
         if ("json".equals(storeFormat)) {
             outputFormatType = StoreFormatType.JSON;
         }
+        
+        metricsManager = MetricsManager.getInstance();
+        // register health check
+        HealthChecks.register(new HazelcastHealthCheck(this));
     }
 
+    public String getMapName() {
+        return mapName;
+    }
+    
+    public boolean isHealthy() {
+        return isHealthy;
+    }
 }

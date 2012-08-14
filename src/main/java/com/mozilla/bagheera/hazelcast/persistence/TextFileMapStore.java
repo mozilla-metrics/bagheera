@@ -56,9 +56,6 @@ public class TextFileMapStore extends HdfsMapStore implements MapStore<String, S
      */
     public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
         super.init(hazelcastInstance, properties, mapName);
-       
-        // register with MapStoreRepository
-        MapStoreRepository.addMapStore(mapName, this);
     }
 
     /**
@@ -149,7 +146,11 @@ public class TextFileMapStore extends HdfsMapStore implements MapStore<String, S
             writer.append(value);
             writer.newLine();
             bytesWritten += value.length();
+            isHealthy = true;
+            metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(1, true);
         } catch (IOException e) {
+            isHealthy = false;
+            metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(0, false);
             LOG.error("IOException while writing key/value pair", e);
             throw new RuntimeException(e);
         }
@@ -166,14 +167,20 @@ public class TextFileMapStore extends HdfsMapStore implements MapStore<String, S
             LOG.debug(String.format("Thread %s - storing %d items", Thread.currentThread().getId(), pairs.size()));
         }
 
+        int numWritten = 0;
         try {
             checkRollover();
             for (Map.Entry<String, String> pair : pairs.entrySet()) {
                 writer.append(pair.getValue());
                 writer.newLine();
                 bytesWritten += pair.getValue().length();
+                numWritten++;
             }
+            isHealthy = true;
+            metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(numWritten, true);
         } catch (IOException e) {
+            isHealthy = false;
+            metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(numWritten, false);
             LOG.error("IOException while writing key/value pair", e);
             throw new RuntimeException(e);
         }

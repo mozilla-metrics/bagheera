@@ -21,10 +21,13 @@ package com.mozilla.bagheera.hazelcast.persistence;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapStore;
 
 /**
@@ -32,10 +35,25 @@ import com.hazelcast.core.MapStore;
  * methods are called with parameter values. This is only used for debugging and
  * testing.
  */
-public class NoOpMapStore implements MapStore<String, String> {
+public class NoOpMapStore extends MapStoreBase implements MapStore<String, String> {
 
     private static final Logger LOG = Logger.getLogger(NoOpMapStore.class);
 
+    private Random rand;
+    private double failureRate = 0.0;
+    
+    @Override
+    public void init(HazelcastInstance hazelcastInstance, Properties properties, String mapName) {
+        super.init(hazelcastInstance, properties, mapName);
+        
+        rand = new Random();
+        failureRate = Double.parseDouble(properties.getProperty("hazelcast.store.failure.rate", "0.0"));
+    }
+    
+    @Override
+    public void destroy() {
+    }
+    
     @Override
     public String load(String key) {
         if (LOG.isDebugEnabled()) {
@@ -84,6 +102,13 @@ public class NoOpMapStore implements MapStore<String, String> {
     public void store(String key, String value) {
         if (LOG.isDebugEnabled()) {
             LOG.debug(String.format("store(%s, %s)", key, value));
+        }
+        if (rand.nextDouble() < failureRate) {
+            isHealthy = false;
+            LOG.error("Simulated store failure");
+        } else {
+            isHealthy = true;
+            LOG.info("Simulated store success");
         }
     }
 

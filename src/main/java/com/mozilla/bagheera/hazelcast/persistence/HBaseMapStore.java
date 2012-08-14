@@ -110,9 +110,6 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 }
             }
         }
-
-        // register with MapStoreRepository
-        MapStoreRepository.addMapStore(mapName, this);
     }
 
     /* (non-Javadoc)
@@ -143,7 +140,9 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 if (value != null) {
                     retval = new String(value);
                 }
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateLoadMetrics(1, true);
             } catch (IOException e) {
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateLoadMetrics(0, false);
                 LOG.error("Value did not exist for row: " + key, e);
             } finally {
                 if (pool != null && table != null) {
@@ -162,6 +161,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
      */
     @Override
     public Map<String, String> loadAll(Collection<String> keys) {
+        Map<String,String> kvMap = null;
         if (allowLoadAll) {
             List<Get> gets = new ArrayList<Get>(keys.size());
             for (String k : keys) {
@@ -169,8 +169,9 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 gets.add(g);
             }
 
+            kvMap = new HashMap<String,String>();
+            int numLoaded = 0;
             HTableInterface table = null;
-            Map<String,String> kvMap = new HashMap<String,String>();
             try {
                 table = pool.getTable(tableName);
                 table.get(gets);
@@ -179,9 +180,12 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                     byte[] value = r.getValue(family, qualifier);
                     if (value != null) {
                         kvMap.put(new String(r.getRow()), new String(r.getValue(family, qualifier)));
+                        numLoaded++;
                     }
                 }
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateLoadMetrics(numLoaded, true);
             } catch (IOException e) {
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateLoadMetrics(numLoaded, false);
                 LOG.error("IOException while getting values", e);
             } finally {
                 if (pool != null && table != null) {
@@ -190,7 +194,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             }
         }
 
-        return null;
+        return kvMap;
     }
 
     /* (non-Javadoc)
@@ -201,6 +205,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
         Set<String> keySet = null;
         if (allowLoadAll) {
             keySet = new HashSet<String>();
+            int numLoaded = 0;
             HTableInterface table = null;
             try {
                 table = pool.getTable(tableName);
@@ -212,7 +217,9 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                     String k = new String(r.getRow());
                     keySet.add(k);
                 }
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateLoadMetrics(numLoaded, true);
             } catch (IOException e) {
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateLoadMetrics(numLoaded, true);
                 LOG.error("IOException while loading all keys", e);
             } finally {
                 if (table != null) {
@@ -236,7 +243,11 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 Delete d = new Delete(Bytes.toBytes(key));
                 table = pool.getTable(tableName);
                 table.delete(d);
+                isHealthy = true;
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateDeleteMetrics(1, true);
             } catch (IOException e) {
+                isHealthy = false;
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateDeleteMetrics(0, false);
                 LOG.error("IOException while deleting key: " + key, e);
             } finally {
                 if (table != null) {
@@ -263,7 +274,11 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 }
                 table = pool.getTable(tableName);
                 table.delete(deletes);
+                isHealthy = true;
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateDeleteMetrics(deletes.size(), true);
             } catch (IOException e) {
+                isHealthy = false;
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateDeleteMetrics(0, false);
                 LOG.error("IOException while deleting values", e);
             } finally {
                 if (table != null) {
@@ -289,10 +304,15 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                 Put p = new Put(rowId);
                 p.add(family, qualifier, Bytes.toBytes(value));
                 table.put(p);
+                isHealthy = true;
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(1, true);
             } catch (NumberFormatException nfe) {
+                metricsManager.getHazelcastMetricForNamespace(mapName).updateBadKeyMetrics(1);
                 LOG.error("Encountered bad key: " + key, nfe);
             }
         } catch (IOException e) {
+            isHealthy = false;
+            metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(0, false);
             LOG.error("Error during put", e);
         } finally {
             if (pool != null && table != null) {
@@ -318,6 +338,7 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
                     p.add(family, qualifier, Bytes.toBytes(pair.getValue()));
                     puts.add(p);
                 } catch (NumberFormatException nfe) {
+                    metricsManager.getHazelcastMetricForNamespace(mapName).updateBadKeyMetrics(1);
                     LOG.error("Encountered bad key: " + pair.getKey(), nfe);
                 }
             }
@@ -326,7 +347,11 @@ public class HBaseMapStore extends MapStoreBase implements MapStore<String, Stri
             table.setAutoFlush(false);
             table.put(puts);
             table.flushCommits();
+            isHealthy = true;
+            metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(puts.size(), true);
         } catch (IOException e) {
+            isHealthy = false;
+            metricsManager.getHazelcastMetricForNamespace(mapName).updateStoreMetrics(0, false);
             LOG.error("Error during puts", e);
         } finally {
             if (pool != null && table != null) {

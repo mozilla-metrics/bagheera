@@ -28,10 +28,10 @@ import org.apache.log4j.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
-import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.mozilla.bagheera.metrics.HazelcastMonitor;
 import com.mozilla.bagheera.metrics.MetricsManager;
 
 public class BagheeraNio {
@@ -59,6 +59,10 @@ public class BagheeraNio {
                 hzInstance.getMap(entry.getKey());
             }
         }
+        
+        // Setup the Hazelcast Monitor
+        HazelcastMonitor hzMonitor = HazelcastMonitor.getInstance(hzInstance);
+        hzMonitor.monitor();
         
         // HTTP
         NioServerSocketChannelFactory channelFactory = new NioServerSocketChannelFactory(

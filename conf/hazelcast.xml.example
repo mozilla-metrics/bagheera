@@ -36,6 +36,9 @@
 		<map-store enabled="true">
 		<class-name>com.mozilla.bagheera.hazelcast.persistence.NoOpMapStore</class-name>
 			<write-delay-seconds>1</write-delay-seconds>
+			<properties>
+				<property name="hazelcast.store.failure.rate">1.0</property>
+			</properties>
 		</map-store>
 	</map>
 </hazelcast>
