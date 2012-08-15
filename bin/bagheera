@@ -20,7 +20,7 @@ BAGHEERA_OPTS="-Dhazelcast.config=$HAZELCAST_CONF -Dserver.port=$SERVER_PORT -Db
 GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/gc.log.$NOW"
 JAVA_OPTS="$BAGHEERA_OPTS -Xss128k -Xms3000m -Xmx3000m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:NewRatio=3 $GC_OPTS"
 
-export MALLOC_ARENA_MAX=4
+export MALLOC_ARENA_MAX=2
 
 if [ "$BAGHEERA_USER" = "" ]; then
     BAGHEERA_USER="$USER"
