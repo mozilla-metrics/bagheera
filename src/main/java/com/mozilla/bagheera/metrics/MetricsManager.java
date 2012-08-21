@@ -74,9 +74,7 @@ public class MetricsManager {
     }
     
     private void configureHazelcastMetrics() {
-       hzMetrics = new ConcurrentHashMap<String, HazelcastMetric>();
-       HazelcastMetric hzMetric = new HazelcastMetric(GLOBAL);
-       hzMetrics.put(GLOBAL, hzMetric);
+        hzMetrics = new ConcurrentHashMap<String, HazelcastMetric>();
     }
     
     private String namespaceToId(String namespace) {

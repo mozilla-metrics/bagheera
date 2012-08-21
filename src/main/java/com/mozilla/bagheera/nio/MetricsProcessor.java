@@ -105,11 +105,11 @@ public class MetricsProcessor {
                 
                 // TODO: Filter out only the specific data we want from the aggregate, possibly
                 //       flag if there is too much else in there.
-                hcMap.put(id, objectMapper.writeValueAsString(aggregate));
+                hcMap.putAsync(id, objectMapper.writeValueAsString(aggregate));
                 
                 // Delete the key specified by the X-Obsolete-Document header
                 if (obsoleteDocId != null) {
-                    hcMap.remove(obsoleteDocId);
+                    hcMap.removeAsync(obsoleteDocId);
                 }
                 status = HttpResponseStatus.CREATED;
             } else {

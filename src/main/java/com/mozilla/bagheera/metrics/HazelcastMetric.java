@@ -27,8 +27,8 @@ import com.yammer.metrics.core.MetricName;
 
 public class HazelcastMetric {
 
-    private static final String DEFAULT_GROUP = "bagheera";
-    private static final String DEFAULT_TYPE = "hz";
+    public static final String DEFAULT_GROUP = "bagheera";
+    public static final String DEFAULT_TYPE = "hz";
     private final String id;
     
     private Meter loads, stores, deletes;
@@ -41,9 +41,9 @@ public class HazelcastMetric {
     }
     
     private void configureMetrics() {
-        loads = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".load"), "calls", TimeUnit.SECONDS);
-        stores = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".store"), "calls", TimeUnit.SECONDS);
-        deletes = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".delete"), "calls", TimeUnit.SECONDS);
+        loads = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".load"), "entries", TimeUnit.SECONDS);
+        stores = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".store"), "entries", TimeUnit.SECONDS);
+        deletes = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".delete"), "entries", TimeUnit.SECONDS);
         loadFailures = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".load.failed"), "failures", TimeUnit.SECONDS);
         storeFailures = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".store.failed"), "failures", TimeUnit.SECONDS);
         deleteFailures = Metrics.newMeter(new MetricName(DEFAULT_GROUP, DEFAULT_TYPE, this.id + ".delete.failed"), "failures", TimeUnit.SECONDS);
@@ -59,14 +59,14 @@ public class HazelcastMetric {
     
     public void updateStoreMetrics(int numStored, boolean success) {
         stores.mark(numStored);
-        if (success) {
+        if (!success) {
             storeFailures.mark();
         }
     }
     
     public void updateDeleteMetrics(int numDeleted, boolean success) {
         deletes.mark(numDeleted);
-        if (success) {
+        if (!success) {
             deleteFailures.mark();
         }
     }

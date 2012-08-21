@@ -97,12 +97,11 @@ public class HazelcastMonitor implements LifecycleListener {
             ses.scheduleAtFixedRate(new TimerTask() {
                 public void run() {
                     for (Instance instance : hzInstance.getInstances()) {
-                        final String instanceId = (String)instance.getId();
                         if (InstanceType.MAP == instance.getInstanceType()) {
-                            Metrics.newGauge(new MetricName(IMap.class, instanceId + ".size"), new Gauge<Integer>() {
+                            final IMap<?,?> m = (IMap<?,?>)instance;
+                            Metrics.newGauge(new MetricName(HazelcastMetric.DEFAULT_GROUP, HazelcastMetric.DEFAULT_TYPE, m.getName() + ".size"), new Gauge<Integer>() {
                                 @Override
                                 public Integer value() {
-                                    IMap<?,?> m = hzInstance.getMap(instanceId);
                                     return m.size();
                                 }
                             });
