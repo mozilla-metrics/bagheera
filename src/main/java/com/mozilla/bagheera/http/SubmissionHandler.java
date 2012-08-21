@@ -53,11 +53,14 @@ import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.jboss.netty.util.CharsetUtil;
 
+import com.google.protobuf.ByteString;
+import com.mozilla.bagheera.BagheeraProto;
 import com.mozilla.bagheera.http.json.InvalidJsonException;
 import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.HttpUtil;
 import com.mozilla.bagheera.validation.Validator;
+import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 
 public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
@@ -101,17 +104,22 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
+            BagheeraMessage.Builder bmsgBuilder = BagheeraProto.BagheeraMessage.newBuilder();
+            bmsgBuilder.setNamespace(namespace);
+            bmsgBuilder.setId(id);
+            bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
             if (NS_METRICS.equals(namespace)) {
+                //
                 // TODO: submit a queue item for this content and a delete queue item simultaneously
                 /*
                 status = metricsProcessor.process(m, id, content.toString(CharsetUtil.UTF_8), 
                                                   e.getChannel().getRemoteAddress().toString(), 
                                                   request.getHeader("X-Obsolete-Document"));
                 */
-            } else {
-                producer.send(namespace, id, content.toString(CharsetUtil.UTF_8));
-                status = CREATED;
             }
+            producer.send(bmsgBuilder.build());
+            //producer.send(namespace, id, content.toString(CharsetUtil.UTF_8));
+            status = CREATED;
         }
 
         updateRequestMetrics(namespace, request.getMethod().getName(), content.readableBytes());

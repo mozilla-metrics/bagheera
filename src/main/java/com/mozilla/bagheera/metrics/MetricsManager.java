@@ -78,24 +78,6 @@ public class MetricsManager {
         httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
     }
     
-    private String namespaceToId(String namespace) {
-        return "ns." + namespace;
-    }
-    
-    private HttpMetric getHttpMetricForId(String id) {
-        final HttpMetric metric = httpMetrics.get(id);
-        if (metric == null) {
-            final HttpMetric newMetric = httpMetrics.putIfAbsent(id, new HttpMetric(id));
-            if (newMetric == null) {
-                return httpMetrics.get(id);
-            } else {
-                return newMetric;
-            }
-        } else {
-            return metric;
-        }
-    }
-    
     public synchronized static MetricsManager getInstance() {
         if (instance == null) {
             instance = new MetricsManager();
@@ -112,10 +94,20 @@ public class MetricsManager {
     }
 
     public HttpMetric getGlobalHttpMetric() {
-        return getHttpMetricForId(GLOBAL_HTTP_METRIC_ID);
-    }    
-
-    public HttpMetric getHttpMetricForNamespace(String namespace) {
-        return getHttpMetricForId(namespaceToId(namespace));
+        return getHttpMetricForNamespace(GLOBAL_HTTP_METRIC_ID);
+    }
+    
+    public HttpMetric getHttpMetricForNamespace(String ns) {
+        final HttpMetric metric = httpMetrics.get(ns);
+        if (metric == null) {
+            final HttpMetric newMetric = httpMetrics.putIfAbsent(ns, new HttpMetric(ns));
+            if (newMetric == null) {
+                return httpMetrics.get(ns);
+            } else {
+                return newMetric;
+            }
+        } else {
+            return metric;
+        }
     }
 }

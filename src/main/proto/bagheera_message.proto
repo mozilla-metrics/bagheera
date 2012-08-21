@@ -1,0 +1,17 @@
+package bagheera_data_definition;
+
+option java_package = "com.mozilla.bagheera";
+option java_outer_classname = "BagheeraProto";
+option optimize_for = SPEED;
+
+import "geoip.proto";
+
+message BagheeraMessage {
+	
+	// 1 is reserved in case we ever want a different id scheme later on
+	optional string namespace = 2;
+	optional string id = 3;
+	optional GeoIp geo_ip = 4;
+	optional bytes payload = 5;
+
+}

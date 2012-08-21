@@ -68,7 +68,7 @@ public class Bagheera {
             props.load(in);
             in.close();
             
-            propUrl = Bagheera.class.getResource("/kafka.properties");
+            propUrl = Bagheera.class.getResource("/kafka.producer.properties");
             if (propUrl == null) {
                 throw new IllegalArgumentException("Could not find the properites file: " + "/kafka.properties");
             }
