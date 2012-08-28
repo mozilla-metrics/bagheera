@@ -74,9 +74,6 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     // REST endpoints
     private static final String ENDPOINT_SUBMIT = "submit";
     
-    // Specialized REST namespaces
-    private static final String NS_METRICS = "metrics";
-    
     private Validator validator;
     private MetricsManager metricsManager;
     private Producer producer;
@@ -107,18 +104,10 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             BagheeraMessage.Builder bmsgBuilder = BagheeraProto.BagheeraMessage.newBuilder();
             bmsgBuilder.setNamespace(namespace);
             bmsgBuilder.setId(id);
+            bmsgBuilder.setIpAddr(HttpUtil.getRemoteAddr(request, 
+                                                         ((InetSocketAddress)e.getChannel().getRemoteAddress()).toString()));
             bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
-            if (NS_METRICS.equals(namespace)) {
-                //
-                // TODO: submit a queue item for this content and a delete queue item simultaneously
-                /*
-                status = metricsProcessor.process(m, id, content.toString(CharsetUtil.UTF_8), 
-                                                  e.getChannel().getRemoteAddress().toString(), 
-                                                  request.getHeader("X-Obsolete-Document"));
-                */
-            }
             producer.send(bmsgBuilder.build());
-            //producer.send(namespace, id, content.toString(CharsetUtil.UTF_8));
             status = CREATED;
         }
 

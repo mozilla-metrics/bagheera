@@ -19,6 +19,7 @@
  */
 package com.mozilla.bagheera.consumer;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.cli.CommandLine;
@@ -30,13 +31,13 @@ import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.OptionFactory;
-import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.KeyValueSink;
+import com.mozilla.bagheera.sink.SequenceFileSink;
 import com.mozilla.bagheera.util.ShutdownHook;
 
-public class KafkaHBaseConsumer {
+public abstract class KafkaSequenceFileConsumer {
 
-    private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
+    private static final Logger LOG = Logger.getLogger(KafkaSequenceFileConsumer.class);
     
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
@@ -45,10 +46,10 @@ public class KafkaHBaseConsumer {
         options.addOption(optFactory.create("gid", "groupid", true, "Kafka group ID.").required());
         options.addOption(optFactory.create("p", "properties", true, "Kafka consumer properties file.").required());
 
-        options.addOption(optFactory.create("t", "table", true, "HBase table name.").required());
-        options.addOption(optFactory.create("f", "family", true, "Column family."));
-        options.addOption(optFactory.create("q", "qualifier", true, "Column qualifier."));
-        options.addOption(optFactory.create("pd", "prefixdate", false, "Prefix key with salted date."));
+        options.addOption(optFactory.create("o", "output", true, "HDFS base path for output."));
+        options.addOption(optFactory.create("df", "dateformat", true, "Date format for the date subdirectories."));
+        options.addOption(optFactory.create("fs", "filesize", true, "Max file size for output files."));
+        options.addOption(optFactory.create("b", "usebytes", false, "Use BytesWritable for value rather than Text."));
         
         CommandLineParser parser = new GnuParser();
         ShutdownHook sh = ShutdownHook.getInstance();
@@ -60,25 +61,28 @@ public class KafkaHBaseConsumer {
             sh.addFirst(consumer);
             
             // Create a sink for storing data
-            final KeyValueSink sink = new HBaseSink(cmd.getOptionValue("table"), 
-                                                    cmd.getOptionValue("family", "data"), 
-                                                    cmd.getOptionValue("qualifier", "json"), 
-                                                    Boolean.parseBoolean(cmd.getOptionValue("prefixdata", "true")));
+            final KeyValueSink sink = new SequenceFileSink(cmd.getOptionValue("topic"), 
+                                                           cmd.getOptionValue("output", "/bagheera"), 
+                                                           cmd.getOptionValue("dateformat", "yyyy-MM-dd"), 
+                                                           Long.parseLong(cmd.getOptionValue("filesize", "536870912")), 
+                                                           Boolean.parseBoolean(cmd.getOptionValue("usebytes", "false")));
             sh.addLast(sink);
-            
-            // Set the sink for consumer storage
             consumer.setSink(sink);
             
-            // Begin polling
             consumer.poll();
         } catch (ParseException e) {
             LOG.error("Error parsing command line options", e);
             HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp(KafkaHBaseConsumer.class.getName(), options);
+            formatter.printHelp(KafkaSequenceFileConsumer.class.getName(), options);
         } catch (InterruptedException e) {
             LOG.error("Interrupted while polling", e);
         } catch (ExecutionException e) {
             LOG.error("Execution error while polling", e);
+        } catch (NumberFormatException e) {
+            LOG.error("Failed to parse filesize option", e);
+        } catch (IOException e) {
+            LOG.error("Error creating data sink", e);
         }
     }
 }
+

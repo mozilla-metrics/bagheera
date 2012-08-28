@@ -90,7 +90,11 @@ public class Bagheera {
                 super.releaseExternalResources();
                 if (producer != null) {
                     LOG.info("Closing producer resource...");
-                    producer.close();
+                    try {
+                        producer.close();
+                    } catch (IOException e) {
+                        LOG.error("Error closing producer", e);
+                    }
                 }
             }
         };

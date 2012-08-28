@@ -17,25 +17,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.cli;
+package com.mozilla.bagheera.serializer;
 
-public class OptionFactory {
+import kafka.message.Message;
+import kafka.serializer.Decoder;
 
-    private static OptionFactory INSTANCE;
+import org.apache.log4j.Logger;
+
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.mozilla.bagheera.BagheeraProto;
+import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
+
+public class BagheeraDecoder implements Decoder<BagheeraMessage> {
+
+    private static final Logger LOG = Logger.getLogger(BagheeraDecoder.class);
     
-    private OptionFactory() {    
-    }
-    
-    public static OptionFactory getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new OptionFactory();
+    @Override
+    public BagheeraMessage toEvent(Message msg) {
+        BagheeraMessage bmsg = null;
+        try {
+            bmsg = BagheeraProto.BagheeraMessage.parseFrom(ByteString.copyFrom(msg.payload()));
+        } catch (InvalidProtocolBufferException e) {
+            LOG.error("Received unparseable message", e);
         }
         
-        return INSTANCE;
-    }
-    
-    public Option create(String opt, String longOpt, boolean hasArg, String description) {
-        return new Option(opt, longOpt, hasArg, description);
+        return bmsg;
     }
 
 }

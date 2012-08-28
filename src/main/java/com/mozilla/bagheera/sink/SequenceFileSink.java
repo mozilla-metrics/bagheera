@@ -1,3 +1,22 @@
+/*
+ * Copyright 2012 Mozilla Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.mozilla.bagheera.sink;
 
 import java.io.IOException;
@@ -15,7 +34,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.log4j.Logger;
 
-public class SequenceFileSink implements Sink, KeyValueSink {
+public class SequenceFileSink implements KeyValueSink {
 
     private static final Logger LOG = Logger.getLogger(SequenceFileSink.class);
     
@@ -123,12 +142,7 @@ public class SequenceFileSink implements Sink, KeyValueSink {
     }
 
     @Override
-    public void store(byte[] data) {
-        throw new RuntimeException("store is not implemented by SequeceFileSink yet");
-    }
-
-    @Override
-    public void store(byte[] key, byte[] data) {
+    public void store(String key, byte[] data) {
         try {
             outputKey.set(key);
             if (useBytesValue) {
@@ -139,7 +153,7 @@ public class SequenceFileSink implements Sink, KeyValueSink {
             
             checkRollover();
             writer.append(outputKey, outputValue);
-            bytesWritten += key.length + data.length;
+            bytesWritten += key.length() + data.length;
         } catch (IOException e) {
             LOG.error("IOException while writing key/value pair", e);
             throw new RuntimeException(e);

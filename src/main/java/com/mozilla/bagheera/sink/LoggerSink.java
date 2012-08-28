@@ -1,3 +1,22 @@
+/*
+ * Copyright 2012 Mozilla Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.mozilla.bagheera.sink;
 
 import java.io.IOException;
@@ -16,24 +35,25 @@ public class LoggerSink implements Sink, KeyValueSink {
     
     @Override
     public void close() {
+        LOG.info("Called close()");
     }
     
     @Override
     public void store(byte[] data) throws IOException {
-        LOG.info("data length:" + data.length + "\n");
+        LOG.info("data length:" + data.length);
         if (logValues) {
-            LOG.info("data: " + new String(data, "UTF-8") + "\n");
+            LOG.info("data: " + new String(data, "UTF-8"));
         }
     }
     
     @Override
-    public void store(byte[] key, byte[] data) throws IOException {
+    public void store(String key, byte[] data) throws IOException {
         // TODO Auto-generated method stub
-        LOG.info("key length: " + key.length + "\n");
-        LOG.info("data length:" + data.length + "\n");
+        LOG.info("key length: " + key.length());
+        LOG.info("data length:" + data.length);
         if (logValues) {
-            LOG.info("key: " + new String(key, "UTF-8") + "\n");
-            LOG.info("data: " + new String(data, "UTF-8" + "\n"));
+            LOG.info("key: " + key);
+            LOG.info("data: " + new String(data, "UTF-8"));
         }
     }
 
