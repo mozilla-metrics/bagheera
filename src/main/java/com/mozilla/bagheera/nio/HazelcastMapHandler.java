@@ -59,7 +59,6 @@ import com.mozilla.bagheera.nio.codec.http.HttpSecurityException;
 import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
 import com.mozilla.bagheera.nio.codec.http.PathDecoder;
 import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
-import com.mozilla.bagheera.nio.validation.IdValidator;
 import com.mozilla.bagheera.util.HttpUtil;
 
 public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
@@ -78,13 +77,11 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     private static final String NS_METRICS = "metrics";
     
     private HazelcastInstance hzInstance;
-    private IdValidator idValidator;
     private MetricsProcessor metricsProcessor;
     private MetricsManager metricsManager;
     
-    public HazelcastMapHandler(HazelcastInstance hzInstance, IdValidator idValidator, MetricsProcessor metricsProcessor) {
+    public HazelcastMapHandler(HazelcastInstance hzInstance, MetricsProcessor metricsProcessor) {
         this.hzInstance = hzInstance;
-        this.idValidator = idValidator;
         this.metricsProcessor = metricsProcessor;
         this.metricsManager = MetricsManager.getInstance();
     }
@@ -171,33 +168,19 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
             if (endpoint != null && ENDPOINT_SUBMIT.equals(endpoint)) {
                 String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
                 String id = pd.getPathElement(ID_PATH_IDX);
-                boolean validId = false;
                 if (id == null) {
                     id = UUID.randomUUID().toString();
-                    validId = true;
-                } else {
-                    validId = idValidator.isValidId(id);
                 }
 
-                if (validId) {
-                    IMap<String,String> m = hzInstance.getMap(namespace);
-                    if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
-                        handlePost(e, request, namespace, id, m);
-                    } else if (request.getMethod() == HttpMethod.GET) {
-                        handleGet(e, request, namespace, id, m);
-                    } else if (request.getMethod() == HttpMethod.DELETE) {
-                        handleDelete(e, request, namespace, id, m);
-                    } else {
-                        writeResponse(NOT_FOUND, e, namespace, null);
-                    }
+                IMap<String,String> m = hzInstance.getMap(namespace);
+                if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
+                    handlePost(e, request, namespace, id, m);
+                } else if (request.getMethod() == HttpMethod.GET) {
+                    handleGet(e, request, namespace, id, m);
+                } else if (request.getMethod() == HttpMethod.DELETE) {
+                    handleDelete(e, request, namespace, id, m);
                 } else {
-                    String userAgent = request.getHeader("User-Agent");
-                    String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
-                    LOG.warn(String.format("Submitted an invalid ID - \"%s\" \"%s\"", remoteIpAddress, userAgent));
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Submission body: " + request.getContent().toString(CharsetUtil.UTF_8));
-                    }
-                    writeResponse(NOT_ACCEPTABLE, e, namespace, null);
+                    writeResponse(NOT_FOUND, e, namespace, null);
                 }
             } else {
                 String userAgent = request.getHeader("User-Agent");

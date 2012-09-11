@@ -37,14 +37,17 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
 
     private static final String ALLOW_GET_ACCESS = ".allow.get.access";
     private static final String ALLOW_DELETE_ACCESS = ".allow.delete.access";
+    private static final String ID_VALIDATION = ".id.validation";
     
     private final Validator validator;
     private final int nsPathIdx;
+    private final int idPathIdx;
     private final WildcardProperties props;
     
-    public AccessFilter(Validator validator, int nsPathIdx, WildcardProperties props) {
+    public AccessFilter(Validator validator, int nsPathIdx, int idPathIdx, WildcardProperties props) {
         this.validator = validator;
         this.nsPathIdx = nsPathIdx;
+        this.idPathIdx = idPathIdx;
         this.props = props;
     }    
     
@@ -67,6 +70,14 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
                 String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                 throw new InvalidPathException(String.format("Tried to access invalid resource: - \"%s\" \"%s\"", remoteIpAddress, userAgent));
             }
+            // Check Id
+            boolean validateId = Boolean.parseBoolean(props.getWildcardProperty(ns + ID_VALIDATION, "true"));
+            String id = rpd.getPathElement(idPathIdx);
+            if (id != null && validateId && !validator.isValidId(id)) {
+                String userAgent = request.getHeader("User-Agent");
+                String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
+                throw new InvalidPathException(String.format("Submitted an invalid ID - \"%s\" \"%s\"", remoteIpAddress, userAgent));                
+            }           
             // Check POST/GET/DELETE Access
             if (request.getMethod() == HttpMethod.POST) {
                 // noop
