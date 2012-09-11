@@ -19,6 +19,9 @@
  */
 package com.mozilla.bagheera.util;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
 public class HttpUtil {
@@ -32,8 +35,28 @@ public class HttpUtil {
     }
     
     public static String getRemoteAddr(HttpRequest request, String channelRemoteAddr) {
-        String ipAddr = request.getHeader(X_FORWARDED_FOR);
-        return ipAddr == null ? channelRemoteAddr : ipAddr;
+        String forwardedAddr = request.getHeader(X_FORWARDED_FOR);
+        return forwardedAddr == null ? channelRemoteAddr : forwardedAddr;
+    }
+    
+    public static byte[] getRemoteAddr(HttpRequest request, InetAddress channelRemoteAddr) {
+        String forwardedAddr = request.getHeader(X_FORWARDED_FOR);
+        byte[] addrBytes = null;
+        if (forwardedAddr != null) {
+            InetAddress addr;
+            try {
+                addr = InetAddress.getByName(forwardedAddr);
+                addrBytes = addr.getAddress();
+            } catch (UnknownHostException e) {
+                // going to swallow this for now
+            }
+        }
+        // if we're still null here then use the remote addr bytes
+        if (addrBytes == null) {
+            addrBytes = channelRemoteAddr.getAddress();
+        }
+        
+        return addrBytes;
     }
     
 }

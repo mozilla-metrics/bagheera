@@ -104,8 +104,8 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             BagheeraMessage.Builder bmsgBuilder = BagheeraProto.BagheeraMessage.newBuilder();
             bmsgBuilder.setNamespace(namespace);
             bmsgBuilder.setId(id);
-            bmsgBuilder.setIpAddr(HttpUtil.getRemoteAddr(request, 
-                                                         ((InetSocketAddress)e.getChannel().getRemoteAddress()).toString()));
+            bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, 
+                                                                             ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
             bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
             producer.send(bmsgBuilder.build());
             status = CREATED;
