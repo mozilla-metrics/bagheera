@@ -25,5 +25,6 @@ import java.io.IOException;
 public interface KeyValueSink extends Closeable {
 
     public void store(String key, byte[] data) throws IOException;
+    public void store(String key, byte[] data, long timestamp) throws IOException;
     
 }

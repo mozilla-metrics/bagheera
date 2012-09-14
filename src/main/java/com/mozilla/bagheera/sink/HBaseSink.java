@@ -31,6 +31,8 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
+import com.mozilla.bagheera.util.IdUtil;
+
 public class HBaseSink implements KeyValueSink {
     
     private static final Logger LOG = Logger.getLogger(HBaseSink.class);
@@ -89,6 +91,17 @@ public class HBaseSink implements KeyValueSink {
     @Override
     public void store(String key, byte[] data) throws IOException {
         Put p = new Put(Bytes.toBytes(key));
+        p.add(family, qualifier, data);
+        puts.add(p);
+        if (puts.size() >= batchSize) {
+            flush();
+        }
+    }
+
+    @Override
+    public void store(String key, byte[] data, long timestamp) throws IOException {
+        byte[] k = prefixDate ? IdUtil.bucketizeId(key, timestamp) : Bytes.toBytes(key);
+        Put p = new Put(k);
         p.add(family, qualifier, data);
         puts.add(p);
         if (puts.size() >= batchSize) {

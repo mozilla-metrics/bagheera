@@ -73,13 +73,11 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     // REST endpoints
     private static final String ENDPOINT_SUBMIT = "submit";
-    
-    private Validator validator;
+
     private MetricsManager metricsManager;
     private Producer producer;
     
     public SubmissionHandler(Validator validator, Producer producer) {
-        this.validator = validator;
         this.metricsManager = MetricsManager.getInstance();
         this.producer = producer;
     }
@@ -107,6 +105,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, 
                                                                              ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
             bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
+            bmsgBuilder.setTimestamp(System.currentTimeMillis());
             producer.send(bmsgBuilder.build());
             status = CREATED;
         }
@@ -154,15 +153,14 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             if (endpoint != null && ENDPOINT_SUBMIT.equals(endpoint)) {
                 String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
                 String id = pd.getPathElement(ID_PATH_IDX);
-                if ((request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) &&
-                    (id == null || validator.isValidId(id))) {
+                if ((request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT)) {
                     if (id == null) {
                         id = UUID.randomUUID().toString();
                     }
                     handlePost(e, request, namespace, id);
                 } else if (request.getMethod() == HttpMethod.GET) {
                     writeResponse(METHOD_NOT_ALLOWED, e, namespace, null);
-                } else if (request.getMethod() == HttpMethod.DELETE && validator.isValidId(id)) {
+                } else if (request.getMethod() == HttpMethod.DELETE) {
                     handleDelete(e, request, namespace, id);
                 } else {
                     String userAgent = request.getHeader("User-Agent");

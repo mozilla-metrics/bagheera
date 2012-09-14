@@ -28,7 +28,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,6 +48,9 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.sink.KeyValueSink;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.MetricName;
 
 public class KafkaConsumer implements Consumer {
 
@@ -61,6 +63,8 @@ public class KafkaConsumer implements Consumer {
     private ExecutorService executor;
     private KeyValueSink sink;
     
+    private Meter consumed;
+    
     public KafkaConsumer(String topic, Properties props) {
         this(topic, props, DEFAULT_NUM_THREADS);
     }
@@ -72,6 +76,8 @@ public class KafkaConsumer implements Consumer {
         ConsumerConfig consumerConfig = new ConsumerConfig(props);
         consumerConnector = kafka.consumer.Consumer.createJavaConsumerConnector(consumerConfig);
         streams = consumerConnector.createMessageStreamsByFilter(new Whitelist(topic), numThreads);
+        
+        consumed = Metrics.newMeter(new MetricName("bagheera", "consumer", topic + ".consumed"), "messages", TimeUnit.SECONDS);
     }
     
     public void setSink(KeyValueSink sink) {
@@ -98,21 +104,23 @@ public class KafkaConsumer implements Consumer {
         
         // close the kafka consumer connector
         if (consumerConnector != null) {
+            LOG.info("Shutting down consumer connector!");
             consumerConnector.shutdown();
         }
     }
     
     public void poll() throws InterruptedException,ExecutionException {
-        List<Callable<Boolean>> tasks = new ArrayList<Callable<Boolean>>();
+        List<Future<?>> futures = new ArrayList<Future<?>>(streams.size());
         for (final KafkaStream<Message> stream : streams) {  
-            tasks.add(new Callable<Boolean>() {
+            futures.add(executor.submit((new Runnable() {
                 @Override
-                public Boolean call() throws Exception {
+                public void run() {
+                    
                     try {
-                        BagheeraMessage bmsg = null;
                         for (MessageAndMetadata<Message> mam : stream) {
-                            bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));                         
-                            sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
+                            BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
+                            sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
+                            consumed.mark();
                         }
                     } catch (InvalidProtocolBufferException e) {
                         LOG.error("Invalid protocol buffer in data stream", e);
@@ -121,15 +129,14 @@ public class KafkaConsumer implements Consumer {
                     } catch (IOException e) {
                         LOG.error("IO error while storing to data sink", e);
                     }
-                    
-                    return true;
                 }
-            });
+            })));
         }
 
-        List<Future<Boolean>> futures = executor.invokeAll(tasks);
-        for (Future<Boolean> future : futures) {
-            future.get();
+        // Wait for all tasks to complete which in the normal case they will
+        // run indefinitely unless killed
+        for (Future<?> f : futures) {
+            f.get();
         }
     }
     

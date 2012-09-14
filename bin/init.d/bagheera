@@ -25,6 +25,7 @@ BAGHEERA_HOME="/usr/lib/bagheera"
 PIDFILE="/var/run/bagheera/bagheera.pid"
 LOCKFILE="/var/lock/subsys/bagheera"
 NAME="bagheera"
+PORT=8080
 if [ "$BAGHEERA_USER" = "" ]; then
     BAGHEERA_USER="bagheera"
 fi
@@ -38,7 +39,7 @@ fi
 
 start() {
   echo -n $"Starting $NAME: "
-  daemon --user="$BAGHEERA_USER" $BAGHEERA_HOME/bin/bagheera 8080 $BAGHEERA_HOME/conf/hazelcast.xml
+  daemon --user="$BAGHEERA_USER" $BAGHEERA_HOME/bin/bagheera $PORT
   RETVAL=$?
   echo
   [ $RETVAL -eq $RETVAL_SUCCESS ] && touch $LOCKFILE

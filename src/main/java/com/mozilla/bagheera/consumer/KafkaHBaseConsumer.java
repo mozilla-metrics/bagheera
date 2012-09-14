@@ -30,6 +30,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.OptionFactory;
+import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.KeyValueSink;
 import com.mozilla.bagheera.util.ShutdownHook;
@@ -45,7 +46,7 @@ public class KafkaHBaseConsumer {
         options.addOption(optFactory.create("gid", "groupid", true, "Kafka group ID.").required());
         options.addOption(optFactory.create("p", "properties", true, "Kafka consumer properties file.").required());
 
-        options.addOption(optFactory.create("t", "table", true, "HBase table name.").required());
+        options.addOption(optFactory.create("tbl", "table", true, "HBase table name.").required());
         options.addOption(optFactory.create("f", "family", true, "Column family."));
         options.addOption(optFactory.create("q", "qualifier", true, "Column qualifier."));
         options.addOption(optFactory.create("pd", "prefixdate", false, "Prefix key with salted date."));
@@ -63,11 +64,14 @@ public class KafkaHBaseConsumer {
             final KeyValueSink sink = new HBaseSink(cmd.getOptionValue("table"), 
                                                     cmd.getOptionValue("family", "data"), 
                                                     cmd.getOptionValue("qualifier", "json"), 
-                                                    Boolean.parseBoolean(cmd.getOptionValue("prefixdata", "true")));
+                                                    Boolean.parseBoolean(cmd.getOptionValue("prefixdate", "true")));
             sh.addLast(sink);
             
             // Set the sink for consumer storage
             consumer.setSink(sink);
+            
+            // Initialize metrics collection, reporting, etc.
+            MetricsManager.getInstance();
             
             // Begin polling
             consumer.poll();
@@ -78,7 +82,7 @@ public class KafkaHBaseConsumer {
         } catch (InterruptedException e) {
             LOG.error("Interrupted while polling", e);
         } catch (ExecutionException e) {
-            LOG.error("Execution error while polling", e);
+            LOG.error("ExecutionException while polling", e);
         }
     }
 }

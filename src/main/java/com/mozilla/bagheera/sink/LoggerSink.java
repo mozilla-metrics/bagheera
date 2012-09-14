@@ -57,4 +57,15 @@ public class LoggerSink implements Sink, KeyValueSink {
         }
     }
 
+    @Override
+    public void store(String key, byte[] data, long timestamp) throws IOException {
+        LOG.info("key length: " + key.length());
+        LOG.info("data length:" + data.length);
+        LOG.info("timestamp: " + timestamp);
+        if (logValues) {
+            LOG.info("key: " + key);
+            LOG.info("data: " + new String(data, "UTF-8"));
+        }    
+    }
+
 }

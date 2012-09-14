@@ -159,5 +159,11 @@ public class SequenceFileSink implements KeyValueSink {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public void store(String key, byte[] data, long timestamp) throws IOException {
+        // HDFS sink will currently ignore timestamps
+        store(key, data);
+    }
     
 }

@@ -3,11 +3,11 @@
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
-MAIN_CLASS_NAME="com.mozilla.bagheera.consumer.hazelcast.HazelcastNoOpConsumer"
+MAIN_CLASS_NAME="com.mozilla.bagheera.consumer.KafkaSequenceFileConsumer"
 NOW=`date "+%Y%m%d%H%M%S"`
 CONSUMER_HASH=`echo -n \"$@\" | md5sum | cut -f1 -d' '`
 CONSUMER_OPTS="-Dbagheera.log.dir=$bin/../logs -Dconsumer.hash=$CONSUMER_HASH"
-GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/noop_consumer-gc.log.$NOW"
+GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/hdfs_consumer-gc.log.$NOW"
 JAVA_OPTS="$CONSUMER_OPTS -Xss128k -Xmx1000m -XX:+UseParallelGC"
 
 export MALLOC_ARENA_MAX=4
@@ -20,19 +20,15 @@ if [ "$HADOOP_CONF" = "" ]; then
     HADOOP_CONF="/etc/hadoop/conf"
 fi
 
-if [ "$HBASE_CONF" = "" ]; then
-    HBASE_CONF="/etc/hbase/conf"
-fi
-
 if [ -d "/var/run/bagheera" ]; then
-    PIDFILE="/var/run/bagheera/noop_consumer-$ARGS_HASH.pid"
+    PIDFILE="/var/run/bagheera/hdfs_consumer-$CONSUMER_HASH.pid"
 else
-    PIDFILE="$bin/../noop_consumer-$ARGS_HASH.pid"
+    PIDFILE="$bin/../hdfs_consumer-$CONSUMER_HASH.pid"
 fi
 
-# if this is a developer then use the main jar in the build directory
-if [ -d $bin/../target ]; then
-    MAIN_JAR_PATH="$bin/../target/bagheera-*.jar"
+# if this is a developer then use the classes directory in the build directory
+if [ -d $bin/../target/classes ]; then
+    MAIN_JAR_PATH="$bin/../target/classes"
     if [ "$DAEMON_DETACHED" = "" ]; then
         DAEMON_DETACHED=false
     fi
@@ -43,7 +39,7 @@ else
     fi
 fi
 
-CLASSPATH="$bin/../conf":"$HADOOP_CONF":"$HBASE_CONF"
+CLASSPATH="$bin/../conf":"$HADOOP_CONF"
 # add main jar
 for lib in `ls $MAIN_JAR_PATH`; do
     CLASSPATH=${CLASSPATH}:$lib
@@ -63,7 +59,7 @@ if [ "$DAEMON_DETACHED" = false ]; then
     java $JAVA_OPTS -cp $CLASSPATH $MAIN_CLASS_NAME "$@"
     RETVAL=$?
 else
-    nohup java $JAVA_OPTS -cp $CLASSPATH $MAIN_CLASS_NAME "$@" > $bin/../logs/noop_consumer-$CONSUMER_HASH.out 2>&1 < /dev/null &
+    nohup java $JAVA_OPTS -cp $CLASSPATH $MAIN_CLASS_NAME "$@" > $bin/../logs/hdfs_consumer-$CONSUMER_HASH.out 2>&1 < /dev/null &
     PID=$!
     RETVAL=$?
 

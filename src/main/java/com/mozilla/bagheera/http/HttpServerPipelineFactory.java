@@ -29,7 +29,6 @@ import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
 import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
 
-import com.mozilla.bagheera.http.json.JsonFilter;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.WildcardProperties;
 import com.mozilla.bagheera.validation.Validator;
@@ -62,9 +61,8 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("rootResponse", new RootResponse());
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
-        pipeline.addLast("accessFilter", new AccessFilter(validator, SubmissionHandler.NAMESPACE_PATH_IDX, props));
+        pipeline.addLast("accessFilter", new AccessFilter(validator, SubmissionHandler.NAMESPACE_PATH_IDX, SubmissionHandler.ID_PATH_IDX, props));
         pipeline.addLast("inflater", new HttpContentDecompressor());
-        pipeline.addLast("jsonValidaton", new JsonFilter(validator));
         pipeline.addLast("encoder", new HttpResponseEncoder());
         pipeline.addLast("handler", new SubmissionHandler(validator, producer));
         
