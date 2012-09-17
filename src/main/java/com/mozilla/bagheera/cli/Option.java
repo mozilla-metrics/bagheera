@@ -19,6 +19,10 @@
  */
 package com.mozilla.bagheera.cli;
 
+/**
+ * This Option class extends Apache Commons every so slightly to make required options
+ * more convienent to setup.
+ */
 public class Option extends org.apache.commons.cli.Option {
 
     private static final long serialVersionUID = 4764162254116593978L;

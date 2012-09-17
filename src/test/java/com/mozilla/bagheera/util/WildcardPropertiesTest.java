@@ -17,28 +17,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.cli;
+package com.mozilla.bagheera.util;
 
-/**
- * A simple factory for Option creation.
- */
-public class OptionFactory {
+import static org.junit.Assert.assertEquals;
 
-    private static OptionFactory INSTANCE;
-    
-    private OptionFactory() {    
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+import org.junit.Test;
+
+public class WildcardPropertiesTest {
+
+    @Test
+    public void testWildcardProperties() throws IOException {
+        String propsFileStr = "foo_*.baz=7";
+        InputStream is = new ByteArrayInputStream(propsFileStr.getBytes("UTF-8"));
+        WildcardProperties wcProps = new WildcardProperties();
+        wcProps.load(is);
+        assertEquals("7", wcProps.getWildcardProperty("foo_bar.baz"));
     }
     
-    public static OptionFactory getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new OptionFactory();
-        }
-        
-        return INSTANCE;
-    }
-    
-    public Option create(String opt, String longOpt, boolean hasArg, String description) {
-        return new Option(opt, longOpt, hasArg, description);
-    }
-
 }

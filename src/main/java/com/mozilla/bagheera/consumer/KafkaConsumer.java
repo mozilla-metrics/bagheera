@@ -56,14 +56,14 @@ public class KafkaConsumer implements Consumer {
 
     private static final Logger LOG = Logger.getLogger(KafkaConsumer.class);
     
-    private static final int DEFAULT_NUM_THREADS = 2;
+    protected static final int DEFAULT_NUM_THREADS = 2;
 
     private ConsumerConnector consumerConnector;
     private List<KafkaStream<Message>> streams;
-    private ExecutorService executor;
-    private KeyValueSink sink;
+    protected ExecutorService executor;
+    protected KeyValueSink sink;
     
-    private Meter consumed;
+    protected Meter consumed;
     
     public KafkaConsumer(String topic, Properties props) {
         this(topic, props, DEFAULT_NUM_THREADS);
@@ -149,18 +149,15 @@ public class KafkaConsumer implements Consumer {
             props.load(reader);
             props.setProperty("groupid", cmd.getOptionValue("groupid"));
         } catch (FileNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOG.error("Could not find properties file", e);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOG.error("Error reading properties file", e);
         } finally {
             if (reader != null) {
                 try {
                     reader.close();
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                    LOG.error("Error closing properties file", e);
                 }
             }
         }

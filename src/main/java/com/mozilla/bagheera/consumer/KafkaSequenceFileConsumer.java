@@ -35,7 +35,11 @@ import com.mozilla.bagheera.sink.KeyValueSink;
 import com.mozilla.bagheera.sink.SequenceFileSink;
 import com.mozilla.bagheera.util.ShutdownHook;
 
-public abstract class KafkaSequenceFileConsumer {
+/**
+ * Basic SequenceFile (HDFS) Kafka consumer. This class can be utilized as is but if you want more
+ * sophisticated logic consider creating your own consumer.
+ */
+public final class KafkaSequenceFileConsumer {
 
     private static final Logger LOG = Logger.getLogger(KafkaSequenceFileConsumer.class);
     

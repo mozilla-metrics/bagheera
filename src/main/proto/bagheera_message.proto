@@ -11,5 +11,5 @@ message BagheeraMessage {
 	optional string id = 3;
 	optional bytes ip_addr = 4;
 	optional bytes payload = 5;
-	optional int64 timestamp = 6;
+	optional sint64 timestamp = 6;
 }

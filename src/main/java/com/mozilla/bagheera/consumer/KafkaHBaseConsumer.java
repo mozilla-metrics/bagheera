@@ -35,7 +35,11 @@ import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.KeyValueSink;
 import com.mozilla.bagheera.util.ShutdownHook;
 
-public class KafkaHBaseConsumer {
+/**
+ * Basic HBase Kafka consumer. This class can be utilized as is but if you want more
+ * sophisticated logic consider creating your own consumer.
+ */
+public final class KafkaHBaseConsumer {
 
     private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
     
