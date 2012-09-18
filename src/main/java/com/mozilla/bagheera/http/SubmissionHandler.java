@@ -33,7 +33,6 @@ import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -55,21 +54,16 @@ import org.jboss.netty.util.CharsetUtil;
 
 import com.google.protobuf.ByteString;
 import com.mozilla.bagheera.BagheeraProto;
+import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.http.json.InvalidJsonException;
 import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.HttpUtil;
 import com.mozilla.bagheera.validation.Validator;
-import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 
 public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     private static final Logger LOG = Logger.getLogger(SubmissionHandler.class);
-
-    // REST path indices
-    public static final int ENDPOINT_PATH_IDX = 0;
-    public static final int NAMESPACE_PATH_IDX = 1;
-    public static final int ID_PATH_IDX = 2;
 
     // REST endpoints
     private static final String ENDPOINT_SUBMIT = "submit";
@@ -94,14 +88,14 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         metricsManager.getGlobalHttpMetric().updateResponseMetrics(status);
     }
     
-    private void handlePost(MessageEvent e, HttpRequest request, String namespace, String id) {
+    private void handlePost(MessageEvent e, BagheeraHttpRequest request) {
         HttpResponseStatus status = NOT_ACCEPTABLE;
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
             BagheeraMessage.Builder bmsgBuilder = BagheeraProto.BagheeraMessage.newBuilder();
-            bmsgBuilder.setNamespace(namespace);
-            bmsgBuilder.setId(id);
+            bmsgBuilder.setNamespace(request.getNamespace());
+            bmsgBuilder.setId(request.getId());
             bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, 
                                                                              ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
             bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
@@ -110,12 +104,12 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             status = CREATED;
         }
 
-        updateRequestMetrics(namespace, request.getMethod().getName(), content.readableBytes());
-        writeResponse(status, e, namespace, URI.create(id).toString());
+        updateRequestMetrics(request.getNamespace(), request.getMethod().getName(), content.readableBytes());
+        writeResponse(status, e, request.getNamespace(), URI.create(request.getId()).toString());
     }
     
     private void handleDelete(MessageEvent e, HttpRequest request, String namespace, String id) {
-        producer.send(namespace + "|DELETE", id, id);
+        // TODO: Handle deletes
         writeResponse(OK, e, namespace, null);
     }
     
@@ -145,33 +139,20 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
 
-        if (msg instanceof HttpRequest) {
-            HttpRequest request = (HttpRequest) e.getMessage();
-            PathDecoder pd = new PathDecoder(request.getUri());
-            String endpoint = pd.getPathElement(ENDPOINT_PATH_IDX);
-
-            if (endpoint != null && ENDPOINT_SUBMIT.equals(endpoint)) {
-                String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
-                String id = pd.getPathElement(ID_PATH_IDX);
+        if (msg instanceof BagheeraHttpRequest) {
+            BagheeraHttpRequest request = (BagheeraHttpRequest)e.getMessage();
+            if (request.getEndpoint() != null && ENDPOINT_SUBMIT.equals(request.getEndpoint())) {
                 if ((request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT)) {
-                    if (id == null) {
-                        id = UUID.randomUUID().toString();
-                    }
-                    handlePost(e, request, namespace, id);
+                    if (request.getId() == null) {
+                        handlePost(e, request);
+                    } else {
+                        handlePost(e, request);
+                    }      
                 } else if (request.getMethod() == HttpMethod.GET) {
-                    writeResponse(METHOD_NOT_ALLOWED, e, namespace, null);
+                    writeResponse(METHOD_NOT_ALLOWED, e, request.getNamespace(), null);
                 } else if (request.getMethod() == HttpMethod.DELETE) {
-                    handleDelete(e, request, namespace, id);
-                } else {
-                    String userAgent = request.getHeader("User-Agent");
-                    String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
-                    LOG.warn(String.format("Submitted an invalid ID - \"%s\" \"%s\"", remoteIpAddress, userAgent));
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Submission body: " + request.getContent().toString(CharsetUtil.UTF_8));
-                    }
-                    writeResponse(NOT_ACCEPTABLE, e, namespace, null);
+                    handleDelete(e, request, request.getNamespace(), request.getId());
                 }
-
             } else {
                 String userAgent = request.getHeader("User-Agent");
                 String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());

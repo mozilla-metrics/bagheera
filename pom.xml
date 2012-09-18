@@ -54,14 +54,20 @@
     </pluginRepositories>
     
 	<dependencies>
-
+		<!-- Unit testing -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.8.2</version>
 			<scope>test</scope>
 		</dependency>
-
+		<dependency>
+			<groupId>org.easymock</groupId>
+			<artifactId>easymock</artifactId>
+			<version>3.1</version>
+			<scope>test</scope>
+		</dependency>
+		
 		<dependency>
 			<groupId>log4j</groupId>
 			<artifactId>log4j</artifactId>
@@ -98,7 +104,7 @@
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty</artifactId>
-			<version>3.5.5.Final</version>
+			<version>3.5.7.Final</version>
 			<scope>compile</scope>
 		</dependency>
 
@@ -187,6 +193,14 @@
 				<exclusion>
 					<artifactId>servlet-api</artifactId>
 					<groupId>javax.servlet</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>jackson-mapper-asl</artifactId>
+					<groupId>org.codehaus.jackson</groupId>
+				</exclusion>
+				<exclusion>
+					<artifactId>jackson-core-asl</artifactId>
+					<groupId>org.codehaus.jackson</groupId>
 				</exclusion>
 			</exclusions>
 		</dependency>
@@ -369,7 +383,6 @@
 			<artifactId>protobuf-java</artifactId>
 			<version>2.3.0</version>
 		</dependency>
-		
 	</dependencies>
 	
 	<build>

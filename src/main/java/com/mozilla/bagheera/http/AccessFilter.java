@@ -32,21 +32,16 @@ import com.mozilla.bagheera.util.HttpUtil;
 import com.mozilla.bagheera.util.WildcardProperties;
 import com.mozilla.bagheera.validation.Validator;
 
-
 public class AccessFilter extends SimpleChannelUpstreamHandler {
 
     private static final String ALLOW_DELETE_ACCESS = ".allow.delete.access";
     private static final String ID_VALIDATION = ".id.validation";
     
     private final Validator validator;
-    private final int nsPathIdx;
-    private final int idPathIdx;
     private final WildcardProperties props;
     
-    public AccessFilter(Validator validator, int nsPathIdx, int idPathIdx, WildcardProperties props) {
+    public AccessFilter(Validator validator, WildcardProperties props) {
         this.validator = validator;
-        this.nsPathIdx = nsPathIdx;
-        this.idPathIdx = idPathIdx;
         this.props = props;
     }    
 
@@ -59,25 +54,16 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
-        if (msg instanceof HttpRequest) {
-            HttpRequest request = (HttpRequest) msg;
-            // Check URI
-            if (!validator.isValidUri(request.getUri())) {
-                throw new InvalidPathException(buildErrorMessage("Tried to access invalid resource", request, e));
-            }
+        if (msg instanceof BagheeraHttpRequest) {
+            BagheeraHttpRequest request = (BagheeraHttpRequest)msg;
             // Check Namespace
-            PathDecoder rpd = new PathDecoder(request.getUri());
-            String ns = rpd.getPathElement(nsPathIdx);
-            if (ns == null) {
+            if (request.getNamespace() == null || !validator.isValidNamespace(request.getNamespace())) {
                 throw new InvalidPathException(buildErrorMessage("Tried to access invalid resource", request, e));
             }
             // Check Id
-            boolean validateId = Boolean.parseBoolean(props.getWildcardProperty(ns + ID_VALIDATION, "true"));
-            String id = rpd.getPathElement(idPathIdx);
-            if (id != null && validateId && !validator.isValidId(id)) {
-                String userAgent = request.getHeader("User-Agent");
-                String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
-                throw new InvalidPathException(String.format("Submitted an invalid ID - \"%s\" \"%s\"", remoteIpAddress, userAgent));
+            boolean validateId = Boolean.parseBoolean(props.getWildcardProperty(request.getNamespace() + ID_VALIDATION, "true"));
+            if (request.getId() != null && validateId && !validator.isValidId(request.getId())) {
+                throw new InvalidPathException(buildErrorMessage("Submitted an invalid ID - \"%s\" \"%s\"", request, e));
             } 
             // Check POST/GET/DELETE Access
             if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
@@ -85,7 +71,7 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
             } else if (request.getMethod() == HttpMethod.GET) {
                 throw new HttpSecurityException(buildErrorMessage("Tried to access GET method for resource", request, e));
             } else if (request.getMethod() == HttpMethod.DELETE) {
-                boolean allowDelAccess = Boolean.parseBoolean(props.getWildcardProperty(ns + ALLOW_DELETE_ACCESS, "false"));
+                boolean allowDelAccess = Boolean.parseBoolean(props.getWildcardProperty(request.getNamespace() + ALLOW_DELETE_ACCESS, "false"));
                 if (!allowDelAccess) {
                     throw new HttpSecurityException(buildErrorMessage("Tried to access DELETE method for resource", request, e));
                 }

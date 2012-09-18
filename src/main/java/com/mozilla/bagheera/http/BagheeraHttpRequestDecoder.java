@@ -17,39 +17,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mozilla.bagheera.validation;
+package com.mozilla.bagheera.http;
 
-import static org.junit.Assert.*;
+import org.jboss.netty.handler.codec.http.HttpMessage;
+import org.jboss.netty.handler.codec.http.HttpMethod;
+import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
+import org.jboss.netty.handler.codec.http.HttpVersion;
 
-import java.util.UUID;
-
-import org.junit.Before;
-import org.junit.Test;
-
-public class ValidatorTest {
-
-    private Validator validator;
+public class BagheeraHttpRequestDecoder extends HttpRequestDecoder {
     
-    @Before
-    public void setup() {
-        validator = new Validator(new String[] { "foo", "bar" });
+    @Override
+    protected HttpMessage createMessage(String[] initialLine) throws Exception {
+        return new BagheeraHttpRequest(HttpVersion.valueOf(initialLine[2]), HttpMethod.valueOf(initialLine[0]), initialLine[1]);
     }
     
-    @Test
-    public void testIsValidJson() {
-        assertTrue(validator.isValidJson("{ \"baz\" : \"blah\" }"));
-        assertFalse(validator.isValidJson("{ \"baz : 7 }"));
-    }
-    
-    @Test
-    public void testIsValidNamespace() {
-        assertTrue(validator.isValidNamespace("foo"));
-        assertFalse(validator.isValidNamespace("baz"));
-    }
-
-    public void testIsValidId() {
-        String id = UUID.randomUUID().toString();
-        assertTrue(validator.isValidId(id));
-        assertFalse(validator.isValidId("fakeid"));
-    }
 }

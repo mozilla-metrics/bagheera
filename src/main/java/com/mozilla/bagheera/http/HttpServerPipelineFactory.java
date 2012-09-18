@@ -26,7 +26,6 @@ import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
-import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
 
 import com.mozilla.bagheera.producer.Producer;
@@ -57,11 +56,11 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
     public ChannelPipeline getPipeline() throws Exception {
         ChannelPipeline pipeline = Channels.pipeline();
         
-        pipeline.addLast("decoder", new HttpRequestDecoder());
+        pipeline.addLast("decoder", new BagheeraHttpRequestDecoder());
         pipeline.addLast("rootResponse", new RootResponse());
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
-        pipeline.addLast("accessFilter", new AccessFilter(validator, SubmissionHandler.NAMESPACE_PATH_IDX, SubmissionHandler.ID_PATH_IDX, props));
+        pipeline.addLast("accessFilter", new AccessFilter(validator, props));
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("encoder", new HttpResponseEncoder());
         pipeline.addLast("handler", new SubmissionHandler(validator, producer));
