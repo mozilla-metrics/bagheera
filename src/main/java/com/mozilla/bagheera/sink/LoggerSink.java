@@ -48,7 +48,7 @@ public class LoggerSink implements Sink, KeyValueSink {
     
     @Override
     public void store(String key, byte[] data) throws IOException {
-        // TODO Auto-generated method stub
+        LOG.info("Called store(key,data)");
         LOG.info("key length: " + key.length());
         LOG.info("data length:" + data.length);
         if (logValues) {
@@ -59,6 +59,7 @@ public class LoggerSink implements Sink, KeyValueSink {
 
     @Override
     public void store(String key, byte[] data, long timestamp) throws IOException {
+        LOG.info("Called store(key,data,timestamp)");
         LOG.info("key length: " + key.length());
         LOG.info("data length:" + data.length);
         LOG.info("timestamp: " + timestamp);
@@ -66,6 +67,15 @@ public class LoggerSink implements Sink, KeyValueSink {
             LOG.info("key: " + key);
             LOG.info("data: " + new String(data, "UTF-8"));
         }    
+    }
+
+    @Override
+    public void delete(String key) {
+        LOG.info("Called delete(key)");
+        LOG.info("key length: " + key.length());
+        if (logValues) {
+            LOG.info("key: " + key);
+        }
     }
 
 }

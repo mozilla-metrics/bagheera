@@ -12,4 +12,9 @@ message BagheeraMessage {
 	optional bytes ip_addr = 4;
 	optional bytes payload = 5;
 	optional sint64 timestamp = 6;
+	enum Operation {
+		CREATE_UPDATE = 0;
+		DELETE = 1;
+	}
+	optional Operation operation = 7 [default = CREATE_UPDATE]; 
 }

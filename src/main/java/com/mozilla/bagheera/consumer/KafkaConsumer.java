@@ -47,6 +47,7 @@ import org.apache.log4j.Logger;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
+import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
 import com.mozilla.bagheera.sink.KeyValueSink;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
@@ -119,7 +120,17 @@ public class KafkaConsumer implements Consumer {
                     try {
                         for (MessageAndMetadata<Message> mam : stream) {
                             BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
-                            sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
+                            if (bmsg.hasId() && bmsg.hasPayload()) {
+                                if (bmsg.hasTimestamp()) {
+                                    sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
+                                } else {
+                                    sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
+                                }
+                            } else {
+                                if (bmsg.hasOperation() && bmsg.getOperation() == Operation.DELETE) {
+                                    sink.delete(bmsg.getId());
+                                }
+                            }
                             consumed.mark();
                         }
                     } catch (InvalidProtocolBufferException e) {

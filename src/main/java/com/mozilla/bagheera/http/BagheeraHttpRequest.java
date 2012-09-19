@@ -68,4 +68,7 @@ public class BagheeraHttpRequest extends DefaultHttpRequest {
         return id;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
 }

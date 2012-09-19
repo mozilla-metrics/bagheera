@@ -165,5 +165,11 @@ public class SequenceFileSink implements KeyValueSink {
         // HDFS sink will currently ignore timestamps
         store(key, data);
     }
+
+    @Override
+    public void delete(String key) {
+        // TODO: Throw error or just ignore?
+        // NOOP 
+    }
     
 }

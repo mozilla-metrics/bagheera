@@ -33,6 +33,7 @@ import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -47,7 +48,6 @@ import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.handler.codec.frame.TooLongFrameException;
 import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
 import org.jboss.netty.handler.codec.http.HttpMethod;
-import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.jboss.netty.util.CharsetUtil;
@@ -55,6 +55,7 @@ import org.jboss.netty.util.CharsetUtil;
 import com.google.protobuf.ByteString;
 import com.mozilla.bagheera.BagheeraProto;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
+import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
 import com.mozilla.bagheera.http.json.InvalidJsonException;
 import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.producer.Producer;
@@ -108,9 +109,16 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         writeResponse(status, e, request.getNamespace(), URI.create(request.getId()).toString());
     }
     
-    private void handleDelete(MessageEvent e, HttpRequest request, String namespace, String id) {
-        // TODO: Handle deletes
-        writeResponse(OK, e, namespace, null);
+    private void handleDelete(MessageEvent e, BagheeraHttpRequest request) {
+        BagheeraMessage.Builder bmsgBuilder = BagheeraProto.BagheeraMessage.newBuilder();
+        bmsgBuilder.setOperation(Operation.DELETE);
+        bmsgBuilder.setNamespace(request.getNamespace());
+        bmsgBuilder.setId(request.getId());
+        bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, 
+                                                                         ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
+        bmsgBuilder.setTimestamp(System.currentTimeMillis());
+        producer.send(bmsgBuilder.build());
+        writeResponse(OK, e, request.getNamespace(), null);
     }
     
     private void writeResponse(HttpResponseStatus status, MessageEvent e, String namespace, String entity) {
@@ -144,14 +152,13 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             if (request.getEndpoint() != null && ENDPOINT_SUBMIT.equals(request.getEndpoint())) {
                 if ((request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT)) {
                     if (request.getId() == null) {
-                        handlePost(e, request);
-                    } else {
-                        handlePost(e, request);
-                    }      
+                        request.setId(UUID.randomUUID().toString());
+                    }
+                    handlePost(e, request);
                 } else if (request.getMethod() == HttpMethod.GET) {
                     writeResponse(METHOD_NOT_ALLOWED, e, request.getNamespace(), null);
                 } else if (request.getMethod() == HttpMethod.DELETE) {
-                    handleDelete(e, request, request.getNamespace(), request.getId());
+                    handleDelete(e, request);
                 }
             } else {
                 String userAgent = request.getHeader("User-Agent");

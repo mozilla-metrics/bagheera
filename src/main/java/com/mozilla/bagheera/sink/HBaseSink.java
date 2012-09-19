@@ -25,6 +25,7 @@ import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Put;
@@ -106,6 +107,19 @@ public class HBaseSink implements KeyValueSink {
         puts.add(p);
         if (puts.size() >= batchSize) {
             flush();
+        }
+    }
+
+    @Override
+    public void delete(String key) throws IOException {
+        HTable table = (HTable) hbasePool.getTable(tableName);
+        try {
+            Delete d = new Delete(Bytes.toBytes(key));
+            table.delete(d);
+        } finally {
+            if (hbasePool != null && table != null) {
+                hbasePool.putTable(table);
+            }
         }
     }
 
