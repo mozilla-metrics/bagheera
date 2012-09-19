@@ -19,28 +19,19 @@
  */
 package com.mozilla.bagheera.http;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import static org.junit.Assert.*;
 
-public class PathDecoder {
+import org.junit.Test;
 
-    private static final Pattern PATH_PATTERN = Pattern.compile("/([^/]+)");
-    
-    private List<String> pathElements = new ArrayList<String>();
-    
-    public PathDecoder(String uri) {
-        Matcher m = PATH_PATTERN.matcher(uri);
-        while (m.find()) {
-            if (m.groupCount() > 0) {
-                pathElements.add(m.group(1));
-            }
-        }
+public class PathDecoderTest {
+
+    @Test
+    public void testPathDecoder() {
+        PathDecoder pd = new PathDecoder("/submit/foo/fakeid");
+        assertEquals("submit", pd.getPathElement(0));
+        assertEquals("foo", pd.getPathElement(1));
+        assertEquals("fakeid", pd.getPathElement(2));
+        assertNull(pd.getPathElement(3));
     }
 
-    public String getPathElement(int idx) {
-        return idx < pathElements.size() ? pathElements.get(idx) : null;
-    }
-    
 }
