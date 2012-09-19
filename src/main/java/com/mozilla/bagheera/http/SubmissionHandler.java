@@ -161,10 +161,9 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
                     handleDelete(e, request);
                 }
             } else {
-                String userAgent = request.getHeader("User-Agent");
                 String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
-                LOG.warn(String.format("Tried to access invalid resource - \"%s\" \"%s\"", remoteIpAddress, userAgent));
-                writeResponse(NOT_ACCEPTABLE, e, null, null);
+                LOG.warn(String.format("Tried to access invalid resource - \"%s\" \"%s\"", remoteIpAddress, request.getHeader("User-Agent")));
+                writeResponse(NOT_FOUND, e, null, null);
             }
         } else {
             writeResponse(INTERNAL_SERVER_ERROR, e, null, null);

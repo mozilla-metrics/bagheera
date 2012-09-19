@@ -20,9 +20,9 @@ To make a jar you can do:
 The jar file is then located under `target`.
 
 ### Running an instance ###
-TODO: Make sure your Kafka and Zookeeper servers are running first (see Kafka documentation)
+**Make sure your Kafka and Zookeeper servers are running first (see Kafka documentation)**
 
-In order to run bagheera on another machine you will probably want to use the _dist_ assembly like so: need to deploy the following to your deployment target which I'll call `BAGHEERA_HOME`.
+In order to run bagheera on another machine you will probably want to use the _dist_ assembly like so:
 
 `mvn assembly:assembly`
 
@@ -39,6 +39,8 @@ Bagheera takes POST data on _/namespace/uniqueid_. The _uniqueid_ is optional al
 Here's a quick rundown of HTTP return codes that Bagheera could send back (this isn't comprehensive but rather the most common ones):
 
 * 201 Created - returned if everything was submitted successfully (default)
+* 403 Forbidden - pretty self explanatory...someone is doing something they shouldn't be
+* 404 Not Found - returned if the URI path doesn't exist or if the URI was not in the proper format
 * 406 Not Acceptable - returned if the POST failed validation in some manner
 * 500 Server Error - something went horribly wrong and you should check the logs
 
@@ -61,12 +63,15 @@ Here's a quick rundown of HTTP return codes that Bagheera could send back (this 
 
 ### Example Kafka Consumer Configuration (conf/kafka.consumer.properties) ###
     # kafka consumer properties
-		zk.connect=127.0.0.1:2181
-		fetch.size=1048576
-		#serializer.class=com.mozilla.bagheera.serializer.BagheeraDecoder
-		# bagheera specific kafka consumer properties
-		consumer.threads=2
-		
+    zk.connect=127.0.0.1:2181
+    fetch.size=1048576
+    #serializer.class=com.mozilla.bagheera.serializer.BagheeraDecoder
+    # bagheera specific kafka consumer properties
+    consumer.threads=2
+
+### Notes on consumers ###
+We currently use the consumers implemented here, but it may also be of interest to look at systems such as [Storm](https://github.com/nathanmarz/storm) to process the messages. Storm contains a Kafka spout (consumer) and there are at least a couple of HBase bolts (processing/sink) already out there.
+
 ### License ###
 All aspects of this software are distributed under Apache Software License 2.0. See LICENSE file for full license text.
 
