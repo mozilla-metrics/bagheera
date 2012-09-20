@@ -31,9 +31,6 @@ import org.apache.commons.lang.StringUtils;
  */
 public class IdUtil {
 
-	public static final int DEFAULT_NUM_BUCKETS = Byte.MAX_VALUE;
-	public static final int HEX_BUCKETS = 16;
-
 	public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyyMMdd");
 
 	/**
