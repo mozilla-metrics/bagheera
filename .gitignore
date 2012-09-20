@@ -42,3 +42,6 @@ Thumbs.db
 # IntelliJ Idea project files
 .idea
 *.iml
+
+# Clover
+.clover
