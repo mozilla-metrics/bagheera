@@ -19,12 +19,10 @@
  */
 package com.mozilla.bagheera.util;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -37,36 +35,6 @@ public class IdUtil {
 	public static final int HEX_BUCKETS = 16;
 
 	public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyyMMdd");
-
-	/**
-	 * @return
-	 */
-	public static byte[] generateNonBucketizedId() {
-	    return UUID.randomUUID().toString().getBytes();
-	}
-	
-	/**
-	 * Generates a bucket/date prefixed random id
-	 * @return
-	 * @throws IOException
-	 */
-	public static byte[] generateBucketizedId() throws IOException {
-		return nonRandByteBucketizeId(UUID.randomUUID().toString(), Calendar.getInstance().getTime());
-	}
-
-	/**
-	 * Adds a bucket/date prefix to an given string id
-	 * @param id
-	 * @return
-	 * @throws IOException
-	 */
-	public static byte[] bucketizeId(String id) throws IOException {
-	    if (id == null) {
-            throw new IllegalArgumentException("id cannot be null");
-        }
-	    
-		return nonRandByteBucketizeId(id, Calendar.getInstance().getTime());
-	}
 
 	/**
 	 * @param id
@@ -99,7 +67,8 @@ public class IdUtil {
             throw new IllegalArgumentException("date cannot be null");
         }
         
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        // int + SDF bytes + id bytes
+        ByteBuffer buf = ByteBuffer.allocate(9 + id.length());
 		int bucket = 0;
 		if (id.length() >= 2) {
 		    // Munge two hex characters into the range of a single byte
@@ -107,34 +76,11 @@ public class IdUtil {
 		} else {
 		    bucket = Integer.parseInt(id, 16) - 128;
 		}
-		baos.write(bucket);
-		baos.write(SDF.format(d).getBytes());
-		baos.write(id.getBytes());
+		buf.put((byte)bucket);
+		buf.put(SDF.format(d).getBytes());
+		buf.put(id.getBytes());
 
-		return baos.toByteArray();
-	}
-	
-	/**
-	 * Takes a given id and prefixes it with a hex character and the date in a non-random fashion
-	 * @param id
-	 * @param d
-	 * @return
-	 * @throws IOException
-	 */
-	public static byte[] nonRandHexBucketizeId(String id, Date d) throws IOException {
-	    if (id == null) {
-            throw new IllegalArgumentException("id cannot be null");
-        }
-        if (d == null) {
-            throw new IllegalArgumentException("date cannot be null");
-        }
-        
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		baos.write(id.charAt(0));
-		baos.write(SDF.format(d).getBytes());
-		baos.write(id.getBytes());
-
-		return baos.toByteArray();
+		return buf.array();
 	}
 
 }

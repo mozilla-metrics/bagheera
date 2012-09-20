@@ -19,55 +19,28 @@
  */
 package com.mozilla.bagheera.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
-import org.junit.Before;
 import org.junit.Test;
 
 public class IdUtilTest {
 
-    Set<String> hexChars = new HashSet<String>();
-
-    @Before
-    public void setup() {
-        for (int i=0; i < 16; i++) {
-            hexChars.add(Integer.toHexString(i));
-        }
-    }
-
     @Test
-    public void testGenerateBucketizedId() throws IOException {
-        byte[] idBytes = IdUtil.generateBucketizedId();
-        assertNotNull(idBytes);
-    }
-
-    @Test
-    public void testBucketizeId1() throws IOException {
-        boolean caughtException = false;
-        try {
-            IdUtil.bucketizeId(null);
-        } catch (IllegalArgumentException e) {
-            caughtException = true;
-        }
-        assertTrue(caughtException);
-    }
-
-    @Test
-    public void testBucketizeId2() throws IOException {
+    public void testBucketizeIdWithTimestamp2() throws IOException {
         UUID uuid = UUID.randomUUID();
-        byte[] idBytes = IdUtil.bucketizeId(uuid.toString());
+        long ts = System.currentTimeMillis();
+        byte[] idBytes = IdUtil.bucketizeId(uuid.toString(), ts);
         assertNotNull(idBytes);
         String bucketIdStr = new String(idBytes);
-        assert(bucketIdStr.endsWith(uuid.toString()));
+        assertTrue(bucketIdStr.endsWith(IdUtil.SDF.format(new Date(ts)) + uuid.toString()));
     }
-
+    
     @Test
     public void testNonRandByteBucketizeId1() throws IOException {
         boolean caughtException = false;
@@ -115,5 +88,5 @@ public class IdUtilTest {
 
         assertTrue(bucketIdStr1.equals(bucketIdStr2));
     }
-    
+
 }

@@ -36,6 +36,28 @@ public class ValidatorTest {
     }
     
     @Test
+    public void testConstructorNullArg() {
+        boolean success = false;
+        try {
+            Validator v = new Validator(null);
+        } catch (IllegalArgumentException e) {
+            success = true;
+        }
+        assertTrue(success);
+    }
+    
+    @Test
+    public void testConstructorZeroLength() {
+        boolean success = false;
+        try {
+            Validator v = new Validator(new String[0]);
+        } catch (IllegalArgumentException e) {
+            success = true;
+        }
+        assertTrue(success);
+    }
+    
+    @Test
     public void testIsValidJson() {
         assertTrue(validator.isValidJson("{ \"baz\" : \"blah\" }"));
         assertFalse(validator.isValidJson("{ \"baz : 7 }"));
@@ -47,6 +69,7 @@ public class ValidatorTest {
         assertFalse(validator.isValidNamespace("baz"));
     }
 
+    @Test
     public void testIsValidId() {
         String id = UUID.randomUUID().toString();
         assertTrue(validator.isValidId(id));

@@ -58,7 +58,7 @@ public class HttpUtilTest {
     @Test
     public void testGetRemoteAddrBytes() throws UnknownHostException {
         byte[] addrBytes = HttpUtil.getRemoteAddr(request, addr);
-        assert(addrBytes.length == 4);
+        assertEquals(4, addrBytes.length);
         assertEquals("127.0.0.2", InetAddress.getByAddress(addrBytes).getHostAddress());
     }
     
