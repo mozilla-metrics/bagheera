@@ -53,7 +53,6 @@ import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.jboss.netty.util.CharsetUtil;
 
 import com.google.protobuf.ByteString;
-import com.mozilla.bagheera.BagheeraProto;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
 import com.mozilla.bagheera.http.json.InvalidJsonException;
@@ -94,7 +93,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
-            BagheeraMessage.Builder bmsgBuilder = BagheeraProto.BagheeraMessage.newBuilder();
+            BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
             bmsgBuilder.setNamespace(request.getNamespace());
             bmsgBuilder.setId(request.getId());
             bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, 
@@ -102,6 +101,18 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
             bmsgBuilder.setTimestamp(System.currentTimeMillis());
             producer.send(bmsgBuilder.build());
+            
+            if (request.containsHeader("X-Obsolete-Document")) {
+                String obsoleteId = request.getHeader("X-Obsolete-Document");
+                BagheeraMessage.Builder obsBuilder = BagheeraMessage.newBuilder();
+                obsBuilder.setOperation(Operation.DELETE);
+                obsBuilder.setNamespace(request.getNamespace());
+                obsBuilder.setId(obsoleteId);
+                obsBuilder.setIpAddr(bmsgBuilder.getIpAddr());
+                obsBuilder.setTimestamp(bmsgBuilder.getTimestamp());
+                producer.send(obsBuilder.build());
+            }
+            
             status = CREATED;
         }
 
@@ -110,7 +121,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     }
     
     private void handleDelete(MessageEvent e, BagheeraHttpRequest request) {
-        BagheeraMessage.Builder bmsgBuilder = BagheeraProto.BagheeraMessage.newBuilder();
+        BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
         bmsgBuilder.setOperation(Operation.DELETE);
         bmsgBuilder.setNamespace(request.getNamespace());
         bmsgBuilder.setId(request.getId());

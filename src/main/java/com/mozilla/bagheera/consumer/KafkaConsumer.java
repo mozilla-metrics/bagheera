@@ -59,8 +59,8 @@ public class KafkaConsumer implements Consumer {
     
     protected static final int DEFAULT_NUM_THREADS = 2;
 
-    private ConsumerConnector consumerConnector;
-    private List<KafkaStream<Message>> streams;
+    protected ConsumerConnector consumerConnector;
+    protected List<KafkaStream<Message>> streams;
     protected ExecutorService executor;
     protected KeyValueSink sink;
     
@@ -120,14 +120,16 @@ public class KafkaConsumer implements Consumer {
                     try {
                         for (MessageAndMetadata<Message> mam : stream) {
                             BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
-                            if (bmsg.hasId() && bmsg.hasPayload()) {
+                            if (bmsg.hasOperation() && bmsg.getOperation() == Operation.CREATE_UPDATE && 
+                                bmsg.hasId() && bmsg.hasPayload()) {
                                 if (bmsg.hasTimestamp()) {
                                     sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
                                 } else {
                                     sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
                                 }
                             } else {
-                                if (bmsg.hasOperation() && bmsg.getOperation() == Operation.DELETE) {
+                                if (bmsg.hasOperation() && bmsg.getOperation() == Operation.DELETE &&
+                                    bmsg.hasId()) {
                                     sink.delete(bmsg.getId());
                                 }
                             }
