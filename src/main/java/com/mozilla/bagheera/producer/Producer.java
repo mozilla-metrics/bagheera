@@ -25,7 +25,6 @@ import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 
 public interface Producer extends Closeable {
 
-    public void send(String namespace, String id, String data);
     public void send(BagheeraMessage msg);
     
 }

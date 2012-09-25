@@ -70,7 +70,7 @@ public class Bagheera {
             
             propUrl = Bagheera.class.getResource("/kafka.producer.properties");
             if (propUrl == null) {
-                throw new IllegalArgumentException("Could not find the properites file: " + "/kafka.properties");
+                throw new IllegalArgumentException("Could not find the properites file: " + "/kafka.producer.properties");
             }
             
             in = propUrl.openStream();
@@ -98,14 +98,14 @@ public class Bagheera {
                 }
             }
         };
-        ServerBootstrap sb = new ServerBootstrap(channelFactory);
+        ServerBootstrap server = new ServerBootstrap(channelFactory);
         HttpServerPipelineFactory pipeFactory;
         try {
             pipeFactory = new HttpServerPipelineFactory(props, producer);
-            sb.setPipelineFactory(pipeFactory);
-            sb.setOption("tcpNoDelay", tcpNoDelay);
-            sb.setOption("keepAlive", false);
-            Channel ch = sb.bind(new InetSocketAddress(port));
+            server.setPipelineFactory(pipeFactory);
+            server.setOption("tcpNoDelay", tcpNoDelay);
+            server.setOption("keepAlive", false);
+            Channel ch = server.bind(new InetSocketAddress(port));
             allChannels.add(ch);
             Runtime.getRuntime().addShutdownHook(new Thread() {
                public void run() {

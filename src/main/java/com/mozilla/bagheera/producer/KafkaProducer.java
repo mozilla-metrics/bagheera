@@ -29,14 +29,11 @@ import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 
 public class KafkaProducer implements com.mozilla.bagheera.producer.Producer {
 
-    private static final String DELIMITER = "\u0001";
-    private Producer<String,String> producer;
-    private Producer<String,BagheeraMessage> messageProducer;
+    private Producer<String,BagheeraMessage> producer;
     
     public KafkaProducer(Properties props) {
         ProducerConfig config = new ProducerConfig(props);
-        producer = new Producer<String,String>(config);
-        messageProducer = new Producer<String,BagheeraMessage>(config);
+        producer = new Producer<String,BagheeraMessage>(config);
     }
     
     /* (non-Javadoc)
@@ -49,21 +46,11 @@ public class KafkaProducer implements com.mozilla.bagheera.producer.Producer {
     }
     
     /* (non-Javadoc)
-     * @see com.mozilla.bagheera.producer.Producer#send(java.lang.String, java.lang.String, java.lang.String)
-     */
-    public void send(String namespace, String id, String data) {
-        StringBuilder sb = new StringBuilder(id);
-        sb.append(DELIMITER);
-        sb.append(data);
-        producer.send(new ProducerData<String,String>(namespace, sb.toString()));
-    }
-    
-    /* (non-Javadoc)
      * @see com.mozilla.bagheera.producer.Producer#send(com.mozilla.bagheera.BagheeraProto.BagheeraMessage)
      */
     @Override
     public void send(BagheeraMessage msg) {
-        messageProducer.send(new ProducerData<String,BagheeraMessage>(msg.getNamespace(), msg));
+        producer.send(new ProducerData<String,BagheeraMessage>(msg.getNamespace(), msg));
     }
     
 }
