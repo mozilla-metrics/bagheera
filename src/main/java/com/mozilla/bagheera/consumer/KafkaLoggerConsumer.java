@@ -41,11 +41,7 @@ private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
     
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
-        Options options = new Options();
-        options.addOption(optFactory.create("t", "topic", true, "Topic to poll.").required());
-        options.addOption(optFactory.create("gid", "groupid", true, "Kafka group ID.").required());
-        options.addOption(optFactory.create("p", "properties", true, "Kafka consumer properties file.").required());
-
+        Options options = KafkaConsumer.getOptions();
         options.addOption(optFactory.create("lv", "logvalues", false, "Log values."));
         
         CommandLineParser parser = new GnuParser();

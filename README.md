@@ -8,9 +8,17 @@ Version: 0.7-SNAPSHOT
 ### Version Compatability ###
 This code is built with the following assumptions.  You may get mixed results if you deviate from these versions.
 
+* [Kafka](http://incubator.apache.org/kafka) 0.7.1+
+* [Protocol Buffers](https://developers.google.com/protocol-buffers) 2.3.0+
 * [Hadoop](http://hadoop.apache.org) 0.20.2+
 * [HBase](http://hbase.apache.org) 0.90+
-* [Kafka](http://incubator.apache.org/kafka) 0.7.1+
+
+### Prerequisites ###
+* Protocol Buffers
+* Zookeeper (for Kafka)
+* Kafka
+* Hadoop (if using HDFS based consumer)
+* HBase (if using HBase based consumer)
 
 ### Building ###
 To make a jar you can do:  
@@ -45,8 +53,8 @@ Here's a quick rundown of HTTP return codes that Bagheera could send back (this 
 * 500 Server Error - something went horribly wrong and you should check the logs
 
 ### Example Bagheera Configuration (conf/bagheera.properties) ###
-    # valid namespaces (whitelist only)
-    valid.namespaces=mynamespace
+    # valid namespaces (whitelist only, comma separated)
+    valid.namespaces=mynamespace,othernamespace
     max.content.length=1048576
 
 ### Example Kafka Producer Configuration (conf/kafka.producer.properties) ###

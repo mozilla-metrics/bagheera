@@ -33,7 +33,6 @@ import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -129,6 +128,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
                                                                          ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
         bmsgBuilder.setTimestamp(System.currentTimeMillis());
         producer.send(bmsgBuilder.build());
+        updateRequestMetrics(request.getNamespace(), request.getMethod().getName(), 0);
         writeResponse(OK, e, request.getNamespace(), null);
     }
     
@@ -160,11 +160,8 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
         if (msg instanceof BagheeraHttpRequest) {
             BagheeraHttpRequest request = (BagheeraHttpRequest)e.getMessage();
-            if (request.getEndpoint() != null && ENDPOINT_SUBMIT.equals(request.getEndpoint())) {
+            if (ENDPOINT_SUBMIT.equals(request.getEndpoint())) {
                 if ((request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT)) {
-                    if (request.getId() == null) {
-                        request.setId(UUID.randomUUID().toString());
-                    }
                     handlePost(e, request);
                 } else if (request.getMethod() == HttpMethod.GET) {
                     writeResponse(METHOD_NOT_ALLOWED, e, request.getNamespace(), null);

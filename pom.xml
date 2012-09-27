@@ -86,13 +86,6 @@
 			<version>1.2</version>
 		</dependency>
 
-		<!-- GeoIP -->
-		<dependency>
-			<groupId>com.maxmind</groupId>
-			<artifactId>maxmind-geoip</artifactId>
-			<version>1.2.5</version>
-		</dependency>
-
 		<!-- Jackson JSON Processor -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>

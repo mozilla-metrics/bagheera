@@ -42,12 +42,14 @@ import kafka.message.Message;
 import kafka.message.MessageAndMetadata;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
 import org.apache.log4j.Logger;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
+import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.sink.KeyValueSink;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
@@ -153,6 +155,25 @@ public class KafkaConsumer implements Consumer {
         }
     }
     
+    /**
+     * Get the set of common command-line options for a Kafka consumer
+     * @return
+     */
+    public static Options getOptions() {
+        OptionFactory optFactory = OptionFactory.getInstance();
+        Options options = new Options();
+        options.addOption(optFactory.create("t", "topic", true, "Topic to poll.").required());
+        options.addOption(optFactory.create("gid", "groupid", true, "Kafka group ID.").required());
+        options.addOption(optFactory.create("p", "properties", true, "Kafka consumer properties file.").required());
+        
+        return options;
+    }
+    
+    /**
+     * Create a KafkaConsumer from the given command-line options
+     * @param cmd
+     * @return
+     */
     public static KafkaConsumer fromOptions(CommandLine cmd) {
         Properties props = new Properties();
         String propsFilePath = cmd.getOptionValue("properties");

@@ -45,11 +45,7 @@ public final class KafkaSequenceFileConsumer {
     
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
-        Options options = new Options();
-        options.addOption(optFactory.create("t", "topic", true, "Topic to poll.").required());
-        options.addOption(optFactory.create("gid", "groupid", true, "Kafka group ID.").required());
-        options.addOption(optFactory.create("p", "properties", true, "Kafka consumer properties file.").required());
-
+        Options options = KafkaConsumer.getOptions();
         options.addOption(optFactory.create("o", "output", true, "HDFS base path for output."));
         options.addOption(optFactory.create("df", "dateformat", true, "Date format for the date subdirectories."));
         options.addOption(optFactory.create("fs", "filesize", true, "Max file size for output files."));

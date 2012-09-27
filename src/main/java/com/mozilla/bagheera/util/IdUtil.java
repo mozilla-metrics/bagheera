@@ -64,7 +64,7 @@ public class IdUtil {
             throw new IllegalArgumentException("date cannot be null");
         }
         
-        // int + SDF bytes + id bytes
+        // bucket byte + SDF bytes + id bytes
         ByteBuffer buf = ByteBuffer.allocate(9 + id.length());
 		int bucket = 0;
 		if (id.length() >= 2) {

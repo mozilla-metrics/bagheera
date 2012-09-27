@@ -63,7 +63,7 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
             // Check Id
             boolean validateId = Boolean.parseBoolean(props.getWildcardProperty(request.getNamespace() + ID_VALIDATION, "true"));
             if (request.getId() != null && validateId && !validator.isValidId(request.getId())) {
-                throw new InvalidPathException(buildErrorMessage("Submitted an invalid ID - \"%s\" \"%s\"", request, e));
+                throw new InvalidPathException(buildErrorMessage("Submitted an invalid ID", request, e));
             } 
             // Check POST/GET/DELETE Access
             if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {

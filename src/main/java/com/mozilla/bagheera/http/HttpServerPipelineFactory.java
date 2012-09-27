@@ -42,7 +42,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
     public HttpServerPipelineFactory(WildcardProperties props, Producer producer) throws IOException {
         this.props = props;
         String validNsStr = props.getProperty("valid.namespaces");
-        if (validNsStr == null) {
+        if (validNsStr == null || validNsStr.length() == 0) {
             throw new IllegalArgumentException("No valid.namespaces in properties");
         }
         this.validator = new Validator(validNsStr.split(","));
