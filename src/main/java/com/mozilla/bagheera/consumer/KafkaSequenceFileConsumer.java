@@ -20,7 +20,6 @@
 package com.mozilla.bagheera.consumer;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -74,10 +73,6 @@ public final class KafkaSequenceFileConsumer {
             LOG.error("Error parsing command line options", e);
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp(KafkaSequenceFileConsumer.class.getName(), options);
-        } catch (InterruptedException e) {
-            LOG.error("Interrupted while polling", e);
-        } catch (ExecutionException e) {
-            LOG.error("Execution error while polling", e);
         } catch (NumberFormatException e) {
             LOG.error("Failed to parse filesize option", e);
         } catch (IOException e) {

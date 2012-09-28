@@ -20,10 +20,9 @@
 package com.mozilla.bagheera.consumer;
 
 import java.io.Closeable;
-import java.util.concurrent.ExecutionException;
 
 public interface Consumer extends Closeable {
 
-    public void poll() throws InterruptedException,ExecutionException;
+    public void poll();
     
 }

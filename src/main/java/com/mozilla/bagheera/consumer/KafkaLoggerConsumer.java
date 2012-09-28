@@ -19,8 +19,6 @@
  */
 package com.mozilla.bagheera.consumer;
 
-import java.util.concurrent.ExecutionException;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -69,10 +67,6 @@ private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
             LOG.error("Error parsing command line options", e);
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp(KafkaHBaseConsumer.class.getName(), options);
-        } catch (InterruptedException e) {
-            LOG.error("Interrupted while polling", e);
-        } catch (ExecutionException e) {
-            LOG.error("ExecutionException while polling", e);
         }
     }
     

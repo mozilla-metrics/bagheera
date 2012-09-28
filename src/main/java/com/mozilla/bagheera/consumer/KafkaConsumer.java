@@ -25,13 +25,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import kafka.consumer.ConsumerConfig;
@@ -112,17 +110,17 @@ public class KafkaConsumer implements Consumer {
         }
     }
     
-    public void poll() throws InterruptedException,ExecutionException {
-        List<Future<?>> futures = new ArrayList<Future<?>>(streams.size());
+    public void poll() {
+        final CountDownLatch latch = new CountDownLatch(streams.size());
         for (final KafkaStream<Message> stream : streams) {  
-            futures.add(executor.submit((new Runnable() {
+            executor.submit((new Runnable() {
                 @Override
                 public void run() {
                     
                     try {
                         for (MessageAndMetadata<Message> mam : stream) {
                             BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
-                            if (bmsg.hasOperation() && bmsg.getOperation() == Operation.CREATE_UPDATE && 
+                            if (bmsg.getOperation() == Operation.CREATE_UPDATE && 
                                 bmsg.hasId() && bmsg.hasPayload()) {
                                 if (bmsg.hasTimestamp()) {
                                     sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
@@ -130,7 +128,7 @@ public class KafkaConsumer implements Consumer {
                                     sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
                                 }
                             } else {
-                                if (bmsg.hasOperation() && bmsg.getOperation() == Operation.DELETE &&
+                                if (bmsg.getOperation() == Operation.DELETE &&
                                     bmsg.hasId()) {
                                     sink.delete(bmsg.getId());
                                 }
@@ -143,15 +141,19 @@ public class KafkaConsumer implements Consumer {
                         LOG.error("Message ID was not in UTF-8 encoding", e);
                     } catch (IOException e) {
                         LOG.error("IO error while storing to data sink", e);
+                    } finally {
+                    	latch.countDown();
                     }
                 }
-            })));
+            }));
         }
 
         // Wait for all tasks to complete which in the normal case they will
         // run indefinitely unless killed
-        for (Future<?> f : futures) {
-            f.get();
+        try {
+        	latch.await();
+        } catch (InterruptedException e) {
+        	LOG.info("Interrupted during polling", e);
         }
     }
     
