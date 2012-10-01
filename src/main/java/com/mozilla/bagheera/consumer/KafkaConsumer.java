@@ -25,11 +25,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import kafka.consumer.ConsumerConfig;
@@ -59,9 +61,10 @@ public class KafkaConsumer implements Consumer {
     
     protected static final int DEFAULT_NUM_THREADS = 2;
 
+    protected ExecutorService executor;
+    protected List<Future<?>> workers;
     protected ConsumerConnector consumerConnector;
     protected List<KafkaStream<Message>> streams;
-    protected ExecutorService executor;
     protected KeyValueSink sink;
     
     protected Meter consumed;
@@ -73,6 +76,7 @@ public class KafkaConsumer implements Consumer {
     public KafkaConsumer(String topic, Properties props, int numThreads) {
         LOG.info("# of threads: " + numThreads);
         executor = Executors.newFixedThreadPool(numThreads);
+        workers = new ArrayList<Future<?>>(numThreads);
         
         ConsumerConfig consumerConfig = new ConsumerConfig(props);
         consumerConnector = kafka.consumer.Consumer.createJavaConsumerConnector(consumerConfig);
@@ -88,9 +92,15 @@ public class KafkaConsumer implements Consumer {
     public void close() {
         LOG.info("Shutting down!");
         if (executor != null) {
+            // Regular shutdown doesn't do much for us here since
+            // these are long running threads
             executor.shutdown();
             try {
-                if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                // To actually interrupt our workers we'll cancel each future.
+                for (Future<?> worker : workers) {
+                    worker.cancel(true);
+                }
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
                     executor.shutdownNow();
                     LOG.info("Shutting down now!");
                     if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
@@ -100,23 +110,22 @@ public class KafkaConsumer implements Consumer {
             } catch (InterruptedException e) {
                 executor.shutdownNow();
                 Thread.currentThread().interrupt();
+            } finally {
+                // close the kafka consumer connector
+                if (consumerConnector != null) {
+                    LOG.info("Shutting down consumer connector!");
+                    consumerConnector.shutdown();
+                }
             }
-        }
-        
-        // close the kafka consumer connector
-        if (consumerConnector != null) {
-            LOG.info("Shutting down consumer connector!");
-            consumerConnector.shutdown();
-        }
+        } 
     }
     
     public void poll() {
         final CountDownLatch latch = new CountDownLatch(streams.size());
         for (final KafkaStream<Message> stream : streams) {  
-            executor.submit((new Runnable() {
+            workers.add(executor.submit(new Runnable() {
                 @Override
-                public void run() {
-                    
+                public void run() {                  
                     try {
                         for (MessageAndMetadata<Message> mam : stream) {
                             BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
@@ -127,11 +136,9 @@ public class KafkaConsumer implements Consumer {
                                 } else {
                                     sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
                                 }
-                            } else {
-                                if (bmsg.getOperation() == Operation.DELETE &&
-                                    bmsg.hasId()) {
-                                    sink.delete(bmsg.getId());
-                                }
+                            } else if (bmsg.getOperation() == Operation.DELETE &&
+                                bmsg.hasId()) {
+                                sink.delete(bmsg.getId());
                             }
                             consumed.mark();
                         }

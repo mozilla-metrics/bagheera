@@ -22,6 +22,9 @@ package com.mozilla.bagheera.sink;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -33,6 +36,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.util.IdUtil;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Meter;
+import com.yammer.metrics.core.MetricName;
 
 public class HBaseSink implements KeyValueSink {
     
@@ -48,8 +54,12 @@ public class HBaseSink implements KeyValueSink {
     protected final byte[] qualifier;
     
     protected boolean prefixDate = true;
-    protected int batchSize = 1000;
-    protected List<Put> puts;
+    protected int batchSize = 100;
+    
+    protected AtomicInteger putsQueueSize = new AtomicInteger();
+    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>(); 
+    
+    protected Meter stored;
     
     public HBaseSink(String tableName, String family, String qualifier, boolean prefixDate) {
         this.tableName = Bytes.toBytes(tableName);
@@ -60,15 +70,17 @@ public class HBaseSink implements KeyValueSink {
         Configuration conf = HBaseConfiguration.create();
         hbasePool = new HTablePool(conf, hbasePoolSize);
         
-        puts = new ArrayList<Put>();
+        stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase.", tableName + ".stored"), "messages", TimeUnit.SECONDS);
     }
     
     public void close() {
         if (hbasePool != null) {
-            try {
-                flush();
-            } catch (IOException e) {
-                LOG.error("Error flushing batch in close", e);
+            if (!Thread.currentThread().isInterrupted()) {
+                try {
+                    flush();
+                } catch (IOException e) {
+                    LOG.error("Error flushing batch in close", e);
+                }
             }
             hbasePool.closeTablePool(tableName);
         }
@@ -78,10 +90,17 @@ public class HBaseSink implements KeyValueSink {
         HTable table = (HTable) hbasePool.getTable(tableName);
         table.setAutoFlush(false);
         try {
+            List<Put> puts = new ArrayList<Put>(batchSize);
+            while (!putsQueue.isEmpty() && puts.size() < batchSize) {
+                Put p = putsQueue.poll();
+                if (p != null) {
+                    puts.add(p);
+                    putsQueueSize.decrementAndGet();
+                }
+            }
             table.put(puts);
             table.flushCommits();
-            // clear puts for next batch
-            puts.clear();
+            stored.mark(puts.size());
         } finally {
             if (hbasePool != null && table != null) {
                 hbasePool.putTable(table);
@@ -93,8 +112,8 @@ public class HBaseSink implements KeyValueSink {
     public void store(String key, byte[] data) throws IOException {
         Put p = new Put(Bytes.toBytes(key));
         p.add(family, qualifier, data);
-        puts.add(p);
-        if (puts.size() >= batchSize) {
+        putsQueue.add(p);      
+        if (putsQueueSize.incrementAndGet() >= batchSize) {
             flush();
         }
     }
@@ -104,8 +123,8 @@ public class HBaseSink implements KeyValueSink {
         byte[] k = prefixDate ? IdUtil.bucketizeId(key, timestamp) : Bytes.toBytes(key);
         Put p = new Put(k);
         p.add(family, qualifier, data);
-        puts.add(p);
-        if (puts.size() >= batchSize) {
+        putsQueue.add(p);
+        if (putsQueueSize.incrementAndGet() >= batchSize) {
             flush();
         }
     }
