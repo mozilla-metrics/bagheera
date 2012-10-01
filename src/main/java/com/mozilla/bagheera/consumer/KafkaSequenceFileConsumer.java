@@ -30,6 +30,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.OptionFactory;
+import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.sink.KeyValueSink;
 import com.mozilla.bagheera.sink.SequenceFileSink;
 import com.mozilla.bagheera.util.ShutdownHook;
@@ -66,8 +67,14 @@ public final class KafkaSequenceFileConsumer {
                                                            Long.parseLong(cmd.getOptionValue("filesize", "536870912")), 
                                                            Boolean.parseBoolean(cmd.getOptionValue("usebytes", "false")));
             sh.addLast(sink);
+            
+            // Set the sink for consumer storage
             consumer.setSink(sink);
             
+            // Initialize metrics collection, reporting, etc.
+            MetricsManager.getInstance();
+            
+            // Begin polling
             consumer.poll();
         } catch (ParseException e) {
             LOG.error("Error parsing command line options", e);
