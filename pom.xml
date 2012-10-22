@@ -345,7 +345,7 @@
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka-core</artifactId>
-			<version>0.7.1-incubating</version>
+			<version>0.7.2-incubating</version>
 		</dependency>
 		<dependency>
 			<groupId>org.scala-lang</groupId>

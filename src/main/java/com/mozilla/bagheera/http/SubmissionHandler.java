@@ -25,7 +25,7 @@ import static org.jboss.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.METHOD_NOT_ALLOWED;
-import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
+import static org.jboss.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE;
@@ -54,7 +54,6 @@ import org.jboss.netty.util.CharsetUtil;
 import com.google.protobuf.ByteString;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
-import com.mozilla.bagheera.http.json.InvalidJsonException;
 import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.HttpUtil;
@@ -88,7 +87,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     }
     
     private void handlePost(MessageEvent e, BagheeraHttpRequest request) {
-        HttpResponseStatus status = NOT_ACCEPTABLE;
+        HttpResponseStatus status = BAD_REQUEST;
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
@@ -182,10 +181,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
         Throwable cause = e.getCause();        
         HttpResponse response = null;
-        if (cause instanceof InvalidJsonException) {
-            LOG.error(cause.getMessage());
-            response = new DefaultHttpResponse(HTTP_1_1, NOT_ACCEPTABLE);
-        } else if (cause instanceof TooLongFrameException) {
+        if (cause instanceof TooLongFrameException) {
             response = new DefaultHttpResponse(HTTP_1_1, REQUEST_ENTITY_TOO_LARGE);
         } else if (cause instanceof InvalidPathException) {
             response = new DefaultHttpResponse(HTTP_1_1, NOT_FOUND);
