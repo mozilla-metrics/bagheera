@@ -24,7 +24,7 @@ import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
-import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
+import static org.jboss.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
@@ -99,7 +99,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     }
     
     private void handlePost(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
-        HttpResponseStatus status = NOT_ACCEPTABLE;
+        HttpResponseStatus status = BAD_REQUEST;
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
@@ -186,7 +186,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
                 String userAgent = request.getHeader("User-Agent");
                 String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
                 LOG.warn(String.format("Tried to access invalid resource - \"%s\" \"%s\"", remoteIpAddress, userAgent));
-                writeResponse(NOT_ACCEPTABLE, e, null, null);
+                writeResponse(NOT_FOUND, e, null, null);
             }
         } else {
             writeResponse(INTERNAL_SERVER_ERROR, e, null, null);
@@ -199,7 +199,7 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
         HttpResponse response = null;
         if (cause instanceof InvalidJsonException) {
             LOG.error(cause.getMessage());
-            response = new DefaultHttpResponse(HTTP_1_1, NOT_ACCEPTABLE);
+            response = new DefaultHttpResponse(HTTP_1_1, BAD_REQUEST);
         } else if (cause instanceof TooLongFrameException) {
             response = new DefaultHttpResponse(HTTP_1_1, REQUEST_ENTITY_TOO_LARGE);
         } else if (cause instanceof InvalidPathException) {
