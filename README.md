@@ -41,16 +41,24 @@ To run Bagheera you can use `bin/bagheera` or copy the init.d script by the same
 `bin/bagheera 8080`
 
 ### REST Request Format ###
+#####URI _/submit/namespace/id_#####
+POST/PUT 
+* The _namespace_ is required and is only accepted if it is in the configured white-list.
+* The _id_ is optional although if you provide it currently it needs to be a valid UUID unless id validation is disabled on the _namespace_. 
+* The payload content length must be less than the configured maximum.
 
-Bagheera takes POST data on _/namespace/uniqueid_. The _uniqueid_ is optional although if you provide it currently it needs to be a valid UUID. The POST body is currently required to be a valid JSON object although this requirement may change in the future.
+DELETE
+* The _namespace_ is required and is only accepted if it is in the configured white-list.
+* The _id_ is required although if you provide it currently it needs to be a valid UUID unless id validation is disabled on the _namespace_.
 
-Here's a quick rundown of HTTP return codes that Bagheera could send back (this isn't comprehensive but rather the most common ones):
+Here's the list of HTTP response codes that Bagheera could send back:
 
-* 201 Created - returned if everything was submitted successfully (default)
-* 403 Forbidden - pretty self explanatory...someone is doing something they shouldn't be
-* 404 Not Found - returned if the URI path doesn't exist or if the URI was not in the proper format
-* 406 Not Acceptable - returned if the POST failed validation in some manner
-* 500 Server Error - something went horribly wrong and you should check the logs
+* 201 Created - Returns the id submitted/generated. (default)
+* 403 Forbidden - Violated access restrictions. Most likely because of the method used.
+* 413 Request Too Large - Request payload was larger than the configured maximum.
+* 400 Bad Request - Returned if the POST/PUT failed validation in some manner.
+* 404 Not Found - Returned if the URI path doesn't exist or if the URI was not in the proper format.
+* 500 Server Error - General server error. Someone with access should look at the logs for more details.
 
 ### Example Bagheera Configuration (conf/bagheera.properties) ###
     # valid namespaces (whitelist only, comma separated)
