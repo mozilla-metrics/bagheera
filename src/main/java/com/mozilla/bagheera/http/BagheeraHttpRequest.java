@@ -48,9 +48,15 @@ public class BagheeraHttpRequest extends DefaultHttpRequest {
     public BagheeraHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri, 
                                PathDecoder pathDecoder) {
         super(httpVersion, method, uri);
-        endpoint = pathDecoder.getPathElement(ENDPOINT_PATH_IDX);
-        namespace = pathDecoder.getPathElement(NAMESPACE_PATH_IDX);
-        id = pathDecoder.getPathElement(ID_PATH_IDX);
+        int idxOffset = 0;
+        // If API version is in the path then offset the path indices
+        if ("1.0".equals(pathDecoder.getPathElement(0)) || 
+            "1".equals(pathDecoder.getPathElement(0))) {
+            idxOffset = 1;
+        }
+        endpoint = pathDecoder.getPathElement(ENDPOINT_PATH_IDX + idxOffset);
+        namespace = pathDecoder.getPathElement(NAMESPACE_PATH_IDX + idxOffset);
+        id = pathDecoder.getPathElement(ID_PATH_IDX + idxOffset);
         if (id == null) {
             id = UUID.randomUUID().toString();
         }
