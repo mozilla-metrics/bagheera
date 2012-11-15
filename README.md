@@ -41,14 +41,15 @@ To run Bagheera you can use `bin/bagheera` or copy the init.d script by the same
 `bin/bagheera 8080`
 
 ### REST Request Format ###
-#####URI _/submit/namespace/id_#####
-#####    _/1.0/submit/namespace/id_#####
+#####URI _/submit/namespace/id_ | _/1.0/submit/namespace/id_#####
 POST/PUT 
+
 * The _namespace_ is required and is only accepted if it is in the configured white-list.
 * The _id_ is optional although if you provide it currently it needs to be a valid UUID unless id validation is disabled on the _namespace_. 
 * The payload content length must be less than the configured maximum.
 
 DELETE
+
 * The _namespace_ is required and is only accepted if it is in the configured white-list.
 * The _id_ is required although if you provide it currently it needs to be a valid UUID unless id validation is disabled on the _namespace_.
 
