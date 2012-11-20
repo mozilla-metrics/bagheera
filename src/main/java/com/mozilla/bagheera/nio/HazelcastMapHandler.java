@@ -21,10 +21,10 @@ package com.mozilla.bagheera.nio;
 
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
+import static org.jboss.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
-import static org.jboss.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
@@ -33,7 +33,6 @@ import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -55,9 +54,9 @@ import org.jboss.netty.util.CharsetUtil;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.mozilla.bagheera.metrics.MetricsManager;
+import com.mozilla.bagheera.nio.codec.http.BagheeraHttpRequest;
 import com.mozilla.bagheera.nio.codec.http.HttpSecurityException;
 import com.mozilla.bagheera.nio.codec.http.InvalidPathException;
-import com.mozilla.bagheera.nio.codec.http.PathDecoder;
 import com.mozilla.bagheera.nio.codec.json.InvalidJsonException;
 import com.mozilla.bagheera.util.HttpUtil;
 
@@ -160,27 +159,18 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
 
-        if (msg instanceof HttpRequest) {
-            HttpRequest request = (HttpRequest) e.getMessage();
-            PathDecoder pd = new PathDecoder(request.getUri());
-            String endpoint = pd.getPathElement(ENDPOINT_PATH_IDX);
-
-            if (endpoint != null && ENDPOINT_SUBMIT.equals(endpoint)) {
-                String namespace = pd.getPathElement(NAMESPACE_PATH_IDX);
-                String id = pd.getPathElement(ID_PATH_IDX);
-                if (id == null) {
-                    id = UUID.randomUUID().toString();
-                }
-
-                IMap<String,String> m = hzInstance.getMap(namespace);
+        if (msg instanceof BagheeraHttpRequest) {
+            BagheeraHttpRequest request = (BagheeraHttpRequest) e.getMessage();
+            if (request.getEndpoint() != null && ENDPOINT_SUBMIT.equals(request.getEndpoint())) {
+                IMap<String,String> m = hzInstance.getMap(request.getNamespace());
                 if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
-                    handlePost(e, request, namespace, id, m);
+                    handlePost(e, request, request.getNamespace(), request.getId(), m);
                 } else if (request.getMethod() == HttpMethod.GET) {
-                    handleGet(e, request, namespace, id, m);
+                    handleGet(e, request, request.getNamespace(), request.getId(), m);
                 } else if (request.getMethod() == HttpMethod.DELETE) {
-                    handleDelete(e, request, namespace, id, m);
+                    handleDelete(e, request, request.getNamespace(), request.getId(), m);
                 } else {
-                    writeResponse(NOT_FOUND, e, namespace, null);
+                    writeResponse(NOT_FOUND, e, request.getNamespace(), null);
                 }
             } else {
                 String userAgent = request.getHeader("User-Agent");
