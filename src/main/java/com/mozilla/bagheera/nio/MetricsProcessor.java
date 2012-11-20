@@ -19,7 +19,7 @@
  */
 package com.mozilla.bagheera.nio;
 
-import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
+import static org.jboss.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 
 import java.io.IOException;
 
@@ -75,21 +75,21 @@ public class MetricsProcessor {
     private boolean isValidDocument(JsonNode document) {
         if (document == null || !document.isObject()) return false;
 
-        JsonNode dataPoints = document.get("dataPoints");
-        if (dataPoints == null || !dataPoints.isObject()) return false;
+//        JsonNode dataPoints = document.get("dataPoints");
+//        if (dataPoints == null || !dataPoints.isObject()) return false;
 
         // TODO: iterate dataPoints to make sure each one is valid?
         //        - dataPoints.size() <= 180
         //        - each one contains optional search, sessions, simpleMeasurements
-        if (!isArrayChild(document, "addons")) return false;
+//        if (!isArrayChild(document, "addons")) return false;
         
-        String[] requiredKeys = {"lastPingTime", "thisPingTime"};
-        for (String key : requiredKeys){
-            if (!document.has(key)) {
-                return false;
-            }
-        }
-        
+//        String[] requiredKeys = {"lastPingTime", "thisPingTime"};
+//        for (String key : requiredKeys){
+//            if (!document.has(key)) {
+//                return false;
+//            }
+//        }
+//        
         return true;
     }
     
@@ -97,7 +97,7 @@ public class MetricsProcessor {
         // Verify that the incoming document is valid
         // Insert GeoIP Info
         // Delete the obsolete document
-        HttpResponseStatus status = NOT_ACCEPTABLE;
+        HttpResponseStatus status = BAD_REQUEST;
         try {
             ObjectNode aggregate = objectMapper.readValue(newDocument, ObjectNode.class);
             if (isValidDocument(aggregate)) {

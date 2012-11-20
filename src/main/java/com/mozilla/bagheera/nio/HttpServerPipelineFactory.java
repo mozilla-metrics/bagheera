@@ -30,12 +30,13 @@ import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
-import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
+import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.mozilla.bagheera.nio.codec.http.AccessFilter;
 import com.mozilla.bagheera.nio.codec.http.BagheeraHttpRequestDecoder;
+import com.mozilla.bagheera.nio.codec.http.ContentEncodingCorrector;
 import com.mozilla.bagheera.nio.codec.http.ContentLengthFilter;
 import com.mozilla.bagheera.nio.codec.http.RootResponse;
 import com.mozilla.bagheera.nio.codec.json.JsonFilter;
@@ -85,6 +86,8 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
         pipeline.addLast("accessFilter", new AccessFilter(validator, props));
+        // The encoding corrector must come before decompression
+        pipeline.addLast("encodingCorrector", new ContentEncodingCorrector());
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("jsonValidaton", new JsonFilter(validator));
         pipeline.addLast("handler", new HazelcastMapHandler(hzInstance, metricsProcessor));
