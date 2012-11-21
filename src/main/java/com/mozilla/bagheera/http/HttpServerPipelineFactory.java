@@ -61,6 +61,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
         pipeline.addLast("accessFilter", new AccessFilter(validator, props));
+        pipeline.addLast("encodingCorrector", new ContentEncodingCorrector());
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("encoder", new HttpResponseEncoder());
         pipeline.addLast("handler", new SubmissionHandler(validator, producer));

@@ -28,6 +28,10 @@ import org.jboss.netty.handler.codec.http.HttpVersion;
 
 public class BagheeraHttpRequest extends DefaultHttpRequest {
 
+    // Version constants
+    public static final String VERSION_1_0 = "1.0";
+    public static final String VERSION_1 = "1";
+    
     // REST path indices
     public static final int ENDPOINT_PATH_IDX = 0;
     public static final int NAMESPACE_PATH_IDX = 1;
@@ -50,8 +54,8 @@ public class BagheeraHttpRequest extends DefaultHttpRequest {
         super(httpVersion, method, uri);
         int idxOffset = 0;
         // If API version is in the path then offset the path indices
-        if ("1.0".equals(pathDecoder.getPathElement(0)) || 
-            "1".equals(pathDecoder.getPathElement(0))) {
+        if (VERSION_1_0.equals(pathDecoder.getPathElement(0)) || 
+            VERSION_1.equals(pathDecoder.getPathElement(0))) {
             idxOffset = 1;
         }
         endpoint = pathDecoder.getPathElement(ENDPOINT_PATH_IDX + idxOffset);
