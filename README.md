@@ -39,7 +39,7 @@ Bagheera takes POST data on _/map/mymapname/unique-id_. Depending on how _mymapn
 Here's a quick rundown of HTTP return codes that Bagheera could send back (this isn't comprehensive but rather the most common ones):
 
 * 201 Created - returned if everything was submitted successfully (default)
-* 406 Not Acceptable - returned if the POST failed validation in some manner
+* 400 Bad Request - returned if the POST failed validation in some manner
 * 500 Server Error - something went horribly wrong and you should check the logs
 
 ### Hazelcast HBaseMapStore Configuration ###
