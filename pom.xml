@@ -4,7 +4,7 @@
 
 	<groupId>com.mozilla</groupId>
 	<artifactId>bagheera</artifactId>
-	<version>0.7-SNAPSHOT</version>
+	<version>0.8-SNAPSHOT</version>
 
 	<name>bagheera</name>
 	<description>REST services for Mozilla Metrics.</description>
@@ -345,12 +345,12 @@
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka-core</artifactId>
-			<version>0.7.2-incubating</version>
+			<version>0.8.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
-			<version>2.8.0</version>
+			<version>2.9.2</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.sgroschupf</groupId>

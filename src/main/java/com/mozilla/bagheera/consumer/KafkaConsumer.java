@@ -38,18 +38,18 @@ import kafka.consumer.ConsumerConfig;
 import kafka.consumer.KafkaStream;
 import kafka.consumer.Whitelist;
 import kafka.javaapi.consumer.ConsumerConnector;
-import kafka.message.Message;
 import kafka.message.MessageAndMetadata;
+import kafka.serializer.StringDecoder;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.log4j.Logger;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
 import com.mozilla.bagheera.cli.OptionFactory;
+import com.mozilla.bagheera.serializer.BagheeraDecoder;
 import com.mozilla.bagheera.sink.KeyValueSink;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
@@ -64,7 +64,7 @@ public class KafkaConsumer implements Consumer {
     protected ExecutorService executor;
     protected List<Future<?>> workers;
     protected ConsumerConnector consumerConnector;
-    protected List<KafkaStream<Message>> streams;
+    protected List<KafkaStream<String,BagheeraMessage>> streams;
     protected KeyValueSink sink;
     
     protected Meter consumed;
@@ -80,7 +80,7 @@ public class KafkaConsumer implements Consumer {
         
         ConsumerConfig consumerConfig = new ConsumerConfig(props);
         consumerConnector = kafka.consumer.Consumer.createJavaConsumerConnector(consumerConfig);
-        streams = consumerConnector.createMessageStreamsByFilter(new Whitelist(topic), numThreads);
+        streams = consumerConnector.createMessageStreamsByFilter(new Whitelist(topic), numThreads, new StringDecoder(null), new BagheeraDecoder());
         
         consumed = Metrics.newMeter(new MetricName("bagheera", "consumer", topic + ".consumed"), "messages", TimeUnit.SECONDS);
     }
@@ -122,13 +122,14 @@ public class KafkaConsumer implements Consumer {
     
     public void poll() {
         final CountDownLatch latch = new CountDownLatch(streams.size());
-        for (final KafkaStream<Message> stream : streams) {  
+        for (final KafkaStream<String,BagheeraMessage> stream : streams) {  
             workers.add(executor.submit(new Runnable() {
                 @Override
                 public void run() {                  
                     try {
-                        for (MessageAndMetadata<Message> mam : stream) {
-                            BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
+                        stream.iterator();
+                        for (MessageAndMetadata<String,BagheeraMessage> mam : stream) {
+                            BagheeraMessage bmsg = mam.message();
                             if (bmsg.getOperation() == Operation.CREATE_UPDATE && 
                                 bmsg.hasId() && bmsg.hasPayload()) {
                                 if (bmsg.hasTimestamp()) {

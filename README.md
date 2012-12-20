@@ -1,6 +1,6 @@
 # Bagheera #
 
-Version: 0.7-SNAPSHOT  
+Version: 0.8-SNAPSHOT  
 
 #### REST service for Mozilla Metrics. This service currently uses Apache Kafka as its backing data store, then provides a few implementations of Kafka consumers to pull and persist to various data sinks. ####
 
@@ -8,7 +8,7 @@ Version: 0.7-SNAPSHOT
 ### Version Compatability ###
 This code is built with the following assumptions.  You may get mixed results if you deviate from these versions.
 
-* [Kafka](http://incubator.apache.org/kafka) 0.7.1+
+* [Kafka](http://incubator.apache.org/kafka) 0.8+
 * [Protocol Buffers](https://developers.google.com/protocol-buffers) 2.3.0+
 * [Hadoop](http://hadoop.apache.org) 0.20.2+
 * [HBase](http://hbase.apache.org) 0.90+

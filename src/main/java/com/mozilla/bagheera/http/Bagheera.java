@@ -62,7 +62,7 @@ public class Bagheera {
         try {
             URL propUrl = Bagheera.class.getResource(PROPERTIES_RESOURCE_NAME);
             if (propUrl == null) {
-                throw new IllegalArgumentException("Could not find the properites file: " + PROPERTIES_RESOURCE_NAME);
+                throw new IllegalArgumentException("Could not find the properties file: " + PROPERTIES_RESOURCE_NAME);
             }
             in = propUrl.openStream();
             props.load(in);
@@ -70,7 +70,7 @@ public class Bagheera {
             
             propUrl = Bagheera.class.getResource("/kafka.producer.properties");
             if (propUrl == null) {
-                throw new IllegalArgumentException("Could not find the properites file: " + "/kafka.producer.properties");
+                throw new IllegalArgumentException("Could not find the properties file: " + "/kafka.producer.properties");
             }
             
             in = propUrl.openStream();

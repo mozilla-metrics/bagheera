@@ -22,7 +22,7 @@ package com.mozilla.bagheera.producer;
 import java.util.Properties;
 
 import kafka.javaapi.producer.Producer;
-import kafka.javaapi.producer.ProducerData;
+import kafka.producer.KeyedMessage;
 import kafka.producer.ProducerConfig;
 
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
@@ -50,7 +50,7 @@ public class KafkaProducer implements com.mozilla.bagheera.producer.Producer {
      */
     @Override
     public void send(BagheeraMessage msg) {
-        producer.send(new ProducerData<String,BagheeraMessage>(msg.getNamespace(), msg));
+        producer.send(new KeyedMessage<String,BagheeraMessage>(msg.getNamespace(), msg));
     }
     
 }

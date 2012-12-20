@@ -66,6 +66,9 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     // REST endpoints
     private static final String ENDPOINT_SUBMIT = "submit";
 
+    // HTTP Headers
+    private static final String HEADER_X_OBSOLETE_DOCUMENT = "X-Obsolete-Document";
+    
     private MetricsManager metricsManager;
     private Producer producer;
     
@@ -100,8 +103,8 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             bmsgBuilder.setTimestamp(System.currentTimeMillis());
             producer.send(bmsgBuilder.build());
             
-            if (request.containsHeader("X-Obsolete-Document")) {
-                String obsoleteId = request.getHeader("X-Obsolete-Document");
+            if (request.containsHeader(HEADER_X_OBSOLETE_DOCUMENT)) {
+                String obsoleteId = request.getHeader(HEADER_X_OBSOLETE_DOCUMENT);
                 BagheeraMessage.Builder obsBuilder = BagheeraMessage.newBuilder();
                 obsBuilder.setOperation(Operation.DELETE);
                 obsBuilder.setNamespace(request.getNamespace());

@@ -19,12 +19,10 @@
  */
 package com.mozilla.bagheera.serializer;
 
-import kafka.message.Message;
 import kafka.serializer.Decoder;
 
 import org.apache.log4j.Logger;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mozilla.bagheera.BagheeraProto;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
@@ -32,12 +30,15 @@ import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 public class BagheeraDecoder implements Decoder<BagheeraMessage> {
 
     private static final Logger LOG = Logger.getLogger(BagheeraDecoder.class);
-    
+
+    /* (non-Javadoc)
+     * @see kafka.serializer.Decoder#fromBytes(byte[])
+     */
     @Override
-    public BagheeraMessage toEvent(Message msg) {
+    public BagheeraMessage fromBytes(byte[] bytes) {
         BagheeraMessage bmsg = null;
         try {
-            bmsg = BagheeraProto.BagheeraMessage.parseFrom(ByteString.copyFrom(msg.payload()));
+            bmsg = BagheeraProto.BagheeraMessage.parseFrom(bytes);
         } catch (InvalidProtocolBufferException e) {
             LOG.error("Received unparseable message", e);
         }
