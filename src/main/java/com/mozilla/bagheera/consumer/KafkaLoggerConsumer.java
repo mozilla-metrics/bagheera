@@ -52,7 +52,7 @@ private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
             sh.addFirst(consumer);
             
             // Create a sink for storing data
-            final KeyValueSink sink = new LoggerSink(Boolean.parseBoolean(cmd.getOptionValue("logvalues", "false")));
+            final KeyValueSink sink = new LoggerSink(cmd.hasOption("logvalues"));
             sh.addLast(sink);
             
             // Set the sink for consumer storage
