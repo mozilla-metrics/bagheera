@@ -16,6 +16,14 @@
 # 
 # Starts a bagheera server
 
+#
+# bagheera:    Starts the bagheera daemon
+#
+# chkconfig: 2345 95 20
+# description: A REST server for Mozilla Metrics
+# processname: java
+# pidfile: /var/run/bagheera/bagheera.pid
+
 # Source function library
 . /etc/rc.d/init.d/functions
 
