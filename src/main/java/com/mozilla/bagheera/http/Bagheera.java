@@ -44,6 +44,8 @@ public class Bagheera {
     private static final Logger LOG = Logger.getLogger(Bagheera.class);
     
     public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
+    public static final String KAFKA_PROPERTIES_RESOURCE_NAME = "/kafka.producer.properties";
+    
     private static final int DEFAULT_IO_THREADS = Runtime.getRuntime().availableProcessors() * 2;
 
     static final ChannelGroup allChannels = new DefaultChannelGroup(Bagheera.class.getName());
@@ -68,7 +70,7 @@ public class Bagheera {
             props.load(in);
             in.close();
             
-            propUrl = Bagheera.class.getResource("/kafka.producer.properties");
+            propUrl = Bagheera.class.getResource(KAFKA_PROPERTIES_RESOURCE_NAME);
             if (propUrl == null) {
                 throw new IllegalArgumentException("Could not find the properites file: " + "/kafka.producer.properties");
             }
