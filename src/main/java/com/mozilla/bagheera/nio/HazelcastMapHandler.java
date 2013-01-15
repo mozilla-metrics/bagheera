@@ -128,6 +128,8 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
     }
     
     private void handleDelete(MessageEvent e, HttpRequest request, String namespace, String id, IMap<String,String> m) {
+        // Hazelcast won't call underlying persistence delete method unless the entry exists
+        m.put(id, "");
         String v = m.remove(id);
         if (v != null) {
             updateRequestMetrics(namespace, request.getMethod().getName(), 0);
