@@ -1,0 +1,18 @@
+#!/bin/bash
+
+bin=`dirname "$0"`
+bin=`cd "$bin"; pwd`
+
+consumer_props=$bin/../conf/kafka.consumer.properties
+
+# Telemetry
+$bin/hbase_consumer -t telemetry -gid telemetry-hbase-prod -p $consumer_props --table telemetry --family data --qualifier json --prefixdate
+# FHR
+$bin/hbase_consumer -t metrics -gid fhr-hbase-prod -p $consumer_props --table metrics --family data --qualifier json
+# Testpilot
+$bin/hdfs_consumer -t testpilot_.+ -gid testpilot-hdfs-prod -p $consumer_props 
+# Marketplace
+$bin/hdfs_consumer -t marketplace_.+ -gid marketplace-hdfs-prod -p $consumer_props 
+# Android Reviews
+$bin/hbase_consumer -t android_release_review -gid android_release_review-hbase-prod -p $consumer_props --table android_release_review --family data --qualifier json
+$bin/hbase_consumer -t android_beta_review -gid android_beta_review-hbase-prod -p $consumer_props --table android_beta_review --family data --qualifier json

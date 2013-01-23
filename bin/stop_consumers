@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ps ax | grep -i 'com.mozilla.bagheera.consumer.' | grep -v grep | awk '{print $1}' | xargs kill -SIGINT
