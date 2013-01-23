@@ -30,7 +30,8 @@ import org.apache.log4j.Logger;
 import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.sink.HBaseSink;
-import com.mozilla.bagheera.sink.KeyValueSink;
+import com.mozilla.bagheera.sink.SinkConfiguration;
+import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
 
 /**
@@ -59,14 +60,16 @@ public final class KafkaHBaseConsumer {
             sh.addFirst(consumer);
             
             // Create a sink for storing data
-            final KeyValueSink sink = new HBaseSink(cmd.getOptionValue("table"), 
-                                                    cmd.getOptionValue("family", "data"), 
-                                                    cmd.getOptionValue("qualifier", "json"), 
-                                                    Boolean.parseBoolean(cmd.getOptionValue("prefixdate", "true")));
-            sh.addLast(sink);
+            SinkConfiguration sinkConfig = new SinkConfiguration();
+            sinkConfig.setString("hbasesink.hbase.tablename", cmd.getOptionValue("table"));
+            sinkConfig.setString("hbasesink.hbase.column.family", cmd.getOptionValue("family", "data"));
+            sinkConfig.setString("hbasesink.hbase.column.qualifier", cmd.getOptionValue("qualifier", "json"));
+            sinkConfig.setBoolean("hbasesink.hbase.rowkey.prefixdate", Boolean.parseBoolean(cmd.getOptionValue("prefixdate", "true")));
+            KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(HBaseSink.class, sinkConfig);
+            sh.addLast(sinkFactory);
             
-            // Set the sink for consumer storage
-            consumer.setSink(sink);
+            // Set the sink factory for consumer storage
+            consumer.setSinkFactory(sinkFactory);
             
             // Initialize metrics collection, reporting, etc.
             MetricsManager.getInstance();

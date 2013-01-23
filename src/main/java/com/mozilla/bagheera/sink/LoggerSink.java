@@ -29,6 +29,10 @@ public class LoggerSink implements Sink, KeyValueSink {
     
     private boolean logValues;
     
+    public LoggerSink(SinkConfiguration sinkConfiguration) {
+        this(sinkConfiguration.getBoolean("loggersink.logvalues", false));
+    }
+    
     public LoggerSink(boolean logValues) {
         this.logValues = logValues;
     }

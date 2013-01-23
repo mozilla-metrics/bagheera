@@ -51,6 +51,7 @@ import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
 import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.sink.KeyValueSink;
+import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
@@ -65,7 +66,7 @@ public class KafkaConsumer implements Consumer {
     protected List<Future<?>> workers;
     protected ConsumerConnector consumerConnector;
     protected List<KafkaStream<Message>> streams;
-    protected KeyValueSink sink;
+    protected KeyValueSinkFactory sinkFactory;
     
     protected Meter consumed;
     
@@ -84,9 +85,9 @@ public class KafkaConsumer implements Consumer {
         
         consumed = Metrics.newMeter(new MetricName("bagheera", "consumer", topic + ".consumed"), "messages", TimeUnit.SECONDS);
     }
-    
-    public void setSink(KeyValueSink sink) {
-        this.sink = sink;
+
+    public void setSinkFactory(KeyValueSinkFactory sinkFactory) {
+        this.sinkFactory = sinkFactory;
     }
     
     public void close() {
@@ -129,6 +130,13 @@ public class KafkaConsumer implements Consumer {
                     try {
                         for (MessageAndMetadata<Message> mam : stream) {
                             BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
+                            // get the sink for this message's namespace 
+                            // (typically only one sink unless a regex pattern was used to listen to multiple topics)
+                            KeyValueSink sink = sinkFactory.getSink(bmsg.getNamespace());
+                            if (sink == null) {
+                                LOG.error("Could not obtain sink for namespace: " + bmsg.getNamespace());
+                                break;
+                            }
                             if (bmsg.getOperation() == Operation.CREATE_UPDATE && 
                                 bmsg.hasId() && bmsg.hasPayload()) {
                                 if (bmsg.hasTimestamp()) {

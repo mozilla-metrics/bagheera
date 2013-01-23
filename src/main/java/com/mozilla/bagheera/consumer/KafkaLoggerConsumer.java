@@ -29,8 +29,9 @@ import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.metrics.MetricsManager;
-import com.mozilla.bagheera.sink.KeyValueSink;
 import com.mozilla.bagheera.sink.LoggerSink;
+import com.mozilla.bagheera.sink.SinkConfiguration;
+import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
 
 public class KafkaLoggerConsumer {
@@ -52,11 +53,13 @@ private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
             sh.addFirst(consumer);
             
             // Create a sink for storing data
-            final KeyValueSink sink = new LoggerSink(cmd.hasOption("logvalues"));
-            sh.addLast(sink);
+            SinkConfiguration sinkConfig = new SinkConfiguration();
+            sinkConfig.setBoolean("loggersink.logvalues", cmd.hasOption("logvalues"));
+            KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(LoggerSink.class, sinkConfig);
+            sh.addLast(sinkFactory);
             
             // Set the sink for consumer storage
-            consumer.setSink(sink);
+            consumer.setSinkFactory(sinkFactory);
             
             // Initialize metrics collection, reporting, etc.
             MetricsManager.getInstance();

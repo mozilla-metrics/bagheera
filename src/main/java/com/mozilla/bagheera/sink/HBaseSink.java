@@ -61,6 +61,13 @@ public class HBaseSink implements KeyValueSink {
     
     protected Meter stored;
     
+    public HBaseSink(SinkConfiguration sinkConfiguration) {
+        this(sinkConfiguration.getString("hbasesink.hbase.tablename"),
+             sinkConfiguration.getString("hbasesink.hbase.column.family", "data"),
+             sinkConfiguration.getString("hbasesink.hbase.column.qualifier", "json"),
+             sinkConfiguration.getBoolean("hbasesink.hbase.rowkey.prefixdate", false));
+    }
+    
     public HBaseSink(String tableName, String family, String qualifier, boolean prefixDate) {
         this.tableName = Bytes.toBytes(tableName);
         this.family = Bytes.toBytes(family);

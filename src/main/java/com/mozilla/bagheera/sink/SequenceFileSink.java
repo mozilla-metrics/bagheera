@@ -64,8 +64,16 @@ public class SequenceFileSink implements KeyValueSink {
 
     protected Meter stored;
 
-    public SequenceFileSink(String namespace, String baseDirPath, String dateFormat, long maxFileSize,
-            boolean useBytesValue) throws IOException {
+    public SequenceFileSink(SinkConfiguration config) throws IOException {
+        this(config.getString("namespace"), 
+             config.getString("hdfssink.hdfs.basedir.path", "/bagheera"), 
+             config.getString("hdfssink.hdfs.date.format", "yyyy-MM-dd"), 
+             config.getLong("hdfssink.hdfs.max.filesize", 536870912),
+             config.getBoolean("hdfssink.hdfs.usebytes", false));
+    }
+    
+    public SequenceFileSink(String namespace, String baseDirPath, String dateFormat, long maxFileSize, 
+                            boolean useBytesValue) throws IOException {
         LOG.info("Initializing writer for namespace: " + namespace);
         conf = new Configuration();
         conf.setBoolean("fs.automatic.close", false);

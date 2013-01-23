@@ -19,8 +19,6 @@
  */
 package com.mozilla.bagheera.consumer;
 
-import java.io.IOException;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -31,8 +29,9 @@ import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.metrics.MetricsManager;
-import com.mozilla.bagheera.sink.KeyValueSink;
 import com.mozilla.bagheera.sink.SequenceFileSink;
+import com.mozilla.bagheera.sink.SinkConfiguration;
+import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
 
 /**
@@ -61,15 +60,16 @@ public final class KafkaSequenceFileConsumer {
             sh.addFirst(consumer);
             
             // Create a sink for storing data
-            final KeyValueSink sink = new SequenceFileSink(cmd.getOptionValue("topic"), 
-                                                           cmd.getOptionValue("output", "/bagheera"), 
-                                                           cmd.getOptionValue("dateformat", "yyyy-MM-dd"), 
-                                                           Long.parseLong(cmd.getOptionValue("filesize", "536870912")), 
-                                                           Boolean.parseBoolean(cmd.getOptionValue("usebytes", "false")));
-            sh.addLast(sink);
+            SinkConfiguration sinkConfig = new SinkConfiguration();
+            sinkConfig.setString("hdfssink.hdfs.basedir.path", cmd.getOptionValue("output", "/bagheera"));
+            sinkConfig.setString("hdfssink.hdfs.date.format", cmd.getOptionValue("dateformat", "yyyy-MM-dd"));
+            sinkConfig.setLong("hdfssink.hdfs.max.filesize", Long.parseLong(cmd.getOptionValue("filesize", "536870912")));
+            sinkConfig.setBoolean("hdfssink.hdfs.usebytes", Boolean.parseBoolean(cmd.getOptionValue("usebytes", "false")));
+            KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(SequenceFileSink.class, sinkConfig);
+            sh.addLast(sinkFactory);
             
             // Set the sink for consumer storage
-            consumer.setSink(sink);
+            consumer.setSinkFactory(sinkFactory);
             
             // Initialize metrics collection, reporting, etc.
             MetricsManager.getInstance();
@@ -82,8 +82,6 @@ public final class KafkaSequenceFileConsumer {
             formatter.printHelp(KafkaSequenceFileConsumer.class.getName(), options);
         } catch (NumberFormatException e) {
             LOG.error("Failed to parse filesize option", e);
-        } catch (IOException e) {
-            LOG.error("Error creating data sink", e);
         }
     }
 }
