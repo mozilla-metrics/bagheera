@@ -42,6 +42,9 @@ public class SinkConfiguration {
     }
     
     public void setString(String key, String value) {
+        if (key == null || value == null) {
+            return;
+        }
         props.setProperty(key, value);
     }
     

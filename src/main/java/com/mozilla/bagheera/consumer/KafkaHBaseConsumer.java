@@ -61,6 +61,7 @@ public final class KafkaHBaseConsumer {
             
             // Create a sink for storing data
             SinkConfiguration sinkConfig = new SinkConfiguration();
+            sinkConfig.setString("hbasesink.hbase.numthreads", cmd.getOptionValue("numthreads"));
             sinkConfig.setString("hbasesink.hbase.tablename", cmd.getOptionValue("table"));
             sinkConfig.setString("hbasesink.hbase.column.family", cmd.getOptionValue("family", "data"));
             sinkConfig.setString("hbasesink.hbase.column.qualifier", cmd.getOptionValue("qualifier", "json"));

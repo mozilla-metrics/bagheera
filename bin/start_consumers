@@ -3,16 +3,20 @@
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 
-consumer_props=$bin/../conf/kafka.consumer.properties
+CONSUMER_PROPS=$bin/../conf/kafka.consumer.properties
+HBASE_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaHBaseConsumer
+HDFS_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaSequenceFileConsumer
+# FHR consumer comes from fhr-toolbox which needs its jar deployed to bagheera/lib in order to use it
+FHR_CONSUMER_CLASS=com.mozilla.fhr.consumer.FHRConsumer
 
 # Telemetry
-$bin/hbase_consumer -t telemetry -gid telemetry-hbase-prod -p $consumer_props --table telemetry --family data --qualifier json --prefixdate
+$bin/consumer $HBASE_CONSUMER_CLASS -t telemetry -gid telemetry-hbase-prod -p $CONSUMER_PROPS --table telemetry --family data --qualifier json --prefixdate
 # FHR
-$bin/hbase_consumer -t metrics -gid fhr-hbase-prod -p $consumer_props --table metrics --family data --qualifier json
+$bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod -p $CONSUMER_PROPS --table metrics --family data --qualifier json
 # Testpilot
-$bin/hdfs_consumer -t testpilot_.+ -gid testpilot-hdfs-prod -p $consumer_props 
+$bin/consumer $HDFS_CONSUMER_CLASS -t testpilot_.+ -gid testpilot-hdfs-prod -p $CONSUMER_PROPS 
 # Marketplace
-$bin/hdfs_consumer -t marketplace_.+ -gid marketplace-hdfs-prod -p $consumer_props 
+$bin/consumer $HDFS_CONSUMER_CLASS -t marketplace_.+ -gid marketplace-hdfs-prod -p $CONSUMER_PROPS 
 # Android Reviews
-$bin/hbase_consumer -t android_release_review -gid android_release_review-hbase-prod -p $consumer_props --table android_release_review --family data --qualifier json
-$bin/hbase_consumer -t android_beta_review -gid android_beta_review-hbase-prod -p $consumer_props --table android_beta_review --family data --qualifier json
+$bin/consumer $HBASE_CONSUMER_CLASS -t android_release_review -gid android_release_review-hbase-prod -p $CONSUMER_PROPS --table android_release_review --family data --qualifier json
+$bin/consumer $HBASE_CONSUMER_CLASS -t android_beta_review -gid android_beta_review-hbase-prod -p $CONSUMER_PROPS --table android_beta_review --family data --qualifier json

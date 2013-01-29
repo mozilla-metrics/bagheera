@@ -28,7 +28,9 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -63,7 +65,7 @@ public class KafkaConsumer implements Consumer {
     protected static final int DEFAULT_NUM_THREADS = 2;
 
     protected ExecutorService executor;
-    protected List<Future<?>> workers;
+    protected List<Future<Void>> workers;
     protected ConsumerConnector consumerConnector;
     protected List<KafkaStream<Message>> streams;
     protected KeyValueSinkFactory sinkFactory;
@@ -77,7 +79,7 @@ public class KafkaConsumer implements Consumer {
     public KafkaConsumer(String topic, Properties props, int numThreads) {
         LOG.info("# of threads: " + numThreads);
         executor = Executors.newFixedThreadPool(numThreads);
-        workers = new ArrayList<Future<?>>(numThreads);
+        workers = new ArrayList<Future<Void>>(numThreads);
         
         ConsumerConfig consumerConfig = new ConsumerConfig(props);
         consumerConnector = kafka.consumer.Consumer.createJavaConsumerConnector(consumerConfig);
@@ -124,9 +126,9 @@ public class KafkaConsumer implements Consumer {
     public void poll() {
         final CountDownLatch latch = new CountDownLatch(streams.size());
         for (final KafkaStream<Message> stream : streams) {  
-            workers.add(executor.submit(new Runnable() {
+            workers.add(executor.submit(new Callable<Void>() {
                 @Override
-                public void run() {                  
+                public Void call() {                  
                     try {
                         for (MessageAndMetadata<Message> mam : stream) {
                             BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(mam.message().payload()));
@@ -159,17 +161,38 @@ public class KafkaConsumer implements Consumer {
                     } finally {
                     	latch.countDown();
                     }
+                    
+                    return null;
                 }
             }));
         }
 
         // Wait for all tasks to complete which in the normal case they will
-        // run indefinitely unless killed
+        // run indefinitely unless we detect that a thread exited
         try {
-        	latch.await();
+            while (true) {
+                latch.await(10, TimeUnit.SECONDS);
+                if (latch.getCount() != streams.size()) {
+                    LOG.error("Dead thread detected...exiting.");
+                    break;
+                }
+            }
         } catch (InterruptedException e) {
-        	LOG.info("Interrupted during polling", e);
+            LOG.info("Interrupted during polling", e);
         }
+        
+        // Spit out errors if there were any
+        for (Future<Void> worker : workers) {
+            try {
+                if (worker.isDone()) {
+                    worker.get();
+                }
+            } catch (InterruptedException e) {
+                LOG.error("Thread was interrupted:", e);
+            } catch (ExecutionException e) {
+                LOG.error("Exception occured in thread:", e);
+            }
+       }
     }
     
     /**
@@ -182,7 +205,7 @@ public class KafkaConsumer implements Consumer {
         options.addOption(optFactory.create("t", "topic", true, "Topic to poll.").required());
         options.addOption(optFactory.create("gid", "groupid", true, "Kafka group ID.").required());
         options.addOption(optFactory.create("p", "properties", true, "Kafka consumer properties file.").required());
-        
+        options.addOption(optFactory.create("nt", "numthreads", true, "Number of consumer threads."));
         return options;
     }
     
@@ -214,6 +237,10 @@ public class KafkaConsumer implements Consumer {
         }
         
         int numThreads = props.containsKey("consumer.threads") ? Integer.parseInt(props.getProperty("consumer.threads")) : DEFAULT_NUM_THREADS;
+        // if numthreads specified on command-line then override
+        if (cmd.hasOption("numthreads")) {
+            numThreads = Integer.parseInt(cmd.getOptionValue("numthreads"));
+        }
         
         return new KafkaConsumer(cmd.getOptionValue("topic"), props, numThreads);
     }
