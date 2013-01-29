@@ -46,7 +46,7 @@ public class HBaseSink implements KeyValueSink {
     
     private static final Logger LOG = Logger.getLogger(HBaseSink.class);
 
-    private static final int DEFAULT_POOL_SIZE = 8;
+    private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
     
     protected long sleepTime = 1000L;
     
