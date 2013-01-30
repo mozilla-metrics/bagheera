@@ -54,7 +54,7 @@ public class MetricsProcessor {
     private void setGeoLocation(ObjectNode aggregate, String remoteIpAddress) {
         if (geoIpLookupService != null) {
             Country country = geoIpLookupService.getCountry(remoteIpAddress);
-            aggregate.put("geo_country", country == null ? "Unknown" : country.getCode());
+            aggregate.put("geoCountry", country == null ? "Unknown" : country.getCode());
             // TODO: Region-level?
         } else {
             LOG.warn("GeoIP Service is not available. Skipping GeoIP Lookup");
@@ -109,6 +109,8 @@ public class MetricsProcessor {
                 
                 // Delete the key specified by the X-Obsolete-Document header
                 if (obsoleteDocId != null) {
+                    // blocking put to ensure remove calls underlying delete
+                    hcMap.put(obsoleteDocId, "");
                     hcMap.removeAsync(obsoleteDocId);
                 }
                 status = HttpResponseStatus.CREATED;
