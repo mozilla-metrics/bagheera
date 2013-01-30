@@ -40,7 +40,7 @@ public class HttpUtilTest {
     public void setup() {
         request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/foo");
         request.setHeader(HttpUtil.USER_AGENT, "Dummy Agent");
-        request.setHeader(HttpUtil.X_FORWARDED_FOR, "127.0.0.2");
+        request.setHeader(HttpUtil.X_FORWARDED_FOR, "127.0.0.2, 127.0.0.3, 127.0.0.4");
         try {
             addr = InetAddress.getLocalHost();
         } catch (UnknownHostException e) {
@@ -67,4 +67,5 @@ public class HttpUtilTest {
         String addrStr = HttpUtil.getRemoteAddr(request, addr.getHostAddress());
         assertEquals("127.0.0.2", addrStr);
     }
+
 }

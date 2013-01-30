@@ -34,13 +34,29 @@ public class HttpUtil {
         return request.getHeader(USER_AGENT);
     }
     
+    private static String getForwardedAddr(String forwardedAddr) {
+        if (forwardedAddr == null) {
+            return null;
+        }
+        
+        String clientAddr = null;
+        int idx = forwardedAddr.indexOf(",");
+        if (idx > 0) {
+            clientAddr = forwardedAddr.substring(0, idx);
+        } else {
+            clientAddr = forwardedAddr;
+        }
+        
+        return clientAddr;
+    }
+    
     public static String getRemoteAddr(HttpRequest request, String channelRemoteAddr) {
-        String forwardedAddr = request.getHeader(X_FORWARDED_FOR);
+        String forwardedAddr = getForwardedAddr(request.getHeader(X_FORWARDED_FOR));
         return forwardedAddr == null ? channelRemoteAddr : forwardedAddr;
     }
     
     public static byte[] getRemoteAddr(HttpRequest request, InetAddress channelRemoteAddr) {
-        String forwardedAddr = request.getHeader(X_FORWARDED_FOR);
+        String forwardedAddr = getForwardedAddr(request.getHeader(X_FORWARDED_FOR));
         byte[] addrBytes = null;
         if (forwardedAddr != null) {
             InetAddress addr;
