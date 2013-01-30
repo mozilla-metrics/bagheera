@@ -19,15 +19,60 @@
  */
 package com.mozilla.bagheera.util;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
 public class HttpUtil {
 
-    public static final String HTTP_X_FORWARDED_FOR = "X-Forwarded-For";
+    // header fields
+    public static final String USER_AGENT = "User-Agent";
+    public static final String X_FORWARDED_FOR = "X-Forwarded-For";
+    
+    public static String getUserAgent(HttpRequest request) {
+        return request.getHeader(USER_AGENT);
+    }
+    
+    private static String getForwardedAddr(String forwardedAddr) {
+        if (forwardedAddr == null) {
+            return null;
+        }
+        
+        String clientAddr = null;
+        int idx = forwardedAddr.indexOf(",");
+        if (idx > 0) {
+            clientAddr = forwardedAddr.substring(0, idx);
+        } else {
+            clientAddr = forwardedAddr;
+        }
+        
+        return clientAddr;
+    }
     
     public static String getRemoteAddr(HttpRequest request, String channelRemoteAddr) {
-        String ipAddr = request.getHeader(HTTP_X_FORWARDED_FOR);
-        return ipAddr == null ? channelRemoteAddr : ipAddr;
+        String forwardedAddr = getForwardedAddr(request.getHeader(X_FORWARDED_FOR));
+        return forwardedAddr == null ? channelRemoteAddr : forwardedAddr;
+    }
+    
+    public static byte[] getRemoteAddr(HttpRequest request, InetAddress channelRemoteAddr) {
+        String forwardedAddr = getForwardedAddr(request.getHeader(X_FORWARDED_FOR));
+        byte[] addrBytes = null;
+        if (forwardedAddr != null) {
+            InetAddress addr;
+            try {
+                addr = InetAddress.getByName(forwardedAddr);
+                addrBytes = addr.getAddress();
+            } catch (UnknownHostException e) {
+                // going to swallow this for now
+            }
+        }
+        // if we're still null here then use the remote addr bytes
+        if (addrBytes == null) {
+            addrBytes = channelRemoteAddr.getAddress();
+        }
+        
+        return addrBytes;
     }
     
 }

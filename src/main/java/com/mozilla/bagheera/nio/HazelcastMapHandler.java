@@ -102,9 +102,10 @@ public class HazelcastMapHandler extends SimpleChannelUpstreamHandler {
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
+            LOG.info("IP: " + HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress()));
             if (NS_METRICS.equals(namespace)) {
-                status = metricsProcessor.process(m, id, content.toString(CharsetUtil.UTF_8), 
-                                                  e.getChannel().getRemoteAddress().toString(), 
+                status = metricsProcessor.process(m, id, content.toString(CharsetUtil.UTF_8),
+                                                  HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress()), 
                                                   request.getHeader("X-Obsolete-Document"));
             } else {
                 m.putAsync(id, content.toString(CharsetUtil.UTF_8));
