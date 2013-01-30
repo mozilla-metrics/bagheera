@@ -32,7 +32,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hazelcast.core.IMap;
-import com.maxmind.geoip.Country;
+import com.maxmind.geoip.Location;
 import com.maxmind.geoip.LookupService;
 
 public class MetricsProcessor {
@@ -53,8 +53,8 @@ public class MetricsProcessor {
     
     private void setGeoLocation(ObjectNode aggregate, String remoteIpAddress) {
         if (geoIpLookupService != null) {
-            Country country = geoIpLookupService.getCountry(remoteIpAddress);
-            aggregate.put("geoCountry", country == null ? "Unknown" : country.getCode());
+            Location location = geoIpLookupService.getLocation(remoteIpAddress);
+            aggregate.put("geoCountry", location == null ? "Unknown" : location.countryCode);
             // TODO: Region-level?
         } else {
             LOG.warn("GeoIP Service is not available. Skipping GeoIP Lookup");
