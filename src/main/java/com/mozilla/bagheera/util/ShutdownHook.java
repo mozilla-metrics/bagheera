@@ -21,7 +21,7 @@ package com.mozilla.bagheera.util;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -31,7 +31,7 @@ public class ShutdownHook {
     private static final Logger LOG = Logger.getLogger(ShutdownHook.class);
     
     private static ShutdownHook INSTANCE;
-    private List<Closeable> closeables = new ArrayList<Closeable>();
+    private List<Closeable> closeables = new LinkedList<Closeable>();
     
     private ShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread() {

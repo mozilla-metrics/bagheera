@@ -57,9 +57,9 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         ChannelPipeline pipeline = Channels.pipeline();
         
         pipeline.addLast("decoder", new BagheeraHttpRequestDecoder());
-        pipeline.addLast("rootResponse", new RootResponse());
         pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
         pipeline.addLast("contentLengthFilter", new ContentLengthFilter(maxContentLength));
+        pipeline.addLast("rootResponse", new RootResponse());
         pipeline.addLast("accessFilter", new AccessFilter(validator, props));
         pipeline.addLast("encodingCorrector", new ContentEncodingCorrector());
         pipeline.addLast("inflater", new HttpContentDecompressor());

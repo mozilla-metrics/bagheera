@@ -35,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.KafkaStream;
@@ -52,6 +53,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage.Operation;
 import com.mozilla.bagheera.cli.OptionFactory;
+import com.mozilla.bagheera.consumer.validation.JsonValidator;
+import com.mozilla.bagheera.consumer.validation.ValidationPipeline;
 import com.mozilla.bagheera.sink.KeyValueSink;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.yammer.metrics.Metrics;
@@ -69,9 +72,10 @@ public class KafkaConsumer implements Consumer {
     protected ConsumerConnector consumerConnector;
     protected List<KafkaStream<Message>> streams;
     protected KeyValueSinkFactory sinkFactory;
+    protected ValidationPipeline validationPipeline;
     
     protected Meter consumed;
-    
+
     public KafkaConsumer(String topic, Properties props) {
         this(topic, props, DEFAULT_NUM_THREADS);
     }
@@ -90,6 +94,10 @@ public class KafkaConsumer implements Consumer {
 
     public void setSinkFactory(KeyValueSinkFactory sinkFactory) {
         this.sinkFactory = sinkFactory;
+    }
+    
+    public void setValidationPipeline(ValidationPipeline pipeline) {
+        this.validationPipeline = pipeline;
     }
     
     public void close() {
@@ -141,10 +149,15 @@ public class KafkaConsumer implements Consumer {
                             }
                             if (bmsg.getOperation() == Operation.CREATE_UPDATE && 
                                 bmsg.hasId() && bmsg.hasPayload()) {
-                                if (bmsg.hasTimestamp()) {
-                                    sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
+                                if (validationPipeline == null ||
+                                    validationPipeline.isValid(bmsg.getPayload().toByteArray())) {
+                                    if (bmsg.hasTimestamp()) {
+                                        sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
+                                    } else {
+                                        sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
+                                    }
                                 } else {
-                                    sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
+                                    LOG.warn("Invalid payload for namespace: " + bmsg.getNamespace());
                                 }
                             } else if (bmsg.getOperation() == Operation.DELETE &&
                                 bmsg.hasId()) {
@@ -185,12 +198,14 @@ public class KafkaConsumer implements Consumer {
         for (Future<Void> worker : workers) {
             try {
                 if (worker.isDone()) {
-                    worker.get();
+                    worker.get(1, TimeUnit.SECONDS);
                 }
             } catch (InterruptedException e) {
                 LOG.error("Thread was interrupted:", e);
             } catch (ExecutionException e) {
                 LOG.error("Exception occured in thread:", e);
+            } catch (TimeoutException e) {
+                LOG.error("Timed out waiting for thread result:", e);
             }
        }
     }
@@ -206,6 +221,7 @@ public class KafkaConsumer implements Consumer {
         options.addOption(optFactory.create("gid", "groupid", true, "Kafka group ID.").required());
         options.addOption(optFactory.create("p", "properties", true, "Kafka consumer properties file.").required());
         options.addOption(optFactory.create("nt", "numthreads", true, "Number of consumer threads."));
+        options.addOption(optFactory.create("vj", "validatejson", false, "Validate payload as JSON."));
         return options;
     }
     
@@ -242,7 +258,17 @@ public class KafkaConsumer implements Consumer {
             numThreads = Integer.parseInt(cmd.getOptionValue("numthreads"));
         }
         
-        return new KafkaConsumer(cmd.getOptionValue("topic"), props, numThreads);
+        // construct consumer
+        KafkaConsumer consumer = new KafkaConsumer(cmd.getOptionValue("topic"), props, numThreads);
+        
+        // setup validation pipeline if we need to
+        if (cmd.hasOption("validatejson")) {
+            ValidationPipeline vp = new ValidationPipeline();
+            vp.addFirst(new JsonValidator());
+            consumer.setValidationPipeline(vp);
+        }
+        
+        return consumer;
     }
     
 }

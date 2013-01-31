@@ -10,13 +10,13 @@ HDFS_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaSequenceFileConsumer
 FHR_CONSUMER_CLASS=com.mozilla.fhr.consumer.FHRConsumer
 
 # Telemetry
-$bin/consumer $HBASE_CONSUMER_CLASS -t telemetry -gid telemetry-hbase-prod -p $CONSUMER_PROPS --table telemetry --family data --qualifier json --prefixdate
-# FHR
+$bin/consumer $HBASE_CONSUMER_CLASS -t telemetry -gid telemetry-hbase-prod -p $CONSUMER_PROPS --validatejson --table telemetry --family data --qualifier json --prefixdate
+# FHR (does its own json validation so option isn't needed)
 $bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod -p $CONSUMER_PROPS --table metrics --family data --qualifier json
 # Testpilot
-$bin/consumer $HDFS_CONSUMER_CLASS -t testpilot_.+ -gid testpilot-hdfs-prod -p $CONSUMER_PROPS 
+$bin/consumer $HDFS_CONSUMER_CLASS -t testpilot_.+ -gid testpilot-hdfs-prod -p $CONSUMER_PROPS --validatejson 
 # Marketplace
-$bin/consumer $HDFS_CONSUMER_CLASS -t marketplace_.+ -gid marketplace-hdfs-prod -p $CONSUMER_PROPS 
+$bin/consumer $HDFS_CONSUMER_CLASS -t marketplace_.+ -gid marketplace-hdfs-prod -p $CONSUMER_PROPS --validatejson
 # Android Reviews
 $bin/consumer $HBASE_CONSUMER_CLASS -t android_release_review -gid android_release_review-hbase-prod -p $CONSUMER_PROPS --table android_release_review --family data --qualifier json
 $bin/consumer $HBASE_CONSUMER_CLASS -t android_beta_review -gid android_beta_review-hbase-prod -p $CONSUMER_PROPS --table android_beta_review --family data --qualifier json

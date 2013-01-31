@@ -33,6 +33,7 @@ import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.channels.ClosedChannelException;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -179,9 +180,13 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
-        Throwable cause = e.getCause();        
+        Throwable cause = e.getCause();
         HttpResponse response = null;
-        if (cause instanceof TooLongFrameException) {
+        if (cause instanceof ClosedChannelException) {
+            // NOOP
+        } else if (cause instanceof TooLongFrameException) {
+            // The client doesn't get the response even if we write one. There is an open
+            // issue in Netty on this here: https://github.com/netty/netty/issues/1007
             response = new DefaultHttpResponse(HTTP_1_1, REQUEST_ENTITY_TOO_LARGE);
         } else if (cause instanceof InvalidPathException) {
             response = new DefaultHttpResponse(HTTP_1_1, NOT_FOUND);
@@ -193,11 +198,11 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             response = new DefaultHttpResponse(HTTP_1_1, INTERNAL_SERVER_ERROR);
         }
         
-        response.addHeader(CONTENT_TYPE, "plain/text");
-        ChannelFuture future = e.getChannel().write(response);
-        future.addListener(ChannelFutureListener.CLOSE);
-        
-        updateResponseMetrics(null, response.getStatus().getCode());
+        if (response != null) {
+            ChannelFuture future = e.getChannel().write(response);
+            future.addListener(ChannelFutureListener.CLOSE);
+            updateResponseMetrics(null, response.getStatus().getCode());
+        }
     }
     
 }
