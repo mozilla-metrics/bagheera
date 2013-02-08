@@ -12,7 +12,7 @@ FHR_CONSUMER_CLASS=com.mozilla.fhr.consumer.FHRConsumer
 # Telemetry
 $bin/consumer $HBASE_CONSUMER_CLASS -t telemetry -gid telemetry-hbase-prod -p $CONSUMER_PROPS --validatejson --table telemetry --family data --qualifier json --prefixdate
 # FHR (does its own json validation so option isn't needed)
-$bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod -p $CONSUMER_PROPS --table metrics --family data --qualifier json
+$bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod -p $CONSUMER_PROPS --table metrics --family data --qualifier json --numthreads 4
 # Testpilot
 $bin/consumer $HDFS_CONSUMER_CLASS -t testpilot_.+ -gid testpilot-hdfs-prod -p $CONSUMER_PROPS --validatejson 
 # Marketplace
