@@ -80,4 +80,21 @@ public class IdUtil {
 		return buf.array();
 	}
 
+	/**
+	 * Takes a given id and gives you an hbase shell compatible string that you can
+	 * use for get command.
+	 * @param id
+	 * @param d
+	 * @return
+	 * @throws IOException
+	 */
+	public static String hbaseShellId(String id, Date d) throws IOException {
+	    byte[] idBytes = IdUtil.nonRandByteBucketizeId(id, d);
+	    StringBuilder sb = new StringBuilder("\"\\x");
+	    sb.append(String.format("%02x", idBytes[0]));
+	    sb.append((new String(idBytes)).substring(1));
+	    sb.append("\"");
+	    return sb.toString();
+	}
+	
 }
