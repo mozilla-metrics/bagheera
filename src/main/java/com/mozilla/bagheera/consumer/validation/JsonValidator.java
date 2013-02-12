@@ -47,6 +47,8 @@ public class JsonValidator implements Validator {
             LOG.error("JSON parse error");
         } catch (IOException e) {
             LOG.error("JSON IO error");
+        } catch (Exception e) {
+            LOG.error("Generic error during validation: ", e);
         } finally {
             if (parser != null) {
                 try {
