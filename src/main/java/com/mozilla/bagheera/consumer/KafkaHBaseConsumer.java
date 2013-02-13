@@ -67,7 +67,7 @@ public final class KafkaHBaseConsumer {
             sinkConfig.setString("hbasesink.hbase.tablename", cmd.getOptionValue("table"));
             sinkConfig.setString("hbasesink.hbase.column.family", cmd.getOptionValue("family", "data"));
             sinkConfig.setString("hbasesink.hbase.column.qualifier", cmd.getOptionValue("qualifier", "json"));
-            sinkConfig.setBoolean("hbasesink.hbase.rowkey.prefixdate", Boolean.parseBoolean(cmd.getOptionValue("prefixdate", "false")));
+            sinkConfig.setBoolean("hbasesink.hbase.rowkey.prefixdate", cmd.hasOption("prefixdate"));
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(HBaseSink.class, sinkConfig);
             sh.addLast(sinkFactory);
             

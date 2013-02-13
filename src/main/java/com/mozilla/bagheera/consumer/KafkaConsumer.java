@@ -76,7 +76,8 @@ public class KafkaConsumer implements Consumer {
     protected ValidationPipeline validationPipeline;
     
     protected Meter consumed;
-
+    protected Meter invalidMessageMeter;
+    
     public KafkaConsumer(String topic, Properties props) {
         this(topic, props, DEFAULT_NUM_THREADS);
     }
@@ -91,6 +92,7 @@ public class KafkaConsumer implements Consumer {
         streams = consumerConnector.createMessageStreamsByFilter(new Whitelist(topic), numThreads);
         
         consumed = Metrics.newMeter(new MetricName("bagheera", "consumer", topic + ".consumed"), "messages", TimeUnit.SECONDS);
+        invalidMessageMeter = Metrics.newMeter(new MetricName("bagheera", "consumer", topic + ".invalid"), "messages", TimeUnit.SECONDS);
     }
 
     public void setSinkFactory(KeyValueSinkFactory sinkFactory) {
@@ -158,13 +160,14 @@ public class KafkaConsumer implements Consumer {
                                         sink.store(bmsg.getId(), bmsg.getPayload().toByteArray());
                                     }
                                 } else {
+                                    invalidMessageMeter.mark();
                                     LOG.warn("Invalid payload for namespace: " + bmsg.getNamespace());
                                 }
                             } else if (bmsg.getOperation() == Operation.DELETE &&
                                 bmsg.hasId()) {
                                 sink.delete(bmsg.getId());
                             }
-                            consumed.mark();
+                            consumed.mark();            
                         }
                     } catch (InvalidProtocolBufferException e) {
                         LOG.error("Invalid protocol buffer in data stream", e);

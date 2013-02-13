@@ -22,6 +22,7 @@ package com.mozilla.bagheera.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 import org.apache.commons.lang.StringUtils;
@@ -97,4 +98,20 @@ public class IdUtil {
 	    return sb.toString();
 	}
 	
+	public static String hbaseShellId(byte[] idBytes) throws IOException {
+        StringBuilder sb = new StringBuilder("\"\\x");
+        sb.append(String.format("%02x", idBytes[0]));
+        sb.append((new String(idBytes)).substring(1));
+        sb.append("\"");
+        return sb.toString();
+    }
+	
+	public static void main(String[] args) throws IOException {
+	    String id = "06b87727-2946-4b1e-b654-8bafb60bb995";
+	    long timestamp = 1360493115891L;
+	    Calendar cal = Calendar.getInstance();
+	    //cal.set(2013, Calendar.FEBRUARY, 10);
+	    cal.setTimeInMillis(timestamp);
+	    System.out.println(IdUtil.hbaseShellId(id, cal.getTime()));
+	}
 }
