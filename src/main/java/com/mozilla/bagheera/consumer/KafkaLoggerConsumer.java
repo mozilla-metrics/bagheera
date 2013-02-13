@@ -36,7 +36,7 @@ import com.mozilla.bagheera.util.ShutdownHook;
 
 public class KafkaLoggerConsumer {
 
-private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
+private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
     
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();

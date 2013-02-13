@@ -29,7 +29,7 @@ import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 
 public class KafkaProducer implements com.mozilla.bagheera.producer.Producer {
 
-    private Producer<String,BagheeraMessage> producer;
+    private final Producer<String,BagheeraMessage> producer;
     
     public KafkaProducer(Properties props) {
         ProducerConfig config = new ProducerConfig(props);

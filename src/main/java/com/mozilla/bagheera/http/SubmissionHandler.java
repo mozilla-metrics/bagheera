@@ -67,8 +67,8 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     // REST endpoints
     private static final String ENDPOINT_SUBMIT = "submit";
 
-    private MetricsManager metricsManager;
-    private Producer producer;
+    private final MetricsManager metricsManager;
+    private final Producer producer;
     
     public SubmissionHandler(Validator validator, Producer producer) {
         this.metricsManager = MetricsManager.getInstance();

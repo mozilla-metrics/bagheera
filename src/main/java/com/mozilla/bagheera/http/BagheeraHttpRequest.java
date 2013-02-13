@@ -37,8 +37,8 @@ public class BagheeraHttpRequest extends DefaultHttpRequest {
     public static final int NAMESPACE_PATH_IDX = 1;
     public static final int ID_PATH_IDX = 2;
     
-    private String endpoint;
-    private String namespace;
+    private final String endpoint;
+    private final String namespace;
     private String id;
     
     public BagheeraHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri) {
