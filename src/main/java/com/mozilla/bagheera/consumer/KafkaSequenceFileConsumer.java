@@ -64,7 +64,7 @@ public final class KafkaSequenceFileConsumer {
             sinkConfig.setString("hdfssink.hdfs.basedir.path", cmd.getOptionValue("output", "/bagheera"));
             sinkConfig.setString("hdfssink.hdfs.date.format", cmd.getOptionValue("dateformat", "yyyy-MM-dd"));
             sinkConfig.setLong("hdfssink.hdfs.max.filesize", Long.parseLong(cmd.getOptionValue("filesize", "536870912")));
-            sinkConfig.setBoolean("hdfssink.hdfs.usebytes", Boolean.parseBoolean(cmd.getOptionValue("usebytes", "false")));
+            sinkConfig.setBoolean("hdfssink.hdfs.usebytes", cmd.hasOption("usebytes"));
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(SequenceFileSink.class, sinkConfig);
             sh.addLast(sinkFactory);
             
