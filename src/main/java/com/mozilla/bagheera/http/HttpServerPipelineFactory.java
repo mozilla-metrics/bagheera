@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
+import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
@@ -38,8 +39,9 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
     private final int maxContentLength;
     private final Validator validator;
     private final Producer producer;
+    private final ChannelGroup channelGroup;
     
-    public HttpServerPipelineFactory(WildcardProperties props, Producer producer) throws IOException {
+    public HttpServerPipelineFactory(WildcardProperties props, Producer producer, ChannelGroup channelGroup) throws IOException {
         this.props = props;
         String validNsStr = props.getProperty("valid.namespaces");
         if (validNsStr == null || validNsStr.length() == 0) {
@@ -48,6 +50,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         this.validator = new Validator(validNsStr.split(","));
         this.maxContentLength = Integer.parseInt(props.getProperty("max.content.length","1048576"));
         this.producer = producer;
+        this.channelGroup = channelGroup;
     }
     
     /* (non-Javadoc)
@@ -64,7 +67,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("encodingCorrector", new ContentEncodingCorrector());
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("handler", new SubmissionHandler(validator, producer));
+        pipeline.addLast("handler", new SubmissionHandler(validator, producer, this.channelGroup));
         
         return pipeline;
     }

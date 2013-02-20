@@ -46,3 +46,7 @@ Thumbs.db
 # Clover
 .clover
 report
+
+# Editor files
+.*.sw*
+*~
