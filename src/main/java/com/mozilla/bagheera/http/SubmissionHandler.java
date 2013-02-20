@@ -45,6 +45,7 @@ import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
+import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.handler.codec.frame.TooLongFrameException;
 import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
 import org.jboss.netty.handler.codec.http.HttpMethod;
@@ -69,10 +70,12 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     private final MetricsManager metricsManager;
     private final Producer producer;
+    private final ChannelGroup channelGroup;
     
-    public SubmissionHandler(Validator validator, Producer producer) {
+    public SubmissionHandler(Validator validator, Producer producer, ChannelGroup channelGroup) {
         this.metricsManager = MetricsManager.getInstance();
         this.producer = producer;
+        this.channelGroup = channelGroup;
     }
  
     private void updateRequestMetrics(String namespace, String method, int size) {
@@ -151,7 +154,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     @Override
     public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
-        Bagheera.allChannels.add(e.getChannel());
+        this.channelGroup.add(e.getChannel());
     }
     
     @Override

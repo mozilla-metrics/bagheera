@@ -70,19 +70,23 @@ public class Bagheera {
         public final Producer kafkaProducer;
         public final NioServerSocketChannelFactory channelFactory;
         public final Channel channel;
+        public final ChannelGroup channelGroup;
 
         public BagheeraServerState(final int port,
                                    final Producer kafkaProducer,
                                    final NioServerSocketChannelFactory channelFactory,
-                                   final Channel channel) {
+                                   final Channel channel,
+                                   final ChannelGroup channelGroup) {
             this.port = port;
             this.kafkaProducer = kafkaProducer;
             this.channelFactory = channelFactory;
             this.channel = channel;
+            this.channelGroup = channelGroup;
         }
 
         public void close() {
-            // Close our channel.
+            // Close our channels.
+            this.channelGroup.close().awaitUninterruptibly();
             this.channel.close().awaitUninterruptibly();
 
             // The caller is responsible for releasing resources from the channel factory.
@@ -109,7 +113,8 @@ public class Bagheera {
                                                   final boolean tcpNoDelay,
                                                   final WildcardProperties props,
                                                   final Properties kafkaProps,
-                                                  final NioServerSocketChannelFactory channelFactory)
+                                                  final NioServerSocketChannelFactory channelFactory,
+                                                  final String channelGroupName)
         throws Exception {
 
         // Initialize metrics collection, reporting, etc.
@@ -123,8 +128,9 @@ public class Bagheera {
         final Producer producer = new KafkaProducer(kafkaProps);
 
         // HTTP server setup.
+        final ChannelGroup channelGroup = new DefaultChannelGroup(channelGroupName);
         final ServerBootstrap server = new ServerBootstrap(channelFactory);
-        final HttpServerPipelineFactory pipeFactory = new HttpServerPipelineFactory(props, producer);
+        final HttpServerPipelineFactory pipeFactory = new HttpServerPipelineFactory(props, producer, channelGroup);
         server.setPipelineFactory(pipeFactory);
         server.setOption("tcpNoDelay", tcpNoDelay);
 
@@ -132,7 +138,7 @@ public class Bagheera {
         server.setOption("keepAlive", false);
 
         final Channel channel = server.bind(new InetSocketAddress(port));
-        return new BagheeraServerState(port, producer, channelFactory, channel);
+        return new BagheeraServerState(port, producer, channelFactory, channel, channelGroup);
     }
 
     /**
@@ -147,7 +153,10 @@ public class Bagheera {
         final WildcardProperties props = getDefaultProperties();
         final Properties kafkaProps = getDefaultKafkaProperties();
 
-        final BagheeraServerState server = startServer(port, tcpNoDelay, props, kafkaProps, getChannelFactory());
+        final BagheeraServerState server = startServer(port, tcpNoDelay,
+                                                       props, kafkaProps,
+                                                       getChannelFactory(),
+                                                       Bagheera.class.getName());
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
            public void run() {
