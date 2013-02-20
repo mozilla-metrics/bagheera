@@ -17,6 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.mozilla.bagheera.http;
 
 import java.io.IOException;
@@ -42,21 +43,21 @@ import com.mozilla.bagheera.util.WildcardProperties;
 public class Bagheera {
 
     private static final Logger LOG = Logger.getLogger(Bagheera.class);
-    
+
     public static final String PROPERTIES_RESOURCE_NAME = "/bagheera.properties";
     public static final String KAFKA_PROPERTIES_RESOURCE_NAME = "/kafka.producer.properties";
-    
+
     private static final int DEFAULT_IO_THREADS = Runtime.getRuntime().availableProcessors() * 2;
 
     static final ChannelGroup allChannels = new DefaultChannelGroup(Bagheera.class.getName());
-    
+
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(System.getProperty("server.port", "8080"));
         boolean tcpNoDelay = Boolean.parseBoolean(System.getProperty("server.tcpnodelay", "false"));
-        
+
         // Initialize metrics collection, reporting, etc.
         MetricsManager.getInstance();
-        
+
         // Initalize properties and producer
         WildcardProperties props = new WildcardProperties();
         Properties kafkaProps = new Properties();
@@ -64,17 +65,17 @@ public class Bagheera {
         try {
             URL propUrl = Bagheera.class.getResource(PROPERTIES_RESOURCE_NAME);
             if (propUrl == null) {
-                throw new IllegalArgumentException("Could not find the properites file: " + PROPERTIES_RESOURCE_NAME);
+                throw new IllegalArgumentException("Could not find the properties file: " + PROPERTIES_RESOURCE_NAME);
             }
             in = propUrl.openStream();
             props.load(in);
             in.close();
-            
+
             propUrl = Bagheera.class.getResource(KAFKA_PROPERTIES_RESOURCE_NAME);
             if (propUrl == null) {
-                throw new IllegalArgumentException("Could not find the properites file: " + KAFKA_PROPERTIES_RESOURCE_NAME);
+                throw new IllegalArgumentException("Could not find the properties file: " + KAFKA_PROPERTIES_RESOURCE_NAME);
             }
-            
+
             in = propUrl.openStream();
             kafkaProps.load(in);
         } finally {
@@ -83,7 +84,7 @@ public class Bagheera {
             }
         }
         final Producer producer = new KafkaProducer(kafkaProps);
-        
+
         // HTTP server setup
         final NioServerSocketChannelFactory channelFactory = new NioServerSocketChannelFactory(
                 Executors.newCachedThreadPool(), Executors.newFixedThreadPool(DEFAULT_IO_THREADS)) {
