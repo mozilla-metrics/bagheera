@@ -49,9 +49,11 @@ public class MetricsManager {
             props.load(in);
             in.close();
         } catch (IOException e) {
-            throw new IllegalArgumentException("Could not find the properites file: " + METRICS_PROPERTIES_RESOURCE_NAME);
+            throw new IllegalArgumentException("Could not find the properties file: " + METRICS_PROPERTIES_RESOURCE_NAME);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Exception reading " + METRICS_PROPERTIES_RESOURCE_NAME + ": " + e);
         }
-        
+
         configureHealthChecks();
         configureReporters();
         configureHttpMetrics();
