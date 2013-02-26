@@ -31,85 +31,127 @@ import com.yammer.metrics.reporting.GangliaReporter;
 import com.yammer.metrics.reporting.GraphiteReporter;
 import com.yammer.metrics.util.DeadlockHealthCheck;
 
+/**
+ * A static wrapper around global configuration. You cannot instantiate this class.
+ * It can be initialized only once.
+ */
 public class MetricsManager {
 
-    private static final String METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
-    private static final String METRICS_PROPERTIES_PREFIX = "bagheera.metrics.";
+    private static final String DEFAULT_METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
+    private static final String DEFAULT_METRICS_PROPERTIES_PREFIX = "bagheera.metrics.";
     private static final String GLOBAL_HTTP_METRIC_ID = "global";
 
-    private static MetricsManager instance = null;
+    private static ConcurrentMap<String, HttpMetric> httpMetrics = new ConcurrentHashMap<String, HttpMetric>();
+    private static boolean isInitialized = false;
 
-    private final Properties props;
-    private ConcurrentMap<String, HttpMetric> httpMetrics;
-
-    private MetricsManager() {
-        props = new Properties();
-        InputStream in = getClass().getResourceAsStream(METRICS_PROPERTIES_RESOURCE_NAME);
-        try {
-            props.load(in);
-            in.close();
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Could not find the properties file: " + METRICS_PROPERTIES_RESOURCE_NAME);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Exception reading " + METRICS_PROPERTIES_RESOURCE_NAME + ": " + e);
+    public static synchronized void configureMetricsManager() {
+        if (isInitialized) {
+            return;
         }
-
-        configureHealthChecks();
-        configureReporters();
-        configureHttpMetrics();
+        final Properties properties = readProperties(DEFAULT_METRICS_PROPERTIES_RESOURCE_NAME);
+        configureMetricsManager(properties, DEFAULT_METRICS_PROPERTIES_PREFIX);
     }
 
-    private void configureHealthChecks() {
+    public static synchronized void configureMetricsManager(final Properties properties, final String propertiesPrefix) {
+        if (isInitialized) {
+            return;
+        }
+        configureHealthChecks();
+        configureReporters(properties, propertiesPrefix);
+        configureHttpMetrics();
+        isInitialized = true;
+    }
+
+    private MetricsManager() throws Exception {
+        throw new Exception("Cannot instantiate MetricsManager.");
+    }
+
+    private static void configureHealthChecks() {
         HealthChecks.register(new DeadlockHealthCheck());
     }
+
+    private static String getProp(final Properties props, final String prefix, final String key) {
+        return props.getProperty(prefix + key, null);
+    }
     
-    private void configureReporters() {
-        if (Boolean.parseBoolean(getConfigParam("ganglia.enable"))) {
-            GangliaReporter.enable(Long.parseLong(getConfigParam("ganglia.update.secs")), TimeUnit.SECONDS,
-                    getConfigParam("ganglia.host"), Integer.parseInt(getConfigParam("ganglia.port")));
+    private static boolean getBoolean(final Properties props, final String prefix, final String key) {
+        String value = props.getProperty(prefix + key, null);
+        if (value == null) {
+            return false;
         }
-        if (Boolean.parseBoolean(getConfigParam("graphite.enable"))) {
-            GraphiteReporter.enable(Long.parseLong(getConfigParam("graphite.update.secs")), TimeUnit.SECONDS,
-                    getConfigParam("graphite.host"), Integer.parseInt(getConfigParam("graphite.port")));
+        return Boolean.parseBoolean(value);
+    }
+
+    private static long getLong(final Properties props, final String prefix, final String key) {
+        String value = props.getProperty(prefix + key, null);
+        if (value == null) {
+            return 0;
+        }
+        return Long.parseLong(value);
+    }
+
+    private static int getInt(final Properties props, final String prefix, final String key) {
+        String value = props.getProperty(prefix + key, null);
+        if (value == null) {
+            return 0;
+        }
+        return Integer.parseInt(value);
+    }
+
+    private static void configureReporters(final Properties props, final String prefix) {
+        if (getBoolean(props, prefix, "ganglia.enable")) {
+            GangliaReporter.enable(getLong(props, prefix, "ganglia.update.secs"),
+                                   TimeUnit.SECONDS,
+                                   getProp(props, prefix, "ganglia.host"),
+                                   getInt(props, prefix, "ganglia.port"));
+        }
+        if (getBoolean(props, prefix, "graphite.enable")) {
+            GraphiteReporter.enable(getLong(props, prefix, "graphite.update.secs"),
+                                    TimeUnit.SECONDS,
+                                    getProp(props, prefix, "graphite.host"),
+                                    getInt(props, prefix, "graphite.port"));
         }
     }
 
-    private void configureHttpMetrics() {
-        httpMetrics = new ConcurrentHashMap<String, HttpMetric>();
+    private static void configureHttpMetrics() {
         HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
         httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
     }
-    
-    public synchronized static MetricsManager getInstance() {
-        if (instance == null) {
-            instance = new MetricsManager();
-        }
-        return instance;
-    }
 
-    public String getConfigParam(String name) {
-        return getConfigParam(name, null);
-    }
-
-    public String getConfigParam(String name, String defval) {
-        return props.getProperty(METRICS_PROPERTIES_PREFIX + name, defval);
-    }
-
-    public HttpMetric getGlobalHttpMetric() {
+    public static HttpMetric getGlobalHttpMetric() {
         return getHttpMetricForNamespace(GLOBAL_HTTP_METRIC_ID);
     }
     
-    public HttpMetric getHttpMetricForNamespace(String ns) {
+    public static HttpMetric getHttpMetricForNamespace(final String ns) {
         final HttpMetric metric = httpMetrics.get(ns);
-        if (metric == null) {
-            final HttpMetric newMetric = httpMetrics.putIfAbsent(ns, new HttpMetric(ns));
-            if (newMetric == null) {
-                return httpMetrics.get(ns);
-            } else {
-                return newMetric;
-            }
-        } else {
+        if (metric != null) {
             return metric;
         }
+
+        final HttpMetric newMetric = httpMetrics.putIfAbsent(ns, new HttpMetric(ns));
+        if (newMetric == null) {
+            return httpMetrics.get(ns);
+        }
+        return newMetric;
+    }
+
+    /**
+     * Utility to read a properties file from a path.
+     */
+    public static Properties readProperties(final String path) {
+        final Properties properties = new Properties();
+        final InputStream in = MetricsManager.class.getResourceAsStream(path);
+        try {
+            try {
+                properties.load(in);
+            } finally {
+                in.close();
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not find the properties file: " + path);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Exception reading " + path + ": " + e);
+        }
+        return properties;
     }
 }

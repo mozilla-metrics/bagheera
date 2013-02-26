@@ -54,9 +54,6 @@ public class Bagheera {
 
     private static final int DEFAULT_IO_THREADS = Runtime.getRuntime().availableProcessors() * 2;
 
-    // Ensure that we only do this once.
-    private static boolean metricsManagerInitialized = false;
-
     public static NioServerSocketChannelFactory getChannelFactory() {
         return new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
                                                  Executors.newFixedThreadPool(DEFAULT_IO_THREADS));
@@ -118,12 +115,7 @@ public class Bagheera {
         throws Exception {
 
         // Initialize metrics collection, reporting, etc.
-        // We assume that this method is thread-safe.
-        // Do this only once.
-        if (!metricsManagerInitialized) {
-          MetricsManager.getInstance();
-          metricsManagerInitialized = true;
-        }
+        MetricsManager.configureMetricsManager();
 
         // HTTP server setup.
         final ChannelGroup channelGroup = new DefaultChannelGroup(channelGroupName);

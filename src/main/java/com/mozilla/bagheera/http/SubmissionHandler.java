@@ -68,26 +68,24 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     // REST endpoints
     private static final String ENDPOINT_SUBMIT = "submit";
 
-    private final MetricsManager metricsManager;
     private final Producer producer;
     private final ChannelGroup channelGroup;
     
     public SubmissionHandler(Validator validator, Producer producer, ChannelGroup channelGroup) {
-        this.metricsManager = MetricsManager.getInstance();
         this.producer = producer;
         this.channelGroup = channelGroup;
     }
  
     private void updateRequestMetrics(String namespace, String method, int size) {
-        metricsManager.getHttpMetricForNamespace(namespace).updateRequestMetrics(method, size);
-        metricsManager.getGlobalHttpMetric().updateRequestMetrics(method, size);
+        MetricsManager.getHttpMetricForNamespace(namespace).updateRequestMetrics(method, size);
+        MetricsManager.getGlobalHttpMetric().updateRequestMetrics(method, size);
     }
 
     private void updateResponseMetrics(String namespace, int status) {
         if (namespace != null) {
-            metricsManager.getHttpMetricForNamespace(namespace).updateResponseMetrics(status);
+            MetricsManager.getHttpMetricForNamespace(namespace).updateResponseMetrics(status);
         }
-        metricsManager.getGlobalHttpMetric().updateResponseMetrics(status);
+        MetricsManager.getGlobalHttpMetric().updateResponseMetrics(status);
     }
     
     private void handlePost(MessageEvent e, BagheeraHttpRequest request) {

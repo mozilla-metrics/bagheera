@@ -62,7 +62,7 @@ private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
             consumer.setSinkFactory(sinkFactory);
             
             // Initialize metrics collection, reporting, etc.
-            MetricsManager.getInstance();
+            MetricsManager.configureMetricsManager();
             
             // Begin polling
             consumer.poll();

@@ -75,7 +75,7 @@ public final class KafkaHBaseConsumer {
             consumer.setSinkFactory(sinkFactory);
             
             // Initialize metrics collection, reporting, etc.
-            MetricsManager.getInstance();
+            MetricsManager.configureMetricsManager();
             
             // Begin polling
             consumer.poll();
