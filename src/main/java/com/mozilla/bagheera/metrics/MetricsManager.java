@@ -26,10 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
-import com.yammer.metrics.HealthChecks;
 import com.yammer.metrics.reporting.GangliaReporter;
 import com.yammer.metrics.reporting.GraphiteReporter;
-import com.yammer.metrics.util.DeadlockHealthCheck;
 
 public class MetricsManager {
     private static final String DEFAULT_METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
@@ -48,14 +46,9 @@ public class MetricsManager {
      * Alas.
      */
     public MetricsManager(final Properties properties, final String propertiesPrefix) {
-        configureHealthChecks();
         configureReporters(properties, propertiesPrefix);
         HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
         httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
-    }
-
-    private void configureHealthChecks() {
-        HealthChecks.register(new DeadlockHealthCheck());
     }
 
     private static String getProp(final Properties props, final String prefix, final String key) {

@@ -27,6 +27,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
+import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.sink.SequenceFileSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
@@ -37,7 +38,7 @@ import com.mozilla.bagheera.util.ShutdownHook;
  * Basic SequenceFile (HDFS) Kafka consumer. This class can be utilized as is but if you want more
  * sophisticated logic consider creating your own consumer.
  */
-public final class KafkaSequenceFileConsumer {
+public final class KafkaSequenceFileConsumer extends App {
 
     private static final Logger LOG = Logger.getLogger(KafkaSequenceFileConsumer.class);
     
@@ -69,7 +70,9 @@ public final class KafkaSequenceFileConsumer {
             
             // Set the sink for consumer storage
             consumer.setSinkFactory(sinkFactory);
-            
+
+            prepareHealthChecks();
+
             // Begin polling
             consumer.poll();
         } catch (ParseException e) {

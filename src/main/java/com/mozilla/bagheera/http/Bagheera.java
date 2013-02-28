@@ -35,6 +35,7 @@ import org.jboss.netty.channel.group.ChannelGroupFuture;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
+import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.producer.KafkaProducer;
 import com.mozilla.bagheera.producer.Producer;
@@ -45,7 +46,7 @@ import com.mozilla.bagheera.util.WildcardProperties;
  *
  * Either create a server using `startServer`, or allow the main method to do so.
  */
-public class Bagheera {
+public class Bagheera extends App {
 
     private static final Logger LOG = Logger.getLogger(Bagheera.class);
 
@@ -114,7 +115,7 @@ public class Bagheera {
                                                   final String channelGroupName)
         throws Exception {
 
-        // Initialize metrics collection, reporting, etc.
+        prepareHealthChecks();
         MetricsManager manager = MetricsManager.getDefaultMetricsManager();
 
         // HTTP server setup.

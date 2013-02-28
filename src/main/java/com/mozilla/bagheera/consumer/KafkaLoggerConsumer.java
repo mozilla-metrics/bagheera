@@ -27,13 +27,14 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
+import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.sink.LoggerSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
 
-public class KafkaLoggerConsumer {
+public class KafkaLoggerConsumer extends App {
 
 private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
     
@@ -59,6 +60,8 @@ private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
             
             // Set the sink for consumer storage
             consumer.setSinkFactory(sinkFactory);
+
+            prepareHealthChecks();
             
             // Begin polling
             consumer.poll();
