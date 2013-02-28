@@ -112,11 +112,11 @@ public class Bagheera extends App {
                                                   final WildcardProperties props,
                                                   final Producer producer,
                                                   final NioServerSocketChannelFactory channelFactory,
-                                                  final String channelGroupName)
+                                                  final String channelGroupName,
+                                                  final MetricsManager manager)
         throws Exception {
 
         prepareHealthChecks();
-        MetricsManager manager = MetricsManager.getDefaultMetricsManager();
 
         // HTTP server setup.
         final ChannelGroup channelGroup = new DefaultChannelGroup(channelGroupName);
@@ -144,13 +144,15 @@ public class Bagheera extends App {
         final WildcardProperties props = getDefaultProperties();
         final Properties kafkaProps = getDefaultKafkaProperties();
         final Producer producer = new KafkaProducer(kafkaProps);
+        final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
 
         final BagheeraServerState server = startServer(port,
                                                        tcpNoDelay,
                                                        props,
                                                        producer,
                                                        getChannelFactory(),
-                                                       Bagheera.class.getName());
+                                                       Bagheera.class.getName(),
+                                                       manager);
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
            public void run() {
