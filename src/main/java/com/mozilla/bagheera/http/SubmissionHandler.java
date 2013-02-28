@@ -70,22 +70,27 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     private final Producer producer;
     private final ChannelGroup channelGroup;
+    private final MetricsManager metricsManager;
     
-    public SubmissionHandler(Validator validator, Producer producer, ChannelGroup channelGroup) {
+    public SubmissionHandler(Validator validator,
+                             Producer producer,
+                             ChannelGroup channelGroup,
+                             MetricsManager metricsManager) {
         this.producer = producer;
         this.channelGroup = channelGroup;
+        this.metricsManager = metricsManager;
     }
  
     private void updateRequestMetrics(String namespace, String method, int size) {
-        MetricsManager.getHttpMetricForNamespace(namespace).updateRequestMetrics(method, size);
-        MetricsManager.getGlobalHttpMetric().updateRequestMetrics(method, size);
+        this.metricsManager.getHttpMetricForNamespace(namespace).updateRequestMetrics(method, size);
+        this.metricsManager.getGlobalHttpMetric().updateRequestMetrics(method, size);
     }
 
     private void updateResponseMetrics(String namespace, int status) {
         if (namespace != null) {
-            MetricsManager.getHttpMetricForNamespace(namespace).updateResponseMetrics(status);
+            this.metricsManager.getHttpMetricForNamespace(namespace).updateResponseMetrics(status);
         }
-        MetricsManager.getGlobalHttpMetric().updateResponseMetrics(status);
+        this.metricsManager.getGlobalHttpMetric().updateResponseMetrics(status);
     }
     
     private void handlePost(MessageEvent e, BagheeraHttpRequest request) {

@@ -29,6 +29,7 @@ import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpContentDecompressor;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
 
+import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.WildcardProperties;
 import com.mozilla.bagheera.validation.Validator;
@@ -40,8 +41,13 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
     private final Validator validator;
     private final Producer producer;
     private final ChannelGroup channelGroup;
+    private final MetricsManager metricsManager;
     
-    public HttpServerPipelineFactory(WildcardProperties props, Producer producer, ChannelGroup channelGroup) throws IOException {
+    public HttpServerPipelineFactory(WildcardProperties props,
+                                     Producer producer,
+                                     ChannelGroup channelGroup,
+                                     MetricsManager metricsManager)
+        throws IOException {
         this.props = props;
         String validNsStr = props.getProperty("valid.namespaces");
         if (validNsStr == null || validNsStr.length() == 0) {
@@ -51,6 +57,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         this.maxContentLength = Integer.parseInt(props.getProperty("max.content.length","1048576"));
         this.producer = producer;
         this.channelGroup = channelGroup;
+        this.metricsManager = metricsManager;
     }
     
     /* (non-Javadoc)
@@ -67,7 +74,7 @@ public class HttpServerPipelineFactory implements ChannelPipelineFactory {
         pipeline.addLast("encodingCorrector", new ContentEncodingCorrector());
         pipeline.addLast("inflater", new HttpContentDecompressor());
         pipeline.addLast("encoder", new HttpResponseEncoder());
-        pipeline.addLast("handler", new SubmissionHandler(validator, producer, this.channelGroup));
+        pipeline.addLast("handler", new SubmissionHandler(validator, producer, this.channelGroup, this.metricsManager));
         
         return pipeline;
     }

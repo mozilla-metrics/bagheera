@@ -31,42 +31,30 @@ import com.yammer.metrics.reporting.GangliaReporter;
 import com.yammer.metrics.reporting.GraphiteReporter;
 import com.yammer.metrics.util.DeadlockHealthCheck;
 
-/**
- * A static wrapper around global configuration. You cannot instantiate this class.
- * It can be initialized only once.
- */
 public class MetricsManager {
-
     private static final String DEFAULT_METRICS_PROPERTIES_RESOURCE_NAME = "/bagheera.metrics.properties";
     private static final String DEFAULT_METRICS_PROPERTIES_PREFIX = "bagheera.metrics.";
     private static final String GLOBAL_HTTP_METRIC_ID = "global";
 
-    private static ConcurrentMap<String, HttpMetric> httpMetrics = new ConcurrentHashMap<String, HttpMetric>();
-    private static boolean isInitialized = false;
+    private ConcurrentMap<String, HttpMetric> httpMetrics = new ConcurrentHashMap<String, HttpMetric>();
 
-    public static synchronized void configureMetricsManager() {
-        if (isInitialized) {
-            return;
-        }
+    public static MetricsManager getDefaultMetricsManager() {
         final Properties properties = readProperties(DEFAULT_METRICS_PROPERTIES_RESOURCE_NAME);
-        configureMetricsManager(properties, DEFAULT_METRICS_PROPERTIES_PREFIX);
+        return new MetricsManager(properties, DEFAULT_METRICS_PROPERTIES_PREFIX);
     }
 
-    public static synchronized void configureMetricsManager(final Properties properties, final String propertiesPrefix) {
-        if (isInitialized) {
-            return;
-        }
+    /**
+     * Each MetricsManager instance currently shares state (Ganglia, Graphite).
+     * Alas.
+     */
+    public MetricsManager(final Properties properties, final String propertiesPrefix) {
         configureHealthChecks();
         configureReporters(properties, propertiesPrefix);
-        configureHttpMetrics();
-        isInitialized = true;
+        HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
+        httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
     }
 
-    private MetricsManager() throws Exception {
-        throw new Exception("Cannot instantiate MetricsManager.");
-    }
-
-    private static void configureHealthChecks() {
+    private void configureHealthChecks() {
         HealthChecks.register(new DeadlockHealthCheck());
     }
 
@@ -113,16 +101,11 @@ public class MetricsManager {
         }
     }
 
-    private static void configureHttpMetrics() {
-        HttpMetric h = new HttpMetric(GLOBAL_HTTP_METRIC_ID);
-        httpMetrics.put(GLOBAL_HTTP_METRIC_ID, h);
-    }
-
-    public static HttpMetric getGlobalHttpMetric() {
+    public HttpMetric getGlobalHttpMetric() {
         return getHttpMetricForNamespace(GLOBAL_HTTP_METRIC_ID);
     }
     
-    public static HttpMetric getHttpMetricForNamespace(final String ns) {
+    public HttpMetric getHttpMetricForNamespace(final String ns) {
         final HttpMetric metric = httpMetrics.get(ns);
         if (metric != null) {
             return metric;

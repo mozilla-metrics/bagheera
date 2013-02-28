@@ -115,12 +115,12 @@ public class Bagheera {
         throws Exception {
 
         // Initialize metrics collection, reporting, etc.
-        MetricsManager.configureMetricsManager();
+        MetricsManager manager = MetricsManager.getDefaultMetricsManager();
 
         // HTTP server setup.
         final ChannelGroup channelGroup = new DefaultChannelGroup(channelGroupName);
         final ServerBootstrap server = new ServerBootstrap(channelFactory);
-        final HttpServerPipelineFactory pipeFactory = new HttpServerPipelineFactory(props, producer, channelGroup);
+        final HttpServerPipelineFactory pipeFactory = new HttpServerPipelineFactory(props, producer, channelGroup, manager);
         server.setPipelineFactory(pipeFactory);
         server.setOption("tcpNoDelay", tcpNoDelay);
 
