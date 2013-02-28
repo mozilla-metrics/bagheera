@@ -28,7 +28,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.OptionFactory;
-import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
@@ -73,9 +72,6 @@ public final class KafkaHBaseConsumer {
             
             // Set the sink factory for consumer storage
             consumer.setSinkFactory(sinkFactory);
-            
-            // Initialize metrics collection, reporting, etc.
-            MetricsManager.configureMetricsManager();
             
             // Begin polling
             consumer.poll();

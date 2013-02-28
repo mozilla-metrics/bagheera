@@ -28,7 +28,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.OptionFactory;
-import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.sink.LoggerSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
@@ -60,9 +59,6 @@ private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
             
             // Set the sink for consumer storage
             consumer.setSinkFactory(sinkFactory);
-            
-            // Initialize metrics collection, reporting, etc.
-            MetricsManager.configureMetricsManager();
             
             // Begin polling
             consumer.poll();
