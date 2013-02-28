@@ -42,13 +42,11 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
     private static final String ID_VALIDATION = ".id.validation";
 
     private final Validator validator;
-    private final WildcardProperties props;
     private final Set<String> unvalidatedNamespaces;
     private final Set<String> deletableNamespaces;
 
     public AccessFilter(Validator validator, WildcardProperties props) {
         this.validator = validator;
-        this.props = props;
 
         // Populate a cache of the two kinds of permission in props:
         // namespaces for which we *don't* validate IDs, and namespaces
