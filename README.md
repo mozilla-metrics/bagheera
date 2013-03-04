@@ -9,7 +9,7 @@ Version: 0.8-SNAPSHOT
 This code is built with the following assumptions.  You may get mixed results if you deviate from these versions.
 
 * [Kafka](http://incubator.apache.org/kafka) 0.7.1+
-* [Protocol Buffers](https://developers.google.com/protocol-buffers) 2.3.0+
+* [Protocol Buffers](https://developers.google.com/protocol-buffers) 2.4.1+
 * [Hadoop](http://hadoop.apache.org) 0.20.2+
 * [HBase](http://hbase.apache.org) 0.90+
 
