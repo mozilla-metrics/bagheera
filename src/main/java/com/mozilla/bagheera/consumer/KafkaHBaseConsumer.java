@@ -27,8 +27,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
+import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
-import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
@@ -38,7 +38,7 @@ import com.mozilla.bagheera.util.ShutdownHook;
  * Basic HBase Kafka consumer. This class can be utilized as is but if you want more
  * sophisticated logic consider creating your own consumer.
  */
-public final class KafkaHBaseConsumer {
+public final class KafkaHBaseConsumer extends App {
 
     private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
     
@@ -73,10 +73,9 @@ public final class KafkaHBaseConsumer {
             
             // Set the sink factory for consumer storage
             consumer.setSinkFactory(sinkFactory);
-            
-            // Initialize metrics collection, reporting, etc.
-            MetricsManager.getInstance();
-            
+
+            prepareHealthChecks();
+
             // Begin polling
             consumer.poll();
         } catch (ParseException e) {
