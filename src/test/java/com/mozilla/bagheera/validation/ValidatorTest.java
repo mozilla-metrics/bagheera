@@ -19,7 +19,8 @@
  */
 package com.mozilla.bagheera.validation;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.UUID;
 
@@ -39,6 +40,7 @@ public class ValidatorTest {
     public void testConstructorNullArg() {
         boolean success = false;
         try {
+            @SuppressWarnings("unused")
             Validator v = new Validator(null);
         } catch (IllegalArgumentException e) {
             success = true;
@@ -50,6 +52,7 @@ public class ValidatorTest {
     public void testConstructorZeroLength() {
         boolean success = false;
         try {
+            @SuppressWarnings("unused")
             Validator v = new Validator(new String[0]);
         } catch (IllegalArgumentException e) {
             success = true;

@@ -31,7 +31,6 @@ import org.apache.log4j.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.ChannelGroupFuture;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
@@ -155,6 +154,7 @@ public class Bagheera extends App {
                                                        manager);
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
+           @Override
            public void run() {
                server.close();
                server.channelFactory.releaseExternalResources();

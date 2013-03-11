@@ -66,6 +66,7 @@ public class ContentLengthFilterTest {
     public void testNegativeLengthFilter() {
         boolean success = false;
         try {
+            @SuppressWarnings("unused")
             ContentLengthFilter filter = new ContentLengthFilter(-1);
         } catch (IllegalArgumentException e) {
             success = true;
