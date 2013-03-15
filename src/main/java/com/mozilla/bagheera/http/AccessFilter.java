@@ -20,6 +20,10 @@
 package com.mozilla.bagheera.http;
 
 import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.Channels;
@@ -36,52 +40,97 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
 
     private static final String ALLOW_DELETE_ACCESS = ".allow.delete.access";
     private static final String ID_VALIDATION = ".id.validation";
-    
+
     private final Validator validator;
-    private final WildcardProperties props;
-    
+    private final Set<String> unvalidatedNamespaces;
+    private final Set<String> deletableNamespaces;
+
     public AccessFilter(Validator validator, WildcardProperties props) {
         this.validator = validator;
-        this.props = props;
+
+        // Populate a cache of the two kinds of permission in props:
+        // namespaces for which we *don't* validate IDs, and namespaces
+        // for which we *do* allow deletion.
+        // Non-membership in these sets implies the negation.
+        HashSet<String> unvalidated = new HashSet<String>();
+        HashSet<String> deletable = new HashSet<String>();
+
+        for (Map.Entry<Object, Object> entry : props.entrySet()) {
+            final String name = (String) entry.getKey();
+            if (name.endsWith(ALLOW_DELETE_ACCESS)) {
+                final boolean allow = Boolean.parseBoolean((String) entry.getValue());
+                if (allow) {
+                    final String namespace = name.substring(0, name.lastIndexOf(ALLOW_DELETE_ACCESS));
+                    deletable.add(namespace);
+                }
+            } else if (name.endsWith(ID_VALIDATION)) {
+                final boolean allow = Boolean.parseBoolean((String) entry.getValue());
+                if (!allow) {
+                    final String namespace = name.substring(0, name.lastIndexOf(ID_VALIDATION));
+                    unvalidated.add(namespace);
+                }
+            }
+        }
+
+        // Ensure that these cannot be modified.
+        unvalidatedNamespaces = Collections.unmodifiableSet(unvalidated);
+        deletableNamespaces = Collections.unmodifiableSet(deletable);
     }    
 
-    private String buildErrorMessage(String msg, HttpRequest request, MessageEvent e) {
+    private static String buildErrorMessage(String msg, HttpRequest request, MessageEvent e) {
         return String.format("%s: %s - \"%s\" \"%s\"", msg, request.getUri(), 
                              HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).toString()), 
                              request.getHeader(HttpUtil.USER_AGENT));
     }
-    
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        Object msg = e.getMessage();
-        if (msg instanceof BagheeraHttpRequest) {
-            BagheeraHttpRequest request = (BagheeraHttpRequest)msg;
-            // Check Namespace
-            if (request.getNamespace() == null || !validator.isValidNamespace(request.getNamespace())) {
-                throw new InvalidPathException(buildErrorMessage("Tried to access invalid resource", request, e));
-            }
-            // Check Id
-            boolean validateId = Boolean.parseBoolean(props.getWildcardProperty(request.getNamespace() + ID_VALIDATION, "true"));
-            if (request.getId() != null && validateId && !validator.isValidId(request.getId())) {
-                throw new InvalidPathException(buildErrorMessage("Submitted an invalid ID", request, e));
-            } 
-            // Check POST/GET/DELETE Access
-            if (request.getMethod() == HttpMethod.POST || request.getMethod() == HttpMethod.PUT) {
-                // noop
-            } else if (request.getMethod() == HttpMethod.GET) {
-                throw new HttpSecurityException(buildErrorMessage("Tried to access GET method for resource", request, e));
-            } else if (request.getMethod() == HttpMethod.DELETE) {
-                boolean allowDelAccess = Boolean.parseBoolean(props.getWildcardProperty(request.getNamespace() + ALLOW_DELETE_ACCESS, "false"));
-                if (!allowDelAccess) {
-                    throw new HttpSecurityException(buildErrorMessage("Tried to access DELETE method for resource", request, e));
-                }
-            } else {
-                throw new HttpSecurityException(buildErrorMessage("Tried to access invalid method for resource", request, e));
-            }
-            Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
-        } else {
-            ctx.sendUpstream(e);
-        }
+
+    protected boolean isDeletableNamespace(final String namespace) {
+        return this.deletableNamespaces.contains(namespace);
     }
 
+    protected boolean isValidatedNamespace(final String namespace) {
+        return !this.unvalidatedNamespaces.contains(namespace);
+    }
+
+    @Override
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        final Object msg = e.getMessage();
+        if (!(msg instanceof BagheeraHttpRequest)) {
+            ctx.sendUpstream(e);
+            return;
+        }
+
+        final BagheeraHttpRequest request = (BagheeraHttpRequest) msg;
+        final String namespace = request.getNamespace();
+
+        // Check namespace.
+        if (namespace == null || !validator.isValidNamespace(namespace)) {
+            throw new InvalidPathException(buildErrorMessage("Tried to access invalid resource", request, e));
+        }
+
+        // Check id.
+        final boolean validateId = this.isValidatedNamespace(namespace);
+        final String requestId = request.getId();
+        if (requestId != null &&
+            validateId &&
+            !validator.isValidId(requestId)) {
+            throw new InvalidPathException(buildErrorMessage("Submitted an invalid ID", request, e));
+        }
+
+        // Check POST/GET/DELETE access.
+        final HttpMethod method = request.getMethod();
+        if (method == HttpMethod.POST ||
+            method == HttpMethod.PUT) {
+            // noop
+        } else if (method == HttpMethod.GET) {
+            throw new HttpSecurityException(buildErrorMessage("Tried to access GET method for resource", request, e));
+        } else if (method == HttpMethod.DELETE) {
+            if (!this.isDeletableNamespace(namespace)) {
+                throw new HttpSecurityException(buildErrorMessage("Tried to access DELETE method for resource", request, e));
+            }
+        } else {
+            throw new HttpSecurityException(buildErrorMessage("Tried to access invalid method for resource", request, e));
+        }
+
+        Channels.fireMessageReceived(ctx, request, e.getRemoteAddress());
+    }
 }
