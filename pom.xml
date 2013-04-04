@@ -16,6 +16,38 @@
 		<skip.tests>false</skip.tests>
 	</properties>
 
+	<profiles>
+		<profile>
+			<id>hadoop-cdh3u4</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+				<!--
+				<property>
+					<name>hadoop-distro</name>
+					<value>cdh3u4</value>
+				</property>
+				-->
+			</activation>
+			<properties>
+				<hadoop.version>0.20.2-cdh3u4</hadoop.version>
+				<hbase.version>0.90.6-cdh3u4</hbase.version>
+			</properties>
+		</profile>
+		<profile>
+			<id>hadoop-cdh4</id>
+			<activation>
+				<property>
+					<name>hadoop-distro</name>
+					<value>cdh4</value>
+				</property>
+			</activation>
+			<properties>
+				<hadoop.version>2.0.0-mr1-cdh4.2.0</hadoop.version>
+				<hbase.version>0.94.2-cdh4.2.0</hbase.version>
+			</properties>
+		</profile>
+	</profiles>
+
 	<repositories>
 		<repository>
 			<id>mozilla-metrics-releases</id>
@@ -41,13 +73,13 @@
 	</repositories>
 	
 	<pluginRepositories>
-        <pluginRepository>
-            <id>dtrott-public</id>
-            <name>David Trott's Public Repository</name>
-            <url>http://maven.davidtrott.com/repository</url>
-        </pluginRepository>
-    </pluginRepositories>
-    
+		  <pluginRepository>
+				<id>dtrott-public</id>
+				<name>David Trott's Public Repository</name>
+				<url>http://maven.davidtrott.com/repository</url>
+		  </pluginRepository>
+	 </pluginRepositories>
+
 	<dependencies>
 		<!-- Unit testing -->
 		<dependency>
@@ -100,7 +132,7 @@
 		<dependency>
 			<groupId>org.apache.hadoop</groupId>
 			<artifactId>hadoop-core</artifactId>
-			<version>0.20.2-cdh3u4</version>
+			<version>${hadoop.version}</version>
 			<exclusions>
 				<exclusion>
 					<artifactId>jasper-runtime</artifactId>
@@ -195,7 +227,7 @@
 		<dependency>
 			<groupId>org.apache.hbase</groupId>
 			<artifactId>hbase</artifactId>
-			<version>0.90.6-cdh3u4</version>
+			<version>${hbase.version}</version>
 			<exclusions>
 				<exclusion>
 					<artifactId>commons-httpclient</artifactId>
@@ -441,7 +473,7 @@
 				<configuration>
 					<protocExecutable>/usr/local/bin/protoc</protocExecutable>
 				</configuration>
-		    </plugin>
+			</plugin>
 			
 		</plugins>
 
