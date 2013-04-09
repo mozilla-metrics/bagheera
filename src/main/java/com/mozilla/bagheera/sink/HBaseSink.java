@@ -86,6 +86,7 @@ public class HBaseSink implements KeyValueSink {
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
     
+    @Override
     public void close() {
         if (hbasePool != null) {
             if (!Thread.currentThread().isInterrupted()) {
@@ -126,6 +127,28 @@ public class HBaseSink implements KeyValueSink {
     @Override
     public void store(String key, byte[] data) throws IOException {
         Put p = new Put(Bytes.toBytes(key));
+        // TODO There's a max size for 'data', exceeding causes java.lang.IllegalArgumentException: KeyValue size too large
+        //      Figure out how to split it up or detect / reject it.
+        // TODO Same with the other 'store' method below.
+//        2013-03-11 12:35:38,994 ERROR com.mozilla.bagheera.consumer.KafkaConsumer: Exception occured in thread:
+//            java.util.concurrent.ExecutionException: java.lang.IllegalArgumentException: KeyValue size too large
+//                at java.util.concurrent.FutureTask$Sync.innerGet(FutureTask.java:232)
+//                at java.util.concurrent.FutureTask.get(FutureTask.java:91)
+//                at com.mozilla.bagheera.consumer.KafkaConsumer.poll(KafkaConsumer.java:205)
+//                at com.mozilla.bagheera.consumer.KafkaHBaseConsumer.main(KafkaHBaseConsumer.java:81)
+//            Caused by: java.lang.IllegalArgumentException: KeyValue size too large
+//                at org.apache.hadoop.hbase.client.HTable.validatePut(HTable.java:896)
+//                at org.apache.hadoop.hbase.client.HTable.doPut(HTable.java:704)
+//                at org.apache.hadoop.hbase.client.HTable.put(HTable.java:698)
+//                at com.mozilla.bagheera.sink.HBaseSink.flush(HBaseSink.java:115)
+//                at com.mozilla.bagheera.sink.HBaseSink.store(HBaseSink.java:143)
+//                at com.mozilla.bagheera.consumer.KafkaConsumer$1.call(KafkaConsumer.java:158)
+//                at com.mozilla.bagheera.consumer.KafkaConsumer$1.call(KafkaConsumer.java:1)
+//                at java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
+//                at java.util.concurrent.FutureTask.run(FutureTask.java:138)
+//                at java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
+//                at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
+//                at java.lang.Thread.run(Thread.java:662)
         p.add(family, qualifier, data);
         putsQueue.add(p);      
         if (putsQueueSize.incrementAndGet() >= batchSize) {
