@@ -43,28 +43,30 @@ import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
 public class HBaseSink implements KeyValueSink {
-    
+
     private static final Logger LOG = Logger.getLogger(HBaseSink.class);
 
     private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-    
+    private static final int DEFAULT_HBASE_RETRIES = 5;
+    private static final int DEFAULT_HBASE_RETRY_SLEEP_SECONDS = 30;
+
     protected long sleepTime = 1000L;
-    
+
     protected HTablePool hbasePool;
-    
+
     protected final byte[] tableName;
     protected final byte[] family;
     protected final byte[] qualifier;
-    
+
     protected boolean prefixDate = true;
     protected int batchSize = 100;
-    
+
     protected AtomicInteger putsQueueSize = new AtomicInteger();
-    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>(); 
-    
+    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>();
+
     protected final Meter stored;
     protected final Timer flushTimer;
-    
+
     public HBaseSink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getString("hbasesink.hbase.tablename"),
              sinkConfiguration.getString("hbasesink.hbase.column.family", "data"),
@@ -72,20 +74,21 @@ public class HBaseSink implements KeyValueSink {
              sinkConfiguration.getBoolean("hbasesink.hbase.rowkey.prefixdate", false),
              sinkConfiguration.getInt("hbasesink.hbase.numthreads", DEFAULT_POOL_SIZE));
     }
-    
+
     public HBaseSink(String tableName, String family, String qualifier, boolean prefixDate, int numThreads) {
         this.tableName = Bytes.toBytes(tableName);
         this.family = Bytes.toBytes(family);
         this.qualifier = Bytes.toBytes(qualifier);
         this.prefixDate = prefixDate;
-        
+
         Configuration conf = HBaseConfiguration.create();
         hbasePool = new HTablePool(conf, numThreads);
-        
+
         stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".stored"), "messages", TimeUnit.SECONDS);
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
-    
+
+    @Override
     public void close() {
         if (hbasePool != null) {
             if (!Thread.currentThread().isInterrupted()) {
@@ -100,26 +103,44 @@ public class HBaseSink implements KeyValueSink {
     }
 
     public void flush() throws IOException {
-        HTable table = (HTable) hbasePool.getTable(tableName);
-        table.setAutoFlush(false);
-        final TimerContext t = flushTimer.time();
-        try {
-            List<Put> puts = new ArrayList<Put>(batchSize);
-            while (!putsQueue.isEmpty() && puts.size() < batchSize) {
-                Put p = putsQueue.poll();
-                if (p != null) {
-                    puts.add(p);
-                    putsQueueSize.decrementAndGet();
+        IOException lastException = null;
+        int i;
+        for (i = 0; i < DEFAULT_HBASE_RETRIES; i++) {
+            HTable table = (HTable) hbasePool.getTable(tableName);
+            try {
+                table.setAutoFlush(false);
+                final TimerContext t = flushTimer.time();
+                try {
+                    List<Put> puts = new ArrayList<Put>(batchSize);
+                    while (!putsQueue.isEmpty() && puts.size() < batchSize) {
+                        Put p = putsQueue.poll();
+                        if (p != null) {
+                            puts.add(p);
+                            putsQueueSize.decrementAndGet();
+                        }
+                    }
+                    table.put(puts);
+                    table.flushCommits();
+                    stored.mark(puts.size());
+                } finally {
+                    t.stop();
+                    if (hbasePool != null && table != null) {
+                        hbasePool.putTable(table);
+                    }
+                }
+                break;
+            } catch (IOException e) {
+                lastException = e;
+                table.clearRegionCache();
+                try {
+                    Thread.sleep(DEFAULT_HBASE_RETRY_SLEEP_SECONDS * 1000);
+                } catch (InterruptedException e1) {
+                    // wake up
                 }
             }
-            table.put(puts);
-            table.flushCommits();
-            stored.mark(puts.size());
-        } finally {
-            t.stop();
-            if (hbasePool != null && table != null) {
-                hbasePool.putTable(table);
-            }
+        }
+        if (i >= DEFAULT_HBASE_RETRIES && lastException != null) {
+            throw lastException;
         }
     }
 
@@ -127,7 +148,7 @@ public class HBaseSink implements KeyValueSink {
     public void store(String key, byte[] data) throws IOException {
         Put p = new Put(Bytes.toBytes(key));
         p.add(family, qualifier, data);
-        putsQueue.add(p);      
+        putsQueue.add(p);
         if (putsQueueSize.incrementAndGet() >= batchSize) {
             flush();
         }
