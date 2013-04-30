@@ -130,6 +130,7 @@ public class HBaseSink implements KeyValueSink {
                 }
                 break;
             } catch (IOException e) {
+                LOG.warn(String.format("Error in flush attempt %d of %d", i, DEFAULT_HBASE_RETRIES), e);
                 lastException = e;
                 table.clearRegionCache();
                 try {
@@ -140,6 +141,7 @@ public class HBaseSink implements KeyValueSink {
             }
         }
         if (i >= DEFAULT_HBASE_RETRIES && lastException != null) {
+            LOG.error("Error in final flush attempt, giving up.");
             throw lastException;
         }
     }
