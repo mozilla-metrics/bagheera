@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTablePool;
@@ -117,6 +118,8 @@ public class HBaseSink implements KeyValueSink {
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
                         Put p = putsQueue.poll();
                         if (p != null) {
+                            HRegionLocation regionLocation = table.getRegionLocation(p.getRow());
+                            LOG.info("row served by " + regionLocation.getServerAddress().getHostname());
                             puts.add(p);
                             putsQueueSize.decrementAndGet();
                         }
