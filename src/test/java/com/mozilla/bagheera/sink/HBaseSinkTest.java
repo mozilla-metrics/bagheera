@@ -26,6 +26,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.hbase.HServerAddress;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
 import org.apache.hadoop.hbase.client.Row;
 import org.junit.Before;
@@ -65,7 +66,7 @@ public class HBaseSinkTest {
                 }
                 return null;
             }
-        }).when(htable).put(Mockito.anyList());
+        }).when(htable).put(Mockito.anyListOf(Put.class));
     }
 
     @Test
