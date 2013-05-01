@@ -106,6 +106,7 @@ public class HBaseSink implements KeyValueSink {
         IOException lastException = null;
         int i;
         for (i = 0; i < DEFAULT_HBASE_RETRIES; i++) {
+            LOG.info(String.format("Starting flush attempt %d of %d", i, DEFAULT_HBASE_RETRIES));
             HTable table = (HTable) hbasePool.getTable(tableName);
             try {
                 table.setAutoFlush(false);
