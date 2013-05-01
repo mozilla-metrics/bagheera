@@ -115,13 +115,25 @@ public class HBaseSink implements KeyValueSink {
                 try {
                     LOG.info("Getting up to " + batchSize + " Puts");
                     List<Put> puts = new ArrayList<Put>(batchSize);
+                    int counter = 0;
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
+                        counter++;
                         Put p = putsQueue.poll();
                         if (p != null) {
                             HRegionLocation regionLocation = table.getRegionLocation(p.getRow());
                             LOG.info("row served by " + regionLocation.getServerAddress().getHostname());
                             puts.add(p);
                             putsQueueSize.decrementAndGet();
+                        }
+                        if (counter % 25 == 0) {
+                            LOG.info("pausing for 3min after " + counter);
+                            try {
+                                Thread.sleep(3 * 60 * 1000);
+                            } catch (InterruptedException e1) {
+                                // wake up
+                                LOG.info("woke up by interruption", e1);
+                            }
+                            LOG.info("unpausing");
                         }
                     }
                     LOG.info("Putting Puts");
