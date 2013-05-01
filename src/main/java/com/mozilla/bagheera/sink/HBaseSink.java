@@ -106,12 +106,13 @@ public class HBaseSink implements KeyValueSink {
         IOException lastException = null;
         int i;
         for (i = 0; i < DEFAULT_HBASE_RETRIES; i++) {
-            LOG.info(String.format("Starting flush attempt %d of %d", i, DEFAULT_HBASE_RETRIES));
+            LOG.info(String.format("Starting flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
             HTable table = (HTable) hbasePool.getTable(tableName);
             try {
                 table.setAutoFlush(false);
                 final TimerContext t = flushTimer.time();
                 try {
+                    LOG.info("Getting up to " + batchSize + " Puts");
                     List<Put> puts = new ArrayList<Put>(batchSize);
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
                         Put p = putsQueue.poll();
@@ -120,31 +121,42 @@ public class HBaseSink implements KeyValueSink {
                             putsQueueSize.decrementAndGet();
                         }
                     }
+                    LOG.info("Putting Puts");
                     table.put(puts);
+                    LOG.info("Flushing commits");
                     table.flushCommits();
+                    LOG.info("Marking committed Puts");
                     stored.mark(puts.size());
                 } finally {
+                    LOG.info("Stopping timer");
                     t.stop();
                     if (hbasePool != null && table != null) {
+                        LOG.info("calling putTable");
                         hbasePool.putTable(table);
                     }
                 }
+                LOG.info(String.format("Flush succeeded on attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
                 break;
             } catch (IOException e) {
-                LOG.warn(String.format("Error in flush attempt %d of %d", i, DEFAULT_HBASE_RETRIES), e);
+                LOG.warn(String.format("Error in flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES), e);
                 lastException = e;
+                LOG.info("clearing Region cache");
                 table.clearRegionCache();
+                LOG.info("sleeping...");
                 try {
                     Thread.sleep(DEFAULT_HBASE_RETRY_SLEEP_SECONDS * 1000);
                 } catch (InterruptedException e1) {
                     // wake up
+                    LOG.info("woke up by interruption", e1);
                 }
+                LOG.info("woke up");
             }
         }
         if (i >= DEFAULT_HBASE_RETRIES && lastException != null) {
             LOG.error("Error in final flush attempt, giving up.");
             throw lastException;
         }
+        LOG.info("Flush finished");
     }
 
     @Override
