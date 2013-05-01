@@ -51,8 +51,6 @@ public class HBaseSink implements KeyValueSink {
     private static final int DEFAULT_HBASE_RETRIES = 5;
     private static final int DEFAULT_HBASE_RETRY_SLEEP_SECONDS = 30;
 
-    protected long sleepTime = 1000L;
-
     protected HTablePool hbasePool;
 
     protected final byte[] tableName;

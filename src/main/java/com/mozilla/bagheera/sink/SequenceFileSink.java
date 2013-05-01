@@ -47,8 +47,6 @@ public class SequenceFileSink implements KeyValueSink {
 
     protected static final long DAY_IN_MILLIS = 86400000L;
 
-    protected long sleepTime = 1000L;
-
     // HDFS related member vars
     protected final Semaphore lock = new Semaphore(1, true);
     protected final Configuration conf;
@@ -65,14 +63,14 @@ public class SequenceFileSink implements KeyValueSink {
     protected Meter stored;
 
     public SequenceFileSink(SinkConfiguration config) throws IOException {
-        this(config.getString("namespace"), 
-             config.getString("hdfssink.hdfs.basedir.path", "/bagheera"), 
-             config.getString("hdfssink.hdfs.date.format", "yyyy-MM-dd"), 
+        this(config.getString("namespace"),
+             config.getString("hdfssink.hdfs.basedir.path", "/bagheera"),
+             config.getString("hdfssink.hdfs.date.format", "yyyy-MM-dd"),
              config.getLong("hdfssink.hdfs.max.filesize", 536870912),
              config.getBoolean("hdfssink.hdfs.usebytes", false));
     }
-    
-    public SequenceFileSink(String namespace, String baseDirPath, String dateFormat, long maxFileSize, 
+
+    public SequenceFileSink(String namespace, String baseDirPath, String dateFormat, long maxFileSize,
                             boolean useBytesValue) throws IOException {
         LOG.info("Initializing writer for namespace: " + namespace);
         conf = new Configuration();
@@ -82,10 +80,10 @@ public class SequenceFileSink implements KeyValueSink {
         this.maxFileSize = maxFileSize;
         sdf = new SimpleDateFormat(dateFormat);
         if (!baseDirPath.endsWith(Path.SEPARATOR)) {
-            baseDir = new Path(baseDirPath + Path.SEPARATOR + namespace + Path.SEPARATOR + 
+            baseDir = new Path(baseDirPath + Path.SEPARATOR + namespace + Path.SEPARATOR +
                                sdf.format(new Date(System.currentTimeMillis())));
         } else {
-            baseDir = new Path(baseDirPath + namespace + Path.SEPARATOR + 
+            baseDir = new Path(baseDirPath + namespace + Path.SEPARATOR +
                                sdf.format(new Date(System.currentTimeMillis())));
         }
         initWriter();
@@ -145,6 +143,7 @@ public class SequenceFileSink implements KeyValueSink {
         bytesWritten.set(0);
     }
 
+    @Override
     public void close() {
         try {
             lock.acquire();
