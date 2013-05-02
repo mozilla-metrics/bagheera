@@ -21,6 +21,7 @@ package com.mozilla.bagheera.sink;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.hbase.HServerAddress;
@@ -60,8 +61,8 @@ public class HBaseSinkTest {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
                 count++;
-                // Force code to retry twice.
-                if (count <= 2) {
+                // Force code to retry once.
+                if (count <= 1) {
                     throw new RetriesExhaustedWithDetailsException(new ArrayList<Throwable>(), new ArrayList<Row>(), new ArrayList<HServerAddress>());
                 }
                 return null;
@@ -73,10 +74,29 @@ public class HBaseSinkTest {
     public void testRetry() throws ParseException, IOException {
         HBaseSink sink = (HBaseSink) sinkFactory.getSink("test");
         sink.hbasePool = hbasePool;
-
         sink.flush();
+        Mockito.verify(htable, Mockito.times(1)).clearRegionCache();
+    }
 
-        Mockito.verify(htable, Mockito.times(2)).clearRegionCache();
+    @Test
+    public void testLargePut() throws IOException {
+        HBaseSink sink = (HBaseSink) sinkFactory.getSink("test");
+
+        @SuppressWarnings("unchecked")
+        ConcurrentLinkedQueue<Put> putsQueue = Mockito.mock(ConcurrentLinkedQueue.class);
+
+        sink.putsQueue = putsQueue;
+        byte[] theArray = new byte[50*1000*1000]; // 50MB
+        for (int i = 0; i < theArray.length; i++) {
+            theArray[i] = (byte)(i % 256 - 128);
+        }
+
+        sink.store("test1", theArray);
+        Mockito.verify(putsQueue, Mockito.times(0)).add((Put)Mockito.any());
+        sink.store("test2", "acceptable".getBytes());
+        Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
+        sink.store("test3", theArray);
+        Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
     }
 
 }
