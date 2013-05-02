@@ -46,7 +46,7 @@ public class AccessFilter extends SimpleChannelUpstreamHandler {
     }    
 
     private String buildErrorMessage(String msg, HttpRequest request, MessageEvent e) {
-        return String.format("%s: %s - \"%s\" \"%s\"", msg, request.getUri(), 
+        return String.format("%s: %s %s - \"%s\" \"%s\"", msg, request.getMethod().getName(), request.getUri(), 
                              HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).toString()), 
                              request.getHeader(HttpUtil.USER_AGENT));
     }

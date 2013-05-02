@@ -59,6 +59,7 @@ public class HBaseSink implements KeyValueSink {
 
     protected boolean prefixDate = true;
     protected int batchSize = 100;
+    protected long maxKeyValueSize;
 
     protected AtomicInteger putsQueueSize = new AtomicInteger();
     protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>();
@@ -81,6 +82,9 @@ public class HBaseSink implements KeyValueSink {
         this.prefixDate = prefixDate;
 
         Configuration conf = HBaseConfiguration.create();
+
+        // Use the standard HBase default
+        maxKeyValueSize = conf.getLong("hbase.client.keyvalue.maxsize", 10485760l);
         hbasePool = new HTablePool(conf, numThreads);
 
         stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".stored"), "messages", TimeUnit.SECONDS);
@@ -162,6 +166,15 @@ public class HBaseSink implements KeyValueSink {
 
     @Override
     public void store(String key, byte[] data) throws IOException {
+        // There's a max size for 'data', exceeding causes
+        //   java.lang.IllegalArgumentException: KeyValue size too large
+        // Detect, log, and reject it.
+        if (data != null && data.length > maxKeyValueSize) {
+            LOG.warn(String.format("Storing key '%s': Data exceeds max length (%d > %d)",
+                    key, data.length, maxKeyValueSize));
+            return;
+        }
+
         Put p = new Put(Bytes.toBytes(key));
         p.add(family, qualifier, data);
         putsQueue.add(p);
@@ -172,6 +185,15 @@ public class HBaseSink implements KeyValueSink {
 
     @Override
     public void store(String key, byte[] data, long timestamp) throws IOException {
+        // There's a max size for 'data', exceeding causes
+        //   java.lang.IllegalArgumentException: KeyValue size too large
+        // Detect, log, and reject it.
+        if (data != null && data.length > maxKeyValueSize) {
+            LOG.warn(String.format("Storing key '%s': Data exceeds max length (%d > %d)",
+                    key, data.length, maxKeyValueSize));
+            return;
+        }
+
         byte[] k = prefixDate ? IdUtil.bucketizeId(key, timestamp) : Bytes.toBytes(key);
         Put p = new Put(k);
         p.add(family, qualifier, data);

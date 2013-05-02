@@ -103,6 +103,7 @@ public class KafkaConsumer implements Consumer {
         this.validationPipeline = pipeline;
     }
     
+    @Override
     public void close() {
         LOG.info("Shutting down!");
         if (executor != null) {
@@ -134,6 +135,7 @@ public class KafkaConsumer implements Consumer {
         } 
     }
     
+    @Override
     public void poll() {
         final CountDownLatch latch = new CountDownLatch(streams.size());
         for (final KafkaStream<Message> stream : streams) {  
@@ -154,6 +156,7 @@ public class KafkaConsumer implements Consumer {
                                 bmsg.hasId() && bmsg.hasPayload()) {
                                 if (validationPipeline == null ||
                                     validationPipeline.isValid(bmsg.getPayload().toByteArray())) {
+                                    // TODO ^ check for "java.lang.IllegalArgumentException: KeyValue size too large" in sink.store.
                                     if (bmsg.hasTimestamp()) {
                                         sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
                                     } else {
@@ -161,6 +164,7 @@ public class KafkaConsumer implements Consumer {
                                     }
                                 } else {
                                     invalidMessageMeter.mark();
+                                    // TODO: sample out an example payload
                                     LOG.warn("Invalid payload for namespace: " + bmsg.getNamespace());
                                 }
                             } else if (bmsg.getOperation() == Operation.DELETE &&
