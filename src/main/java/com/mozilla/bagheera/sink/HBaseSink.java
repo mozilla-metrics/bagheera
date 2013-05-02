@@ -43,28 +43,29 @@ import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
 public class HBaseSink implements KeyValueSink {
-    
+
     private static final Logger LOG = Logger.getLogger(HBaseSink.class);
 
     private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-    
+
     protected long sleepTime = 1000L;
-    
+
     protected HTablePool hbasePool;
-    
+
     protected final byte[] tableName;
     protected final byte[] family;
     protected final byte[] qualifier;
-    
+
     protected boolean prefixDate = true;
     protected int batchSize = 100;
-    
+    protected long maxKeyValueSize;
+
     protected AtomicInteger putsQueueSize = new AtomicInteger();
-    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>(); 
-    
+    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>();
+
     protected final Meter stored;
     protected final Timer flushTimer;
-    
+
     public HBaseSink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getString("hbasesink.hbase.tablename"),
              sinkConfiguration.getString("hbasesink.hbase.column.family", "data"),
@@ -72,20 +73,24 @@ public class HBaseSink implements KeyValueSink {
              sinkConfiguration.getBoolean("hbasesink.hbase.rowkey.prefixdate", false),
              sinkConfiguration.getInt("hbasesink.hbase.numthreads", DEFAULT_POOL_SIZE));
     }
-    
+
     public HBaseSink(String tableName, String family, String qualifier, boolean prefixDate, int numThreads) {
         this.tableName = Bytes.toBytes(tableName);
         this.family = Bytes.toBytes(family);
         this.qualifier = Bytes.toBytes(qualifier);
         this.prefixDate = prefixDate;
-        
+
         Configuration conf = HBaseConfiguration.create();
+
+        // Use the standard HBase default
+        maxKeyValueSize = conf.getLong("hbase.client.keyvalue.maxsize", 10485760l);
         hbasePool = new HTablePool(conf, numThreads);
-        
+
         stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".stored"), "messages", TimeUnit.SECONDS);
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
-    
+
+    @Override
     public void close() {
         if (hbasePool != null) {
             if (!Thread.currentThread().isInterrupted()) {
@@ -125,9 +130,18 @@ public class HBaseSink implements KeyValueSink {
 
     @Override
     public void store(String key, byte[] data) throws IOException {
+        // There's a max size for 'data', exceeding causes
+        //   java.lang.IllegalArgumentException: KeyValue size too large
+        // Detect, log, and reject it.
+        if (data != null && data.length > maxKeyValueSize) {
+            LOG.warn(String.format("Storing key '%s': Data exceeds max length (%d > %d)",
+                    key, data.length, maxKeyValueSize));
+            return;
+        }
+
         Put p = new Put(Bytes.toBytes(key));
         p.add(family, qualifier, data);
-        putsQueue.add(p);      
+        putsQueue.add(p);
         if (putsQueueSize.incrementAndGet() >= batchSize) {
             flush();
         }
@@ -135,6 +149,15 @@ public class HBaseSink implements KeyValueSink {
 
     @Override
     public void store(String key, byte[] data, long timestamp) throws IOException {
+        // There's a max size for 'data', exceeding causes
+        //   java.lang.IllegalArgumentException: KeyValue size too large
+        // Detect, log, and reject it.
+        if (data != null && data.length > maxKeyValueSize) {
+            LOG.warn(String.format("Storing key '%s': Data exceeds max length (%d > %d)",
+                    key, data.length, maxKeyValueSize));
+            return;
+        }
+
         byte[] k = prefixDate ? IdUtil.bucketizeId(key, timestamp) : Bytes.toBytes(key);
         Put p = new Put(k);
         p.add(family, qualifier, data);
