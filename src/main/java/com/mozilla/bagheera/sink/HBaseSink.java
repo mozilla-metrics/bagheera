@@ -150,7 +150,7 @@ public class HBaseSink implements KeyValueSink {
             }
         }
         if (i >= getRetryCount() && lastException != null) {
-            LOG.error("Error in final flush attempt, giving up.");
+            LOG.error("Error in final flush attempt, giving up (rethrowing exception)", lastException);
             throw lastException;
         }
         LOG.debug("Flush finished");
