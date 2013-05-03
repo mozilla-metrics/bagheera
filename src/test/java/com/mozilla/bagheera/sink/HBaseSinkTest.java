@@ -21,6 +21,7 @@ package com.mozilla.bagheera.sink;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.commons.cli.ParseException;
@@ -97,6 +98,13 @@ public class HBaseSinkTest {
         Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
         sink.store("test3", theArray);
         Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
+
+        sink.store("test4", theArray, new Date().getTime());
+        Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
+        sink.store("test5", "acceptable".getBytes(), new Date().getTime());
+        Mockito.verify(putsQueue, Mockito.times(2)).add((Put)Mockito.any());
+        sink.store("test6", theArray, new Date().getTime());
+        Mockito.verify(putsQueue, Mockito.times(2)).add((Put)Mockito.any());
     }
 
 }
