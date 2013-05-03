@@ -74,7 +74,7 @@ public class HBaseSinkTest {
     @Test
     public void testRetry() throws ParseException, IOException {
         HBaseSink sink = (HBaseSink) sinkFactory.getSink("test");
-        sink.setRetrySleepSeconds(3);
+        sink.setRetrySleepSeconds(1);
         sink.hbasePool = hbasePool;
         sink.flush();
         Mockito.verify(htable, Mockito.times(1)).clearRegionCache();
