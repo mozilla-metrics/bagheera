@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTablePool;
@@ -65,6 +64,9 @@ public class HBaseSink implements KeyValueSink {
     protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>();
 
     protected final Meter stored;
+    protected final Meter deleted;
+    protected final Meter oversized;
+
     protected final Timer flushTimer;
 
     public HBaseSink(SinkConfiguration sinkConfiguration) {
@@ -88,6 +90,8 @@ public class HBaseSink implements KeyValueSink {
         hbasePool = new HTablePool(conf, numThreads);
 
         stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".stored"), "messages", TimeUnit.SECONDS);
+        deleted = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".deleted"), "messages", TimeUnit.SECONDS);
+        oversized = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".oversized"), "messages", TimeUnit.SECONDS);
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
 
@@ -109,97 +113,87 @@ public class HBaseSink implements KeyValueSink {
         IOException lastException = null;
         int i;
         for (i = 0; i < DEFAULT_HBASE_RETRIES; i++) {
-            LOG.info(String.format("Starting flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
+//            LOG.debug(String.format("Starting flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
             HTable table = (HTable) hbasePool.getTable(tableName);
             try {
                 table.setAutoFlush(false);
                 final TimerContext t = flushTimer.time();
                 try {
-                    LOG.info("Getting up to " + batchSize + " Puts");
                     List<Put> puts = new ArrayList<Put>(batchSize);
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
                         Put p = putsQueue.poll();
                         if (p != null) {
-                            HRegionLocation regionLocation = table.getRegionLocation(p.getRow());
-                            LOG.info("row served by " + regionLocation.getServerAddress().getHostname());
+//                            HRegionLocation regionLocation = table.getRegionLocation(p.getRow());
+//                            LOG.debug("row served by " + regionLocation.getServerAddress().getHostname());
                             puts.add(p);
                             putsQueueSize.decrementAndGet();
                         }
                     }
-                    LOG.info("Putting Puts");
                     table.put(puts);
-                    LOG.info("Flushing commits");
                     table.flushCommits();
-                    LOG.info("Marking committed Puts");
                     stored.mark(puts.size());
                 } finally {
-                    LOG.info("Stopping timer");
                     t.stop();
                     if (hbasePool != null && table != null) {
-                        LOG.info("calling putTable");
                         hbasePool.putTable(table);
                     }
                 }
-                LOG.info(String.format("Flush succeeded on attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
+//                LOG.debug(String.format("Flush succeeded on attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
                 break;
             } catch (IOException e) {
-                LOG.warn(String.format("Error in flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES), e);
+                LOG.warn(String.format("Error in flush attempt %d of %d, clearing Region cache", (i+1), DEFAULT_HBASE_RETRIES), e);
                 lastException = e;
-                LOG.info("clearing Region cache");
                 table.clearRegionCache();
-                LOG.info("sleeping...");
                 try {
                     Thread.sleep(DEFAULT_HBASE_RETRY_SLEEP_SECONDS * 1000);
                 } catch (InterruptedException e1) {
                     // wake up
-                    LOG.info("woke up by interruption", e1);
                 }
-                LOG.info("woke up");
             }
         }
         if (i >= DEFAULT_HBASE_RETRIES && lastException != null) {
             LOG.error("Error in final flush attempt, giving up.");
             throw lastException;
         }
-        LOG.info("Flush finished");
+        LOG.debug("Flush finished");
     }
 
     @Override
     public void store(String key, byte[] data) throws IOException {
-        // There's a max size for 'data', exceeding causes
-        //   java.lang.IllegalArgumentException: KeyValue size too large
-        // Detect, log, and reject it.
+        if (!isOversized(key, data)) {
+            Put p = new Put(Bytes.toBytes(key));
+            p.add(family, qualifier, data);
+            putsQueue.add(p);
+            if (putsQueueSize.incrementAndGet() >= batchSize) {
+                flush();
+            }
+        }
+    }
+
+    // There is a max size for 'data', exceeding it causes
+    //   java.lang.IllegalArgumentException: KeyValue size too large
+    // Detect, log, and reject it.
+    private boolean isOversized(String key, byte[] data) {
+        boolean tooBig = false;
         if (data != null && data.length > maxKeyValueSize) {
             LOG.warn(String.format("Storing key '%s': Data exceeds max length (%d > %d)",
                     key, data.length, maxKeyValueSize));
-            return;
+            oversized.mark();
+            tooBig = true;
         }
-
-        Put p = new Put(Bytes.toBytes(key));
-        p.add(family, qualifier, data);
-        putsQueue.add(p);
-        if (putsQueueSize.incrementAndGet() >= batchSize) {
-            flush();
-        }
+        return tooBig;
     }
 
     @Override
     public void store(String key, byte[] data, long timestamp) throws IOException {
-        // There's a max size for 'data', exceeding causes
-        //   java.lang.IllegalArgumentException: KeyValue size too large
-        // Detect, log, and reject it.
-        if (data != null && data.length > maxKeyValueSize) {
-            LOG.warn(String.format("Storing key '%s': Data exceeds max length (%d > %d)",
-                    key, data.length, maxKeyValueSize));
-            return;
-        }
-
-        byte[] k = prefixDate ? IdUtil.bucketizeId(key, timestamp) : Bytes.toBytes(key);
-        Put p = new Put(k);
-        p.add(family, qualifier, data);
-        putsQueue.add(p);
-        if (putsQueueSize.incrementAndGet() >= batchSize) {
-            flush();
+        if (!isOversized(key, data)) {
+            byte[] k = prefixDate ? IdUtil.bucketizeId(key, timestamp) : Bytes.toBytes(key);
+            Put p = new Put(k);
+            p.add(family, qualifier, data);
+            putsQueue.add(p);
+            if (putsQueueSize.incrementAndGet() >= batchSize) {
+                flush();
+            }
         }
     }
 
@@ -209,6 +203,7 @@ public class HBaseSink implements KeyValueSink {
         try {
             Delete d = new Delete(Bytes.toBytes(key));
             table.delete(d);
+            deleted.mark();
         } finally {
             if (hbasePool != null && table != null) {
                 hbasePool.putTable(table);
