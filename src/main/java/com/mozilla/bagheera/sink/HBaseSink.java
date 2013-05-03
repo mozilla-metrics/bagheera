@@ -114,7 +114,6 @@ public class HBaseSink implements KeyValueSink {
         IOException lastException = null;
         int i;
         for (i = 0; i < getRetryCount(); i++) {
-//            LOG.debug(String.format("Starting flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
             HTable table = (HTable) hbasePool.getTable(tableName);
             try {
                 table.setAutoFlush(false);
@@ -124,8 +123,6 @@ public class HBaseSink implements KeyValueSink {
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
                         Put p = putsQueue.poll();
                         if (p != null) {
-//                            HRegionLocation regionLocation = table.getRegionLocation(p.getRow());
-//                            LOG.debug("row served by " + regionLocation.getServerAddress().getHostname());
                             puts.add(p);
                             putsQueueSize.decrementAndGet();
                         }
@@ -139,7 +136,6 @@ public class HBaseSink implements KeyValueSink {
                         hbasePool.putTable(table);
                     }
                 }
-//                LOG.debug(String.format("Flush succeeded on attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
                 break;
             } catch (IOException e) {
                 LOG.warn(String.format("Error in flush attempt %d of %d, clearing Region cache", (i+1), getRetryCount()), e);
@@ -149,6 +145,7 @@ public class HBaseSink implements KeyValueSink {
                     Thread.sleep(getRetrySleepSeconds() * 1000);
                 } catch (InterruptedException e1) {
                     // wake up
+                    LOG.info("Sleep interrupted during retry", e);
                 }
             }
         }
