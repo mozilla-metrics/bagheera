@@ -47,8 +47,9 @@ public class HBaseSink implements KeyValueSink {
     private static final Logger LOG = Logger.getLogger(HBaseSink.class);
 
     private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-    private static final int DEFAULT_HBASE_RETRIES = 5;
-    private static final int DEFAULT_HBASE_RETRY_SLEEP_SECONDS = 30;
+
+    private int retryCount = 5;
+    private int retrySleepSeconds = 30;
 
     protected HTablePool hbasePool;
 
@@ -112,7 +113,7 @@ public class HBaseSink implements KeyValueSink {
     public void flush() throws IOException {
         IOException lastException = null;
         int i;
-        for (i = 0; i < DEFAULT_HBASE_RETRIES; i++) {
+        for (i = 0; i < getRetryCount(); i++) {
 //            LOG.debug(String.format("Starting flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
             HTable table = (HTable) hbasePool.getTable(tableName);
             try {
@@ -141,17 +142,17 @@ public class HBaseSink implements KeyValueSink {
 //                LOG.debug(String.format("Flush succeeded on attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
                 break;
             } catch (IOException e) {
-                LOG.warn(String.format("Error in flush attempt %d of %d, clearing Region cache", (i+1), DEFAULT_HBASE_RETRIES), e);
+                LOG.warn(String.format("Error in flush attempt %d of %d, clearing Region cache", (i+1), getRetryCount()), e);
                 lastException = e;
                 table.clearRegionCache();
                 try {
-                    Thread.sleep(DEFAULT_HBASE_RETRY_SLEEP_SECONDS * 1000);
+                    Thread.sleep(getRetrySleepSeconds() * 1000);
                 } catch (InterruptedException e1) {
                     // wake up
                 }
             }
         }
-        if (i >= DEFAULT_HBASE_RETRIES && lastException != null) {
+        if (i >= getRetryCount() && lastException != null) {
             LOG.error("Error in final flush attempt, giving up.");
             throw lastException;
         }
@@ -211,4 +212,19 @@ public class HBaseSink implements KeyValueSink {
         }
     }
 
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public int getRetrySleepSeconds() {
+        return retrySleepSeconds;
+    }
+
+    public void setRetrySleepSeconds(int retrySleepSeconds) {
+        this.retrySleepSeconds = retrySleepSeconds;
+    }
 }
