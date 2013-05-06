@@ -9,6 +9,21 @@
   <formats>
     <format>zip</format>
   </formats>
+<moduleSets>
+    <moduleSet>
+      <useAllReactorProjects>true</useAllReactorProjects>
+      <binaries>
+        <outputDirectory>/target/${artifactId}</outputDirectory>
+        <unpack>false</unpack>
+	<dependencySets>
+           <dependencySet>
+             <outputDirectory>/lib</outputDirectory>
+           </dependencySet>
+        </dependencySets>
+      </binaries>
+    </moduleSet>
+  </moduleSets>
+
   <fileSets>
     <fileSet>
       <includes>

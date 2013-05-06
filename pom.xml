@@ -10,7 +10,7 @@
 	<description>REST services for Mozilla Metrics.</description>
 	<url>https://github.com/mozilla-metrics/bagheera</url>
 
-	<packaging>jar</packaging>
+	<packaging>pom</packaging>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<skip.tests>false</skip.tests>
@@ -31,6 +31,7 @@
 			<name>Cloudera Releases Repository</name>
 			<snapshots>
 				<enabled>true</enabled>
+                                <updatePolicy>never</updatePolicy>
 			</snapshots>
 		</repository>
 		<repository>
@@ -87,259 +88,6 @@
 			<artifactId>jackson-core</artifactId>
 			<version>2.0.6</version>
 		</dependency>
-
-		<!-- Netty -->
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty</artifactId>
-			<version>3.5.7.Final</version>
-			<scope>compile</scope>
-		</dependency>
-
-		<!-- Cloudera Hadoop, HBase -->
-		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-core</artifactId>
-			<version>0.20.2-cdh3u4</version>
-			<exclusions>
-				<exclusion>
-					<artifactId>jasper-runtime</artifactId>
-					<groupId>tomcat</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-httpclient</artifactId>
-					<groupId>commons-httpclient</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>hsqldb</artifactId>
-					<groupId>hsqldb</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-cli</artifactId>
-					<groupId>commons-cli</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-logging</artifactId>
-					<groupId>commons-logging</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jsp-api</artifactId>
-					<groupId>javax.servlet</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>hadoop-ant</artifactId>
-					<groupId>com.cloudera.cdh</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-net</artifactId>
-					<groupId>commons-net</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jasper-compiler</artifactId>
-					<groupId>tomcat</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-el</artifactId>
-					<groupId>commons-el</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>ant</artifactId>
-					<groupId>ant</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jets3t</artifactId>
-					<groupId>net.java.dev.jets3t</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>xmlenc</artifactId>
-					<groupId>xmlenc</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>core</artifactId>
-					<groupId>org.eclipse.jdt</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-codec</artifactId>
-					<groupId>commons-codec</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>oro</artifactId>
-					<groupId>oro</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jsp-api</artifactId>
-					<groupId>javax.servlet.jsp</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jetty-util</artifactId>
-					<groupId>org.mortbay.jetty</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jetty</artifactId>
-					<groupId>org.mortbay.jetty</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>servlet-api</artifactId>
-					<groupId>javax.servlet</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jackson-mapper-asl</artifactId>
-					<groupId>org.codehaus.jackson</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jackson-core-asl</artifactId>
-					<groupId>org.codehaus.jackson</groupId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.hbase</groupId>
-			<artifactId>hbase</artifactId>
-			<version>0.90.6-cdh3u4</version>
-			<exclusions>
-				<exclusion>
-					<artifactId>commons-httpclient</artifactId>
-					<groupId>commons-httpclient</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jackson-xc</artifactId>
-					<groupId>org.codehaus.jackson</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-cli</artifactId>
-					<groupId>commons-cli</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jruby-complete</artifactId>
-					<groupId>org.jruby</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>thrift</artifactId>
-					<groupId>org.apache.thrift</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>slf4j-log4j12</artifactId>
-					<groupId>org.slf4j</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jasper-compiler</artifactId>
-					<groupId>tomcat</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>core</artifactId>
-					<groupId>org.eclipse.jdt</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-codec</artifactId>
-					<groupId>commons-codec</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jasper-runtime</artifactId>
-					<groupId>tomcat</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>slf4j-api</artifactId>
-					<groupId>org.slf4j</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>avro</artifactId>
-					<groupId>org.apache.hadoop</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jsp-2.1</artifactId>
-					<groupId>org.mortbay.jetty</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>stax-api</artifactId>
-					<groupId>stax</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>guava</artifactId>
-					<groupId>com.google.guava</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jettison</artifactId>
-					<groupId>org.codehaus.jettison</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>commons-lang</artifactId>
-					<groupId>commons-lang</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jsp-api-2.1</artifactId>
-					<groupId>org.mortbay.jetty</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jersey-json</artifactId>
-					<groupId>com.sun.jersey</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>zookeeper-ant</artifactId>
-					<groupId>com.cloudera.cdh</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>protobuf-java</artifactId>
-					<groupId>com.google.protobuf</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jaxb-api</artifactId>
-					<groupId>javax.xml.bind</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jamon-runtime</artifactId>
-					<groupId>org.jamon</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jersey-core</artifactId>
-					<groupId>com.sun.jersey</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jersey-server</artifactId>
-					<groupId>com.sun.jersey</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>avro-ipc</artifactId>
-					<groupId>org.apache.avro</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>avro</artifactId>
-					<groupId>org.apache.avro</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jetty-util</artifactId>
-					<groupId>org.mortbay.jetty</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jsr311-api</artifactId>
-					<groupId>javax.ws.rs</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>servlet-api-2.5</artifactId>
-					<groupId>org.mortbay.jetty</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>jetty</artifactId>
-					<groupId>org.mortbay.jetty</groupId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-
-		<!-- yammer metrics collection -->
-		<dependency>
-			<groupId>com.yammer.metrics</groupId>
-			<artifactId>metrics-core</artifactId>
-			<version>2.1.2</version>
-		</dependency>
-		<dependency>
-			<groupId>com.yammer.metrics</groupId>
-			<artifactId>metrics-ganglia</artifactId>
-			<version>2.1.2</version>
-		</dependency>
-		<dependency>
-			<groupId>com.yammer.metrics</groupId>
-			<artifactId>metrics-graphite</artifactId>
-			<version>2.1.2</version>
-		</dependency>
 		
 		<!-- Kafka -->
 		<dependency>
@@ -378,11 +126,7 @@
 		</dependency>
 		
 		<!-- Protocol Buffers -->
-		<dependency>
-			<groupId>com.google.protobuf</groupId>
-			<artifactId>protobuf-java</artifactId>
-			<version>2.4.1</version>
-		</dependency>
+
 
 		<dependency>
 			<groupId>org.mockito</groupId>
@@ -391,6 +135,17 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+    <modules>
+        <module>consumer</module>
+        <module>consumer2</module>
+        <module>validation</module>
+        <module>util</module>
+        <module>cli</module>
+        <module>serializer</module>
+        <module>metrics</module>
+        <module>http</module>
+        <module>producer</module>
+    </modules>
 	
 	<build>
 		<finalName>bagheera</finalName>
@@ -424,30 +179,9 @@
 					</descriptors>
 				</configuration>
 			</plugin>
+                        
 			
-			<plugin>
-				<groupId>com.google.protobuf.tools</groupId>
-				<artifactId>maven-protoc-plugin</artifactId>
-				<version>0.1.10</version>
-				<executions>
-					<execution>
-						<id>generate-sources</id>
-						<goals>
-							<goal>compile</goal>
-						</goals>
-						<phase>generate-sources</phase>
-						<configuration>
-							<protoSourceRoot>${basedir}/src/main/proto/</protoSourceRoot>
-							<includes>
-								<param>**/*.proto</param>
-							</includes>
-						</configuration>
-					</execution>
-				</executions>
-				<configuration>
-					<protocExecutable>/usr/local/bin/protoc</protocExecutable>
-				</configuration>
-		    </plugin>
+
 			
 		</plugins>
 
