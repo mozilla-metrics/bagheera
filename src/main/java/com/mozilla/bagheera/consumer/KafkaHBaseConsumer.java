@@ -30,8 +30,8 @@ import org.apache.log4j.Logger;
 import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
 import com.mozilla.bagheera.sink.HBaseSink;
-import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
+import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.util.ShutdownHook;
 
 /**
@@ -41,28 +41,32 @@ import com.mozilla.bagheera.util.ShutdownHook;
 public final class KafkaHBaseConsumer extends App {
 
     private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
-    
+
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
         Options options = KafkaConsumer.getOptions();
         options.addOption(optFactory.create("tbl", "table", true, "HBase table name.").required());
         options.addOption(optFactory.create("f", "family", true, "Column family."));
         options.addOption(optFactory.create("q", "qualifier", true, "Column qualifier."));
+        options.addOption(optFactory.create("b", "batchsize", true, "Batch size (number of messages per HBase flush)."));
         options.addOption(optFactory.create("pd", "prefixdate", false, "Prefix key with salted date."));
-        
+
         CommandLineParser parser = new GnuParser();
         ShutdownHook sh = ShutdownHook.getInstance();
         try {
             // Parse command line options
             CommandLine cmd = parser.parse(options, args);
-            
+
             final KafkaConsumer consumer = KafkaConsumer.fromOptions(cmd);
             sh.addFirst(consumer);
-            
+
             // Create a sink for storing data
             SinkConfiguration sinkConfig = new SinkConfiguration();
             if (cmd.hasOption("numthreads")) {
                 sinkConfig.setInt("hbasesink.hbase.numthreads", Integer.parseInt(cmd.getOptionValue("numthreads")));
+            }
+            if (cmd.hasOption("batch")) {
+                sinkConfig.setInt("hbasesink.hbase.batchsize", Integer.parseInt(cmd.getOptionValue("batch")));
             }
             sinkConfig.setString("hbasesink.hbase.tablename", cmd.getOptionValue("table"));
             sinkConfig.setString("hbasesink.hbase.column.family", cmd.getOptionValue("family", "data"));
@@ -70,7 +74,7 @@ public final class KafkaHBaseConsumer extends App {
             sinkConfig.setBoolean("hbasesink.hbase.rowkey.prefixdate", cmd.hasOption("prefixdate"));
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(HBaseSink.class, sinkConfig);
             sh.addLast(sinkFactory);
-            
+
             // Set the sink factory for consumer storage
             consumer.setSinkFactory(sinkFactory);
 
