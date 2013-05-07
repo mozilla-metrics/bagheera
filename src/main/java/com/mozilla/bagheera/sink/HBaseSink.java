@@ -43,28 +43,29 @@ import com.yammer.metrics.core.Timer;
 import com.yammer.metrics.core.TimerContext;
 
 public class HBaseSink implements KeyValueSink {
-    
+
     private static final Logger LOG = Logger.getLogger(HBaseSink.class);
 
     private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-    
+
     protected long sleepTime = 1000L;
-    
+
     protected HTablePool hbasePool;
-    
+
     protected final byte[] tableName;
     protected final byte[] family;
     protected final byte[] qualifier;
-    
+
     protected boolean prefixDate = true;
     protected int batchSize = 100;
-    
+
     protected AtomicInteger putsQueueSize = new AtomicInteger();
-    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>(); 
-    
+    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>();
+
     protected final Meter stored;
     protected final Timer flushTimer;
-    
+    protected final Timer htableTimer;
+
     public HBaseSink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getString("hbasesink.hbase.tablename"),
              sinkConfiguration.getString("hbasesink.hbase.column.family", "data"),
@@ -72,20 +73,22 @@ public class HBaseSink implements KeyValueSink {
              sinkConfiguration.getBoolean("hbasesink.hbase.rowkey.prefixdate", false),
              sinkConfiguration.getInt("hbasesink.hbase.numthreads", DEFAULT_POOL_SIZE));
     }
-    
+
     public HBaseSink(String tableName, String family, String qualifier, boolean prefixDate, int numThreads) {
         this.tableName = Bytes.toBytes(tableName);
         this.family = Bytes.toBytes(family);
         this.qualifier = Bytes.toBytes(qualifier);
         this.prefixDate = prefixDate;
-        
+
         Configuration conf = HBaseConfiguration.create();
         hbasePool = new HTablePool(conf, numThreads);
-        
+
         stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".stored"), "messages", TimeUnit.SECONDS);
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+        htableTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".htable.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
-    
+
+    @Override
     public void close() {
         if (hbasePool != null) {
             if (!Thread.currentThread().isInterrupted()) {
@@ -102,7 +105,7 @@ public class HBaseSink implements KeyValueSink {
     public void flush() throws IOException {
         HTable table = (HTable) hbasePool.getTable(tableName);
         table.setAutoFlush(false);
-        final TimerContext t = flushTimer.time();
+        final TimerContext flushTimerContext = flushTimer.time();
         try {
             List<Put> puts = new ArrayList<Put>(batchSize);
             while (!putsQueue.isEmpty() && puts.size() < batchSize) {
@@ -112,14 +115,23 @@ public class HBaseSink implements KeyValueSink {
                     putsQueueSize.decrementAndGet();
                 }
             }
-            table.put(puts);
-            table.flushCommits();
+            flushTable(table, puts);
             stored.mark(puts.size());
         } finally {
-            t.stop();
+            flushTimerContext.stop();
             if (hbasePool != null && table != null) {
                 hbasePool.putTable(table);
             }
+        }
+    }
+
+    private void flushTable(HTable table, List<Put> puts) throws IOException {
+        TimerContext htableTimerContext = htableTimer.time();
+        try {
+            table.put(puts);
+            table.flushCommits();
+        } finally {
+            htableTimerContext.stop();
         }
     }
 
@@ -127,7 +139,7 @@ public class HBaseSink implements KeyValueSink {
     public void store(String key, byte[] data) throws IOException {
         Put p = new Put(Bytes.toBytes(key));
         p.add(family, qualifier, data);
-        putsQueue.add(p);      
+        putsQueue.add(p);
         if (putsQueueSize.incrementAndGet() >= batchSize) {
             flush();
         }
