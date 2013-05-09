@@ -119,33 +119,34 @@ public class ReplaySink implements Sink, KeyValueSink {
             }
 
             // TODO: replay it.
-            replay(newKey, data);
+            replay("POST", newKey, data);
         } else {
             LOG.debug("Record skipped due to sampling.");
         }
     }
 
     // Connect to the specified server and replay the given request
-    private void replay(String key, byte[] data) {
+    private void replay(String method, String key, byte[] data) {
         URL url;
         HttpURLConnection connection = null;
         try {
             // Create connection
             url = new URL(getDest(key));
             connection = (HttpURLConnection)url.openConnection();
-            connection.setRequestMethod("POST");
-
-            connection.setRequestProperty("Content-Length", String.valueOf(data.length));
+            connection.setRequestMethod(method);
 
             connection.setUseCaches (false);
             connection.setDoInput(true);
             connection.setDoOutput(true);
 
-            // Send request
-            DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
-            wr.write(data);
-            wr.flush();
-            wr.close();
+            // Send request (if need be)
+            if (data != null && data.length > 0) {
+                connection.setRequestProperty("Content-Length", String.valueOf(data.length));
+                DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+                wr.write(data);
+                wr.flush();
+                wr.close();
+            }
 
             // Get Response
             // TODO: do we care about the response?
@@ -176,6 +177,7 @@ public class ReplaySink implements Sink, KeyValueSink {
     @Override
     public void delete(String key) {
         // TODO: should we do this?
+        replay("DELETE", key, null);
     }
 
 }

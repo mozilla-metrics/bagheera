@@ -27,8 +27,6 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTablePool;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,12 +35,9 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
-// TODO: start a local server and ensure that we receive the requests.
+// Don't care that this httpserver stuff is restricted.
+@SuppressWarnings("restriction")
 public class ReplaySinkTest {
-    SinkConfiguration sinkConfig;
-    KeyValueSinkFactory sinkFactory;
-    HTablePool hbasePool;
-    HTable htable;
     int fakePort = 9888;
     String fakePath = "/submit/test";
     MyHandler requestHandler = new MyHandler();
@@ -50,17 +45,11 @@ public class ReplaySinkTest {
 
     @Before
     public void setup() throws IOException {
-        sinkConfig = new SinkConfiguration();
-        sinkConfig.setString("replaysink.dest", "http://localhost:" + fakePort + fakePath + "/" + ReplaySink.KEY_PLACEHOLDER);
-        sinkConfig.setString("replaysink.keys", "true");
-        sinkConfig.setString("replaysink.sample", "1");
-        sinkFactory = KeyValueSinkFactory.getInstance(ReplaySink.class, sinkConfig);
-
         // Set up a basic server:
         // See docs here: http://docs.oracle.com/javase/6/docs/jre/api/net/httpserver/spec/com/sun/net/httpserver/package-summary.html
         server = HttpServer.create(new InetSocketAddress(fakePort), 0);
         server.createContext(fakePath, requestHandler);
-        server.setExecutor(null); // creates a default executor
+        server.setExecutor(null); // default executor
         server.start();
     }
 
@@ -73,12 +62,10 @@ public class ReplaySinkTest {
 
     @Test
     public void testReplayWithoutSampling() throws IOException {
-        ReplaySink sink = (ReplaySink)sinkFactory.getSink("test");
+        ReplaySink sink = new ReplaySink(getDestConfig("http://localhost:" + fakePort + fakePath + "/" + ReplaySink.KEY_PLACEHOLDER));
 
         sink.store("foo", "bar".getBytes());
         assertEquals(fakePath + "/foo", requestHandler.lastRequestURI.toString());
-
-//        System.out.println(requestHandler.lastRequestURI.toURL().toString());
 
         // Make sure we see each request.
         int counter = 0;
@@ -129,7 +116,6 @@ public class ReplaySinkTest {
     @Test
     public void testDestNoSuffix() throws IOException {
         SinkConfiguration config = getDestConfig("http://localhost:8080/submit/foof/%k");
-        // FIXME We can't use the KeyValueSinkFactory because it gets stuck with the original config :(
         ReplaySink sink = new ReplaySink(config);
 
         assertEquals("http://localhost:8080/submit/foof/test1", sink.getDest("test1"));
@@ -140,7 +126,6 @@ public class ReplaySinkTest {
     @Test
     public void testDestNoKey() throws IOException {
         SinkConfiguration config = getDestConfig("I am a test");
-        // FIXME We can't use the KeyValueSinkFactory because it gets stuck with the original config :(
         ReplaySink sink = new ReplaySink(config);
 
         assertEquals("I am a test", sink.getDest("test1"));
@@ -148,6 +133,7 @@ public class ReplaySinkTest {
         assertEquals("I am a test", sink.getDest("a/b/c"));
     }
 
+    // FIXME We can't use the KeyValueSinkFactory because it gets stuck with the original config :(
     public SinkConfiguration getDestConfig(String destPattern) {
         SinkConfiguration config = new SinkConfiguration();
         config.setString("replaysink.keys", "true");
@@ -160,7 +146,6 @@ public class ReplaySinkTest {
     @Test
     public void testDestSuffix() throws IOException {
         SinkConfiguration config = getDestConfig("foo %k bar");
-        // FIXME We can't use the KeyValueSinkFactory because it gets stuck with the same config :(
         ReplaySink sink = new ReplaySink(config);
 
         assertEquals("foo test1 bar", sink.getDest("test1"));
@@ -168,9 +153,28 @@ public class ReplaySinkTest {
         assertEquals("foo a/b/c bar", sink.getDest("a/b/c"));
     }
 
+    @Test
+    public void testDeleteWithoutSampling() throws IOException {
+        ReplaySink sink = new ReplaySink(getDestConfig("http://localhost:" + fakePort + fakePath + "/" + ReplaySink.KEY_PLACEHOLDER));
+
+        // Make sure we see each request.
+        int counter = 0;
+        int max = 50;
+        for (int i = 0; i < max; i++) {
+            String key = "delete" + i;
+            sink.delete(key);
+            String expectedURI = fakePath + "/" + key;
+            if (expectedURI.equals(requestHandler.lastRequestURI.toString())) {
+                counter++;
+            }
+        }
+
+        // Without sampling, we should see all delete requests.
+        assertEquals(max, counter);
+    }
+
     class MyHandler implements HttpHandler {
         public URI lastRequestURI;
-        @SuppressWarnings("restriction")
         @Override
         public void handle(HttpExchange t) throws IOException {
             // TODO: this doesn't include the full URL, can we do better?
