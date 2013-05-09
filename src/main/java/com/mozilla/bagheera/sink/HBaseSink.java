@@ -69,6 +69,7 @@ public class HBaseSink implements KeyValueSink {
     protected final Meter oversized;
 
     protected final Timer flushTimer;
+    protected final Timer htableTimer;
 
     public HBaseSink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getString("hbasesink.hbase.tablename"),
@@ -94,6 +95,7 @@ public class HBaseSink implements KeyValueSink {
         deleted = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".deleted"), "messages", TimeUnit.SECONDS);
         oversized = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".oversized"), "messages", TimeUnit.SECONDS);
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+        htableTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".htable.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
     }
 
     @Override
@@ -117,7 +119,7 @@ public class HBaseSink implements KeyValueSink {
             HTable table = (HTable) hbasePool.getTable(tableName);
             try {
                 table.setAutoFlush(false);
-                final TimerContext t = flushTimer.time();
+                final TimerContext flushTimerContext = flushTimer.time();
                 try {
                     List<Put> puts = new ArrayList<Put>(batchSize);
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
@@ -127,11 +129,11 @@ public class HBaseSink implements KeyValueSink {
                             putsQueueSize.decrementAndGet();
                         }
                     }
-                    table.put(puts);
-                    table.flushCommits();
+                    flushTable(table, puts);
                     stored.mark(puts.size());
                 } finally {
-                    t.stop();
+                    flushTimerContext.stop();
+
                     if (hbasePool != null && table != null) {
                         hbasePool.putTable(table);
                     }
@@ -154,6 +156,16 @@ public class HBaseSink implements KeyValueSink {
             throw lastException;
         }
         LOG.debug("Flush finished");
+    }
+
+    private void flushTable(HTable table, List<Put> puts) throws IOException {
+        TimerContext htableTimerContext = htableTimer.time();
+        try {
+            table.put(puts);
+            table.flushCommits();
+        } finally {
+            htableTimerContext.stop();
+        }
     }
 
     @Override
