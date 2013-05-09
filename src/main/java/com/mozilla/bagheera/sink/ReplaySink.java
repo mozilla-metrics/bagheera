@@ -30,6 +30,8 @@ import java.util.UUID;
 
 import org.apache.log4j.Logger;
 
+// TODO: should we queue up deletes and combine them with "store" requests using the "X-Obsolete-Doc" header?
+
 public class ReplaySink implements Sink, KeyValueSink {
 
     public static final String KEY_PLACEHOLDER = "%k";
@@ -44,14 +46,16 @@ public class ReplaySink implements Sink, KeyValueSink {
     protected final boolean sample;
     protected final double sampleRate;
     protected final boolean copyKeys;
+    protected final boolean replayDeletes;
 
     public ReplaySink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getString("replaysink.dest"),
                 sinkConfiguration.getString("replaysink.sample"),
-                sinkConfiguration.getString("replaysink.keys"));
+                sinkConfiguration.getString("replaysink.keys"),
+                sinkConfiguration.getString("replaysink.delete"));
     }
 
-    public ReplaySink(String destinationPattern, String sampleRate, String copyKeys) {
+    public ReplaySink(String destinationPattern, String sampleRate, String copyKeys, String replayDeletes) {
         this.destinationPattern = destinationPattern;
         int keyPlaceholderLocation = destinationPattern.indexOf(KEY_PLACEHOLDER);
         boolean tmpUseKey = true;
@@ -71,6 +75,7 @@ public class ReplaySink implements Sink, KeyValueSink {
         }
         this.sampleRate = Double.parseDouble(sampleRate);
         this.copyKeys = Boolean.parseBoolean(copyKeys);
+        this.replayDeletes = Boolean.parseBoolean(replayDeletes);
         if ("1".equals(sampleRate)) {
             sample = false;
         } else {
@@ -176,8 +181,13 @@ public class ReplaySink implements Sink, KeyValueSink {
 
     @Override
     public void delete(String key) {
-        // TODO: should we do this?
-        replay("DELETE", key, null);
+        // Note that this breaks the "copyKeys" contract - it would be quite
+        // useless to generate random delete keys.
+
+        // Whether or not we process deletes is controlled by a config setting.
+        if (replayDeletes) {
+            replay("DELETE", key, null);
+        }
     }
 
 }

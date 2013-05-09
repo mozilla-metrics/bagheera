@@ -137,6 +137,7 @@ public class ReplaySinkTest {
     public SinkConfiguration getDestConfig(String destPattern) {
         SinkConfiguration config = new SinkConfiguration();
         config.setString("replaysink.keys", "true");
+        config.setString("replaysink.delete", "true");
         config.setString("replaysink.sample", "1");
         config.setString("replaysink.dest", destPattern);
 
@@ -171,6 +172,32 @@ public class ReplaySinkTest {
 
         // Without sampling, we should see all delete requests.
         assertEquals(max, counter);
+    }
+
+    @Test
+    public void testDisabledDeletes() throws IOException {
+        SinkConfiguration config = getDestConfig("http://localhost:" + fakePort + fakePath + "/" + ReplaySink.KEY_PLACEHOLDER);
+        config.setString("replaysink.delete", "false");
+        ReplaySink sink = new ReplaySink(config);
+
+        // Make sure we don't process any delete requests.
+        int counter = 0;
+        int max = 10;
+        for (int i = 0; i < max; i++) {
+            String key = "delete" + i;
+            sink.delete(key);
+            String expectedURI = fakePath + "/" + key;
+            String actualURI = "";
+            if (requestHandler.lastRequestURI != null) {
+                actualURI = requestHandler.lastRequestURI.toString();
+            }
+            if (expectedURI.equals(actualURI)) {
+                counter++;
+            }
+        }
+
+        // Without sampling, we should see all delete requests.
+        assertEquals(0, counter);
     }
 
     class MyHandler implements HttpHandler {

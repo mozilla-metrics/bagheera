@@ -47,6 +47,7 @@ public final class KafkaReplayConsumer extends App {
         options.addOption(optFactory.create("k", "copy-keys", true, "Whether or not to copy keys from the source data").required());
         options.addOption(optFactory.create("d", "dest", true, "Destination host / url pattern (include '" + ReplaySink.KEY_PLACEHOLDER + "' for key placeholder)"));
         options.addOption(optFactory.create("s", "sample", true, "Rate at which to sample the source data (defaults to using all data)"));
+        options.addOption(optFactory.create("D", "delete", true, "Also replay deletes (using the source keys by necessity)"));
 
 
         CommandLineParser parser = new GnuParser();
@@ -66,6 +67,7 @@ public final class KafkaReplayConsumer extends App {
             sinkConfig.setString("replaysink.keys", cmd.getOptionValue("copy-keys", "true"));
             sinkConfig.setString("replaysink.dest", cmd.getOptionValue("dest", "http://bogus:8080/submit/endpoint/" + ReplaySink.KEY_PLACEHOLDER));
             sinkConfig.setString("replaysink.sample", cmd.getOptionValue("sample", "1"));
+            sinkConfig.setString("replaysink.delete", cmd.getOptionValue("delete", "true"));
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(ReplaySink.class, sinkConfig);
             sh.addLast(sinkFactory);
 
