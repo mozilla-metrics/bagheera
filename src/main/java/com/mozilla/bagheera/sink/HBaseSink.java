@@ -37,6 +37,7 @@ import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.util.IdUtil;
 import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.Timer;
@@ -47,6 +48,7 @@ public class HBaseSink implements KeyValueSink {
     private static final Logger LOG = Logger.getLogger(HBaseSink.class);
 
     private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
+    private static final int DEFAULT_BATCH_SIZE = 100;
 
     private int retryCount = 5;
     private int retrySleepSeconds = 30;
@@ -58,7 +60,7 @@ public class HBaseSink implements KeyValueSink {
     protected final byte[] qualifier;
 
     protected boolean prefixDate = true;
-    protected int batchSize = 100;
+    protected final int batchSize;
     protected long maxKeyValueSize;
 
     protected AtomicInteger putsQueueSize = new AtomicInteger();
@@ -72,19 +74,23 @@ public class HBaseSink implements KeyValueSink {
     protected final Timer flushTimer;
     protected final Timer htableTimer;
 
+    protected final Gauge<Integer> batchSizeGauge;
+
     public HBaseSink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getString("hbasesink.hbase.tablename"),
              sinkConfiguration.getString("hbasesink.hbase.column.family", "data"),
              sinkConfiguration.getString("hbasesink.hbase.column.qualifier", "json"),
              sinkConfiguration.getBoolean("hbasesink.hbase.rowkey.prefixdate", false),
-             sinkConfiguration.getInt("hbasesink.hbase.numthreads", DEFAULT_POOL_SIZE));
+             sinkConfiguration.getInt("hbasesink.hbase.numthreads", DEFAULT_POOL_SIZE),
+             sinkConfiguration.getInt("hbasesink.hbase.batchsize", DEFAULT_BATCH_SIZE));
     }
 
-    public HBaseSink(String tableName, String family, String qualifier, boolean prefixDate, int numThreads) {
+    public HBaseSink(String tableName, String family, String qualifier, boolean prefixDate, int numThreads, final int batchSize) {
         this.tableName = Bytes.toBytes(tableName);
         this.family = Bytes.toBytes(family);
         this.qualifier = Bytes.toBytes(qualifier);
         this.prefixDate = prefixDate;
+        this.batchSize = batchSize;
 
         Configuration conf = HBaseConfiguration.create();
 
@@ -98,6 +104,12 @@ public class HBaseSink implements KeyValueSink {
         oversized = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".oversized"), "messages", TimeUnit.SECONDS);
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
         htableTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".htable.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+        batchSizeGauge = Metrics.newGauge(new MetricName("bagheera", "sink.hbase", tableName + ".batchsize"), new Gauge<Integer>(){
+            @Override
+            public Integer value() {
+                return batchSize;
+            }
+        });
     }
 
     @Override
