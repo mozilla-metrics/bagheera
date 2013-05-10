@@ -66,6 +66,7 @@ public class HBaseSink implements KeyValueSink {
 
     protected final Meter stored;
     protected final Meter deleted;
+    protected final Meter deleteFailed;
     protected final Meter oversized;
 
     protected final Timer flushTimer;
@@ -93,6 +94,7 @@ public class HBaseSink implements KeyValueSink {
 
         stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".stored"), "messages", TimeUnit.SECONDS);
         deleted = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".deleted"), "messages", TimeUnit.SECONDS);
+        deleteFailed = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".delete.failed"), "messages", TimeUnit.SECONDS);
         oversized = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".oversized"), "messages", TimeUnit.SECONDS);
         flushTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".flush.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
         htableTimer = Metrics.newTimer(new MetricName("bagheera", "sink.hbase", tableName + ".htable.time"), TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
@@ -210,14 +212,21 @@ public class HBaseSink implements KeyValueSink {
     @Override
     public void delete(String key) throws IOException {
         HTable table = (HTable) hbasePool.getTable(tableName);
+        boolean deleteSucceeded = false;
         try {
             Delete d = new Delete(Bytes.toBytes(key));
             table.delete(d);
+            // TODO: how can we tell if we actually deleted a row?
+            deleteSucceeded = true;
             deleted.mark();
         } finally {
             if (hbasePool != null && table != null) {
                 hbasePool.putTable(table);
             }
+        }
+
+        if (!deleteSucceeded) {
+            deleteFailed.mark();
         }
     }
 
