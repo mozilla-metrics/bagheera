@@ -44,8 +44,8 @@ public final class KafkaReplayConsumer extends App {
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
         Options options = KafkaConsumer.getOptions();
-        options.addOption(optFactory.create("k", "copy-keys", true, "Whether or not to copy keys from the source data").required());
-        options.addOption(optFactory.create("d", "dest", true, "Destination host / url pattern (include '" + ReplaySink.KEY_PLACEHOLDER + "' for key placeholder)"));
+        options.addOption(optFactory.create("k", "copy-keys", true, "Whether or not to copy keys from the source data"));
+        options.addOption(optFactory.create("d", "dest", true, "Destination host / url pattern (include '" + ReplaySink.KEY_PLACEHOLDER + "' for key placeholder)").required());
         options.addOption(optFactory.create("s", "sample", true, "Rate at which to sample the source data (defaults to using all data)"));
         options.addOption(optFactory.create("D", "delete", true, "Also replay deletes (using the source keys by necessity)"));
 
