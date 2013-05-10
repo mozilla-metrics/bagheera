@@ -156,7 +156,6 @@ public class KafkaConsumer implements Consumer {
                                 bmsg.hasId() && bmsg.hasPayload()) {
                                 if (validationPipeline == null ||
                                     validationPipeline.isValid(bmsg.getPayload().toByteArray())) {
-                                    // TODO ^ check for "java.lang.IllegalArgumentException: KeyValue size too large" in sink.store.
                                     if (bmsg.hasTimestamp()) {
                                         sink.store(bmsg.getId(), bmsg.getPayload().toByteArray(), bmsg.getTimestamp());
                                     } else {
