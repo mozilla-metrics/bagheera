@@ -5,12 +5,13 @@ bin=`cd "$bin"; pwd`
 
 CONSUMER_PROPS=$bin/../conf/kafka.consumer.properties
 HBASE_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaHBaseConsumer
+HBASE_CONSUMER_CLASS_CDH4=com.mozilla.bagheera.consumer2.KafkaHBaseConsumer
 HDFS_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaSequenceFileConsumer
 # FHR consumer comes from fhr-toolbox which needs its jar deployed to bagheera/lib in order to use it
 FHR_CONSUMER_CLASS=com.mozilla.fhr.consumer.FHRConsumer
 
 # Telemetry
-$bin/consumer $HBASE_CONSUMER_CLASS -t telemetry -gid telemetry-hbase-prod -p $CONSUMER_PROPS --validatejson --table telemetry --family data --qualifier json --prefixdate
+$bin/consumer2 $HBASE_CONSUMER_CLASS_CDH4 -t telemetry -gid telemetry-hbase-prod -p $CONSUMER_PROPS --validatejson --table telemetry --family data --qualifier json --prefixdate 
 # FHR (does its own json validation so option isn't needed)
 $bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod -p $CONSUMER_PROPS --table metrics --family data --qualifier json --numthreads 4
 # Testpilot

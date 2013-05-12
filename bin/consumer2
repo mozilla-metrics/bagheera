@@ -8,7 +8,7 @@ CONSUMER_HASH=`echo -n \"$@\" | md5 | cut -f1 -d' '`
 CONSUMER_OPTS="-Dbagheera.log.dir=$bin/../logs -Dconsumer.hash=$CONSUMER_HASH"
 GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/consumer-$CONSUMER_HASH-gc.log.$NOW"
 JAVA_OPTS="$CONSUMER_OPTS -Xmx1024m -XX:+UseParallelGC"
-HADOOP_CONF="$bin/../conf/CDH3"
+HADOOP_CONF="$bin/../conf/CDH4"
 if [ "$ENABLE_YJP" = true ]; then
     JAVA_OPTS="${JAVA_OPTS} -agentpath:/usr/lib/yjp-11.0.10/bin/linux-x86-64/libyjpagent.so"
 fi

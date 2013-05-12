@@ -125,8 +125,8 @@ public class HBaseSink implements KeyValueSink {
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
                         Put p = putsQueue.poll();
                         if (p != null) {
-                            HRegionLocation regionLocation = table.getRegionLocation(p.getRow());
-                            LOG.info("row served by " + regionLocation.getServerAddress().getHostname());
+                            HRegionLocation regionLocation = table.getRegionLocation(p.getRow(),false);
+                            LOG.info("row served by " + regionLocation.getHostname());
                             puts.add(p);
                             putsQueueSize.decrementAndGet();
                         }

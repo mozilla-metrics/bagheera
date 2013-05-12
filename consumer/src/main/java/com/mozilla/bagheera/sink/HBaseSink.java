@@ -149,13 +149,7 @@ public class HBaseSink implements KeyValueSink {
                 LOG.info("clearing Region cache");
                 table.clearRegionCache();
                 LOG.info("sleeping...");
-                try {
-                    Thread.sleep(DEFAULT_HBASE_RETRY_SLEEP_SECONDS * 1000);
-                } catch (InterruptedException e1) {
-                    // wake up
-                    LOG.info("woke up by interruption", e1);
-                }
-                LOG.info("woke up");
+
             }
         }
         if (i >= DEFAULT_HBASE_RETRIES && lastException != null) {
