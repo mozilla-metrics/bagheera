@@ -32,12 +32,12 @@ fi
 
 # if this is a developer then use the main jar in the build directory
 if [ -d $bin/../target ]; then
-    MAIN_JAR_PATH="$bin/../target/http-*.jar"
+    MAIN_JAR_PATH="$bin/../target/bagheera/http-*.jar"
     if [ "$DAEMON_DETACHED" = "" ]; then
         DAEMON_DETACHED=false
     fi
 else
-    MAIN_JAR_PATH="$bin/../http-*.jar"
+    MAIN_JAR_PATH="$bin/../bagheera/http-*.jar"
     if [ "$DAEMON_DETACHED" = "" ]; then
         DAEMON_DETACHED=true
     fi
