@@ -17,7 +17,7 @@
           <include>com.mozilla:consumer2</include>
       </includes>
       <binaries>
-        <outputDirectory>target/${artifactId}</outputDirectory>
+        <outputDirectory>${artifactId}</outputDirectory>
         <unpack>false</unpack>
 	<dependencySets>
            <dependencySet>
