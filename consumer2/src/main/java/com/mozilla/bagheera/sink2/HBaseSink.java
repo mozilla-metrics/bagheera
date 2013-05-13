@@ -29,10 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTablePool;
-import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
@@ -115,7 +112,7 @@ public class HBaseSink implements KeyValueSink {
         int i;
         for (i = 0; i < DEFAULT_HBASE_RETRIES; i++) {
             LOG.info(String.format("Starting flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
-            HTable table = (HTable) hbasePool.getTable(tableName);
+            HTableInterface table = (HTable) hbasePool.getTable(tableName);
             try {
                 table.setAutoFlush(false);
                 final TimerContext t = flushTimer.time();
@@ -125,8 +122,6 @@ public class HBaseSink implements KeyValueSink {
                     while (!putsQueue.isEmpty() && puts.size() < batchSize) {
                         Put p = putsQueue.poll();
                         if (p != null) {
-                            HRegionLocation regionLocation = table.getRegionLocation(p.getRow(),false);
-                            LOG.info("row served by " + regionLocation.getHostname());
                             puts.add(p);
                             putsQueueSize.decrementAndGet();
                         }
@@ -139,11 +134,9 @@ public class HBaseSink implements KeyValueSink {
                     stored.mark(puts.size());
                 }
                 finally {
-                    LOG.info("Stopping timer");
                     t.stop();
-                    if (hbasePool != null && table != null) {
-                        LOG.info("calling putTable");
-                        hbasePool.putTable(table);
+                    if ( table != null) {
+                        table.close();
                     }
                 }
                 LOG.info(String.format("Flush succeeded on attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES));
@@ -151,9 +144,6 @@ public class HBaseSink implements KeyValueSink {
                 } catch (IOException e) {
                 LOG.warn(String.format("Error in flush attempt %d of %d", (i+1), DEFAULT_HBASE_RETRIES), e);
                 lastException = e;
-                LOG.info("clearing Region cache");
-                table.clearRegionCache();
-                LOG.info("sleeping...");
                 try {
                     Thread.sleep(DEFAULT_HBASE_RETRY_SLEEP_SECONDS * 1000);
                 } catch (InterruptedException e1) {
