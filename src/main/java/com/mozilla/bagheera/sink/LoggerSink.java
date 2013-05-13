@@ -26,59 +26,60 @@ import org.apache.log4j.Logger;
 public class LoggerSink implements Sink, KeyValueSink {
 
     private static final Logger LOG = Logger.getLogger(LoggerSink.class);
-    
+
     private boolean logValues;
-    
+
     public LoggerSink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getBoolean("loggersink.logvalues", false));
     }
-    
+
     public LoggerSink(boolean logValues) {
         this.logValues = logValues;
     }
-    
+
     @Override
     public void close() {
         LOG.info("Called close()");
     }
-    
+
     @Override
     public void store(byte[] data) throws IOException {
-        LOG.info("data length:" + data.length);
+        LOG.info("Called store(data)");
+        LOG.info("store(d) data length:" + data.length);
         if (logValues) {
-            LOG.info("data: " + new String(data, "UTF-8"));
+            LOG.info("store(d) data: " + new String(data, "UTF-8"));
         }
     }
-    
+
     @Override
     public void store(String key, byte[] data) throws IOException {
         LOG.info("Called store(key,data)");
-        LOG.info("key length: " + key.length());
-        LOG.info("data length:" + data.length);
+        LOG.info("store(k,d) key length: " + key.length());
+        LOG.info("store(k,d) data length:" + data.length);
         if (logValues) {
-            LOG.info("key: " + key);
-            LOG.info("data: " + new String(data, "UTF-8"));
+            LOG.info("store(k,d) key: " + key);
+            LOG.info("store(k,d) data: " + new String(data, "UTF-8"));
         }
     }
 
     @Override
     public void store(String key, byte[] data, long timestamp) throws IOException {
         LOG.info("Called store(key,data,timestamp)");
-        LOG.info("key length: " + key.length());
-        LOG.info("data length:" + data.length);
-        LOG.info("timestamp: " + timestamp);
+        LOG.info("store(k,d,t) key length: " + key.length());
+        LOG.info("store(k,d,t) data length:" + data.length);
+        LOG.info("store(k,d,t) timestamp: " + timestamp);
         if (logValues) {
-            LOG.info("key: " + key);
-            LOG.info("data: " + new String(data, "UTF-8"));
-        }    
+            LOG.info("store(k,d,t) key: " + key);
+            LOG.info("store(k,d,t) data: " + new String(data, "UTF-8"));
+        }
     }
 
     @Override
     public void delete(String key) {
         LOG.info("Called delete(key)");
-        LOG.info("key length: " + key.length());
+        LOG.info("delete(k) key length: " + key.length());
         if (logValues) {
-            LOG.info("key: " + key);
+            LOG.info("delete(k) key: " + key);
         }
     }
 

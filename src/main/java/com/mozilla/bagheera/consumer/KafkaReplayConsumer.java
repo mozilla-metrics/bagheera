@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Mozilla Foundation
+ * Copyright 2013 Mozilla Foundation
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -29,27 +29,26 @@ import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
-import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
+import com.mozilla.bagheera.sink.ReplaySink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.util.ShutdownHook;
 
 /**
- * Basic HBase Kafka consumer. This class can be utilized as is but if you want more
- * sophisticated logic consider creating your own consumer.
+ * Kafka consumer which reads from one kafka queue and re-creates requests to send elsewhere.
  */
-public final class KafkaHBaseConsumer extends App {
+public final class KafkaReplayConsumer extends App {
 
-    private static final Logger LOG = Logger.getLogger(KafkaHBaseConsumer.class);
+    private static final Logger LOG = Logger.getLogger(KafkaReplayConsumer.class);
 
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
         Options options = KafkaConsumer.getOptions();
-        options.addOption(optFactory.create("tbl", "table", true, "HBase table name.").required());
-        options.addOption(optFactory.create("f", "family", true, "Column family."));
-        options.addOption(optFactory.create("q", "qualifier", true, "Column qualifier."));
-        options.addOption(optFactory.create("b", "batchsize", true, "Batch size (number of messages per HBase flush)."));
-        options.addOption(optFactory.create("pd", "prefixdate", false, "Prefix key with salted date."));
+        options.addOption(optFactory.create("k", "copy-keys", true, "Whether or not to copy keys from the source data"));
+        options.addOption(optFactory.create("d", "dest", true, "Destination host / url pattern (include '" + ReplaySink.KEY_PLACEHOLDER + "' for key placeholder)").required());
+        options.addOption(optFactory.create("s", "sample", true, "Rate at which to sample the source data (defaults to using all data)"));
+        options.addOption(optFactory.create("D", "delete", true, "Also replay deletes (using the source keys by necessity)"));
+
 
         CommandLineParser parser = new GnuParser();
         ShutdownHook sh = ShutdownHook.getInstance();
@@ -65,14 +64,11 @@ public final class KafkaHBaseConsumer extends App {
             if (cmd.hasOption("numthreads")) {
                 sinkConfig.setInt("hbasesink.hbase.numthreads", Integer.parseInt(cmd.getOptionValue("numthreads")));
             }
-            if (cmd.hasOption("batch")) {
-                sinkConfig.setInt("hbasesink.hbase.batchsize", Integer.parseInt(cmd.getOptionValue("batch")));
-            }
-            sinkConfig.setString("hbasesink.hbase.tablename", cmd.getOptionValue("table"));
-            sinkConfig.setString("hbasesink.hbase.column.family", cmd.getOptionValue("family", "data"));
-            sinkConfig.setString("hbasesink.hbase.column.qualifier", cmd.getOptionValue("qualifier", "json"));
-            sinkConfig.setBoolean("hbasesink.hbase.rowkey.prefixdate", cmd.hasOption("prefixdate"));
-            KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(HBaseSink.class, sinkConfig);
+            sinkConfig.setString("replaysink.keys", cmd.getOptionValue("copy-keys", "true"));
+            sinkConfig.setString("replaysink.dest", cmd.getOptionValue("dest", "http://bogus:8080/submit/endpoint/" + ReplaySink.KEY_PLACEHOLDER));
+            sinkConfig.setString("replaysink.sample", cmd.getOptionValue("sample", "1"));
+            sinkConfig.setString("replaysink.delete", cmd.getOptionValue("delete", "true"));
+            KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(ReplaySink.class, sinkConfig);
             sh.addLast(sinkFactory);
 
             // Set the sink factory for consumer storage
@@ -85,7 +81,7 @@ public final class KafkaHBaseConsumer extends App {
         } catch (ParseException e) {
             LOG.error("Error parsing command line options", e);
             HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp(KafkaHBaseConsumer.class.getName(), options);
+            formatter.printHelp(KafkaReplayConsumer.class.getName(), options);
         }
     }
 }
