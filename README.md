@@ -1,6 +1,6 @@
 # Bagheera #
 
-Version: 0.9-SNAPSHOT
+Version: 0.10-SNAPSHOT
 
 #### REST service for Mozilla Metrics. This service currently uses Apache Kafka as its backing data store, then provides a few implementations of Kafka consumers to pull and persist to various data sinks. ####
 
@@ -99,3 +99,4 @@ All aspects of this software are distributed under Apache Software License 2.0. 
 * Daniel Einspanjer ([@deinspanjer](http://twitter.com/deinspanjer))
 * Anurag Phadke ([@anuragphadke](http://twitter.com/anuragphadke))
 * Mark Reid ([@reid_write](http://twitter.com/reid_write))
+* Harsha Chintalapani
