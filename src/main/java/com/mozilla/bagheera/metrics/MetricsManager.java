@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import com.yammer.metrics.reporting.ConsoleReporter;
 import com.yammer.metrics.reporting.GangliaReporter;
 import com.yammer.metrics.reporting.GraphiteReporter;
 
@@ -54,7 +55,7 @@ public class MetricsManager {
     private static String getProp(final Properties props, final String prefix, final String key) {
         return props.getProperty(prefix + key, null);
     }
-    
+
     private static boolean getBoolean(final Properties props, final String prefix, final String key) {
         String value = props.getProperty(prefix + key, null);
         if (value == null) {
@@ -92,12 +93,16 @@ public class MetricsManager {
                                     getProp(props, prefix, "graphite.host"),
                                     getInt(props, prefix, "graphite.port"));
         }
+        if (getBoolean(props, prefix, "consolereporter.enable")) {
+            ConsoleReporter.enable(getLong(props, prefix, "consolereporter.update.secs"),
+                                    TimeUnit.SECONDS);
+        }
     }
 
     public HttpMetric getGlobalHttpMetric() {
         return getHttpMetricForNamespace(GLOBAL_HTTP_METRIC_ID);
     }
-    
+
     public HttpMetric getHttpMetricForNamespace(final String ns) {
         final HttpMetric metric = httpMetrics.get(ns);
         if (metric != null) {
