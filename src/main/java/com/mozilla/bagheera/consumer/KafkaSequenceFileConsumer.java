@@ -33,6 +33,7 @@ import com.mozilla.bagheera.sink.SequenceFileSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
+import com.mozilla.bagheera.metrics.MetricsManager;
 
 /**
  * Basic SequenceFile (HDFS) Kafka consumer. This class can be utilized as is but if you want more
@@ -71,8 +72,11 @@ public final class KafkaSequenceFileConsumer extends App {
             // Set the sink for consumer storage
             consumer.setSinkFactory(sinkFactory);
 
-            prepareHealthChecks();
+            // Initialize metrics collection, reporting, etc.
+            final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
 
+            prepareHealthChecks();
+            
             // Begin polling
             consumer.poll();
         } catch (ParseException e) {
