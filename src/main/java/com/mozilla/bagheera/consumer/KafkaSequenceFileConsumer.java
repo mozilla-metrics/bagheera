@@ -29,11 +29,10 @@ import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
+import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.sink.SequenceFileSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
-import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
-import com.mozilla.bagheera.metrics.MetricsManager;
 
 /**
  * Basic SequenceFile (HDFS) Kafka consumer. This class can be utilized as is but if you want more
@@ -42,7 +41,7 @@ import com.mozilla.bagheera.metrics.MetricsManager;
 public final class KafkaSequenceFileConsumer extends App {
 
     private static final Logger LOG = Logger.getLogger(KafkaSequenceFileConsumer.class);
-    
+
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
         Options options = KafkaConsumer.getOptions();
@@ -50,16 +49,16 @@ public final class KafkaSequenceFileConsumer extends App {
         options.addOption(optFactory.create("df", "dateformat", true, "Date format for the date subdirectories."));
         options.addOption(optFactory.create("fs", "filesize", true, "Max file size for output files."));
         options.addOption(optFactory.create("b", "usebytes", false, "Use BytesWritable for value rather than Text."));
-        
+
         CommandLineParser parser = new GnuParser();
         ShutdownHook sh = ShutdownHook.getInstance();
         try {
             // Parse command line options
             CommandLine cmd = parser.parse(options, args);
-            
+
             final KafkaConsumer consumer = KafkaConsumer.fromOptions(cmd);
             sh.addFirst(consumer);
-            
+
             // Create a sink for storing data
             SinkConfiguration sinkConfig = new SinkConfiguration();
             sinkConfig.setString("hdfssink.hdfs.basedir.path", cmd.getOptionValue("output", "/bagheera"));
@@ -68,15 +67,12 @@ public final class KafkaSequenceFileConsumer extends App {
             sinkConfig.setBoolean("hdfssink.hdfs.usebytes", cmd.hasOption("usebytes"));
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(SequenceFileSink.class, sinkConfig);
             sh.addLast(sinkFactory);
-            
+
             // Set the sink for consumer storage
             consumer.setSinkFactory(sinkFactory);
 
-            // Initialize metrics collection, reporting, etc.
-            final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
+            initializeApp();
 
-            prepareHealthChecks();
-            
             // Begin polling
             consumer.poll();
         } catch (ParseException e) {

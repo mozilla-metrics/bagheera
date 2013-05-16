@@ -20,6 +20,7 @@
 
 package com.mozilla.bagheera.cli;
 
+import com.mozilla.bagheera.metrics.MetricsManager;
 import com.yammer.metrics.HealthChecks;
 import com.yammer.metrics.util.DeadlockHealthCheck;
 
@@ -28,6 +29,12 @@ import com.yammer.metrics.util.DeadlockHealthCheck;
  */
 public abstract class App {
     private static boolean healthChecksInitialized = false;
+    private static boolean metricsInitialized = false;
+
+    public static void initializeApp() {
+        prepareHealthChecks();
+        prepareMetrics();
+    }
 
     public static synchronized void prepareHealthChecks() {
         if (healthChecksInitialized) {
@@ -36,5 +43,17 @@ public abstract class App {
         HealthChecks.register(new DeadlockHealthCheck());
         healthChecksInitialized = true;
     }
+
+    public static synchronized void prepareMetrics() {
+        if (metricsInitialized) {
+            return;
+        }
+
+        // Initialize metrics collection and reporting.  While 'manager' is not
+        // directly used, this call is necessary to begin reporting metrics.
+        @SuppressWarnings("unused")
+        final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
+        metricsInitialized = true;
+    }
 }
-    
+

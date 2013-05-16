@@ -33,7 +33,6 @@ import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.sink.ReplaySink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.util.ShutdownHook;
-import com.mozilla.bagheera.metrics.MetricsManager;
 
 /**
  * Kafka consumer which reads from one kafka queue and re-creates requests to send elsewhere.
@@ -75,10 +74,7 @@ public final class KafkaReplayConsumer extends App {
             // Set the sink factory for consumer storage
             consumer.setSinkFactory(sinkFactory);
 
-            prepareHealthChecks();
-
-            // Initialize metrics collection, reporting, etc.
-            final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
+            initializeApp();
 
             // Begin polling
             consumer.poll();

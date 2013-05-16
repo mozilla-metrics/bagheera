@@ -29,44 +29,40 @@ import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
+import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.sink.LoggerSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
-import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
-import com.mozilla.bagheera.metrics.MetricsManager;
 
 public class KafkaLoggerConsumer extends App {
 
 private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
-    
+
     public static void main(String[] args) {
         OptionFactory optFactory = OptionFactory.getInstance();
         Options options = KafkaConsumer.getOptions();
         options.addOption(optFactory.create("lv", "logvalues", false, "Log values."));
-        
+
         CommandLineParser parser = new GnuParser();
         ShutdownHook sh = ShutdownHook.getInstance();
         try {
             // Parse command line options
             CommandLine cmd = parser.parse(options, args);
-            
+
             final KafkaConsumer consumer = KafkaConsumer.fromOptions(cmd);
             sh.addFirst(consumer);
-            
+
             // Create a sink for storing data
             SinkConfiguration sinkConfig = new SinkConfiguration();
             sinkConfig.setBoolean("loggersink.logvalues", cmd.hasOption("logvalues"));
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(LoggerSink.class, sinkConfig);
             sh.addLast(sinkFactory);
-            
+
             // Set the sink for consumer storage
             consumer.setSinkFactory(sinkFactory);
 
-            prepareHealthChecks();
+            initializeApp();
 
-            // Initialize metrics collection, reporting, etc.
-            final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
-            
             // Begin polling
             consumer.poll();
         } catch (ParseException e) {
@@ -75,5 +71,5 @@ private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
             formatter.printHelp(KafkaHBaseConsumer.class.getName(), options);
         }
     }
-    
+
 }

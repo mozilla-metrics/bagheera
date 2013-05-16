@@ -33,7 +33,6 @@ import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.util.ShutdownHook;
-import com.mozilla.bagheera.metrics.MetricsManager;
 
 /**
  * Basic HBase Kafka consumer. This class can be utilized as is but if you want more
@@ -79,11 +78,8 @@ public final class KafkaHBaseConsumer extends App {
             // Set the sink factory for consumer storage
             consumer.setSinkFactory(sinkFactory);
 
-            prepareHealthChecks();
+            initializeApp();
 
-            // Initialize metrics collection, reporting, etc.
-            final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
-            
             // Begin polling
             consumer.poll();
         } catch (ParseException e) {
