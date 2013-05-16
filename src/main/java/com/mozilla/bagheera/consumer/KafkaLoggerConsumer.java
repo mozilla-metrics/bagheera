@@ -33,6 +33,7 @@ import com.mozilla.bagheera.sink.LoggerSink;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.util.ShutdownHook;
+import com.mozilla.bagheera.metrics.MetricsManager;
 
 public class KafkaLoggerConsumer extends App {
 
@@ -62,6 +63,9 @@ private static final Logger LOG = Logger.getLogger(KafkaLoggerConsumer.class);
             consumer.setSinkFactory(sinkFactory);
 
             prepareHealthChecks();
+
+            // Initialize metrics collection, reporting, etc.
+            final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
             
             // Begin polling
             consumer.poll();
