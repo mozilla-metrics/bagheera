@@ -46,6 +46,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.mozilla.bagheera.BagheeraProto.BagheeraMessage;
 
 public class ProducerTest {
@@ -62,24 +63,22 @@ public class ProducerTest {
     private static final int KAFKA_BROKER_PORT = 9090;
     private static final String KAFKA_TOPIC = "test";
 
+    private int messageNumber = 0;
+
     private KafkaServer server;
 
     @Before
-    public void setup() throws IOException {
+    public void setup() throws IOException, InterruptedException {
         // We get a NoClassDefFoundError without this.
         if (!new File("./target/classes/com/mozilla/bagheera/BagheeraProto.class").exists()) {
             fail("You must run 'mvn compile' before the tests will run properly from Eclipse");
         }
 
-//        File tempDir = Files.createTempDir();
-//        KAFKA_DIR = tempDir.getCanonicalPath();
-//        KAFKA_DIR = folder.newFolder("kafka").getCanonicalPath();
-        KAFKA_DIR = "/tmp/testkafka";
-
+        // Use an automatically-created folder for the kafka server
+        KAFKA_DIR = folder.newFolder("kafka").getCanonicalPath();
         System.out.println("Using kafka temp dir: " + KAFKA_DIR);
 
         startServer();
-
     }
 
     private void startServer() {
@@ -93,6 +92,9 @@ public class ProducerTest {
 
         // flush every message.
         props.setProperty("log.flush.interval", "1");
+
+        // flush every 1ms
+        props.setProperty("log.default.flush.scheduler.interval.ms", "1");
 
         server = new KafkaServer(new KafkaConfig(props));
         server.startup();
@@ -114,11 +116,43 @@ public class ProducerTest {
 
     @Test
     public void testAsyncBatch() throws IOException, InterruptedException {
+        produceData(false);
+        int messageCount = countMessages();
+        System.out.println("Consumed " + messageCount + " messages");
 
-//        produceData();
-//        startServer();
+        // We expect the batch size plus two extra messages:
+        int goodExpectedCount = BATCH_SIZE + 2;
+        assertEquals(goodExpectedCount, messageCount);
 
+        produceData(true);
+        messageCount = countMessages();
 
+        // If the entire batch got wrecked, we should end up with 3 messages left over.
+        // Since we re-consume the entire queue, we have to discount the messages we produced
+        // above.  With batch size set to 10, we expect to see the whole first batch (1-12)
+        // plus the 3 messages after the aborted batch (23, 24, 25).  Messages in the batch
+        // of 13-22 are expected to be lost.
+        // You should see this output:
+//        Message 1 @177: 1.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 2 @354: 2.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 3 @531: 3.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 4 @708: 4.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 5 @885: 5.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 6 @1062: 6.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 7 @1239: 7.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 8 @1416: 8.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 9 @1593: 9.23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 10 @1770: 10.3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 11 @1947: 11.3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 12 @2124: 12.3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 13 @2301: 23.3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 14 @2478: 24.3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+//        Message 15 @2655: 25.3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+        int badExpectedCount = goodExpectedCount + 3;
+        assertEquals(badExpectedCount, messageCount);
+    }
+
+    private int countMessages() throws InvalidProtocolBufferException {
         SimpleConsumer consumer = new SimpleConsumer("localhost", KAFKA_BROKER_PORT, 100, 1024);
         long offset = 0l;
         int messageCount = 0;
@@ -136,20 +170,15 @@ public class ProducerTest {
                 BagheeraMessage bmsg = BagheeraMessage.parseFrom(ByteString.copyFrom(message2.payload()));
 
                 String payload = new String(bmsg.getPayload().toByteArray());
-//                ByteBuffer payload = message2.payload();
-//                byte[] bytes = new byte[payload.remaining()];
-//                payload.get(bytes);
-//                String payloadString = new String(bytes);
                 System.out.println(String.format("Message %d @%d: %s", messageCount, offset, payload));
             }
         }
 
         consumer.close();
-
-        assertEquals(BATCH_SIZE + 2, messageCount);
+        return messageCount;
     }
 
-    private void produceData() {
+    private void produceData(boolean includeBadRecord) throws InterruptedException {
         Properties props = getProperties();
         kafka.javaapi.producer.Producer<String,BagheeraMessage> producer = new kafka.javaapi.producer.Producer<String,BagheeraMessage>(new ProducerConfig(props));
         BagheeraMessage msg = getMessage(GOOD_MESSAGE_SIZE);
@@ -158,11 +187,17 @@ public class ProducerTest {
         producer.send(getProducerData(msg));
         producer.send(getProducerData(getMessage(GOOD_MESSAGE_SIZE)));
 
-//        producer.send(getProducerData(getMessage(BAD_MESSAGE_SIZE)));
+        if (includeBadRecord) {
+            producer.send(getProducerData(getMessage(BAD_MESSAGE_SIZE)));
+        }
+
         for (int i = 0; i < BATCH_SIZE; i++) {
             producer.send(getProducerData(getMessage(GOOD_MESSAGE_SIZE)));
         }
         producer.close();
+
+        // Wait for flush
+        Thread.sleep(100);
     }
 
     private ProducerData<String,BagheeraMessage> getProducerData(BagheeraMessage msg) {
@@ -176,7 +211,9 @@ public class ProducerTest {
         bmsgBuilder.setIpAddr(ByteString.copyFrom("192.168.1.10".getBytes()));
 
         StringBuilder content = new StringBuilder(payloadSize);
-        for (int i = 0; i < payloadSize; i++) {
+        content.append(++messageNumber);
+        content.append(".");
+        for (int i = content.length(); i < payloadSize; i++) {
             content.append(i % 10);
         }
         bmsgBuilder.setPayload(ByteString.copyFrom(content.toString().getBytes()));
@@ -186,17 +223,11 @@ public class ProducerTest {
 
     private Properties getProperties() {
         Properties props = new Properties();
-        props.setProperty("producer.type",    "sync");
+        props.setProperty("producer.type",    "async");
         props.setProperty("batch.size",       String.valueOf(BATCH_SIZE));
         props.setProperty("max.message.size", String.valueOf(MAX_MESSAGE_SIZE));
         props.setProperty("broker.list",      KAFKA_BROKER_ID + ":localhost:" + KAFKA_BROKER_PORT);
         props.setProperty("serializer.class", "com.mozilla.bagheera.serializer.BagheeraEncoder");
-
-//broker.list=0:localhost:9092
-//serializer.class=com.mozilla.bagheera.serializer.BagheeraEncoder
-//producer.type=async
-//compression.codec=2
-//batch.size=100
 
         return props;
     }
