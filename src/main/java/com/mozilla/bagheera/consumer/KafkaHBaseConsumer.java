@@ -29,11 +29,11 @@ import org.apache.log4j.Logger;
 
 import com.mozilla.bagheera.cli.App;
 import com.mozilla.bagheera.cli.OptionFactory;
+import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.sink.HBaseSink;
 import com.mozilla.bagheera.sink.KeyValueSinkFactory;
 import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.util.ShutdownHook;
-import com.mozilla.bagheera.metrics.MetricsManager;
 
 /**
  * Basic HBase Kafka consumer. This class can be utilized as is but if you want more
@@ -66,8 +66,8 @@ public final class KafkaHBaseConsumer extends App {
             if (cmd.hasOption("numthreads")) {
                 sinkConfig.setInt("hbasesink.hbase.numthreads", Integer.parseInt(cmd.getOptionValue("numthreads")));
             }
-            if (cmd.hasOption("batch")) {
-                sinkConfig.setInt("hbasesink.hbase.batchsize", Integer.parseInt(cmd.getOptionValue("batch")));
+            if (cmd.hasOption("batchsize")) {
+                sinkConfig.setInt("hbasesink.hbase.batchsize", Integer.parseInt(cmd.getOptionValue("batchsize")));
             }
             sinkConfig.setString("hbasesink.hbase.tablename", cmd.getOptionValue("table"));
             sinkConfig.setString("hbasesink.hbase.column.family", cmd.getOptionValue("family", "data"));
@@ -83,7 +83,7 @@ public final class KafkaHBaseConsumer extends App {
 
             // Initialize metrics collection, reporting, etc.
             final MetricsManager manager = MetricsManager.getDefaultMetricsManager();
-            
+
             // Begin polling
             consumer.poll();
         } catch (ParseException e) {
