@@ -85,27 +85,27 @@ public class HBaseSinkTest {
         HBaseSink sink = (HBaseSink) sinkFactory.getSink("test");
 
         @SuppressWarnings("unchecked")
-        ConcurrentLinkedQueue<Put> putsQueue = Mockito.mock(ConcurrentLinkedQueue.class);
+        ConcurrentLinkedQueue<Row> rowQueue = Mockito.mock(ConcurrentLinkedQueue.class);
 
-        sink.putsQueue = putsQueue;
+        sink.rowQueue = rowQueue;
         byte[] theArray = new byte[50*1000*1000]; // 50MB
         for (int i = 0; i < theArray.length; i++) {
             theArray[i] = (byte)(i % 256 - 128);
         }
 
         sink.store("test1", theArray);
-        Mockito.verify(putsQueue, Mockito.times(0)).add((Put)Mockito.any());
+        Mockito.verify(rowQueue, Mockito.times(0)).add((Put)Mockito.any());
         sink.store("test2", "acceptable".getBytes());
-        Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
+        Mockito.verify(rowQueue, Mockito.times(1)).add((Put)Mockito.any());
         sink.store("test3", theArray);
-        Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
+        Mockito.verify(rowQueue, Mockito.times(1)).add((Put)Mockito.any());
 
         sink.store("test4", theArray, new Date().getTime());
-        Mockito.verify(putsQueue, Mockito.times(1)).add((Put)Mockito.any());
+        Mockito.verify(rowQueue, Mockito.times(1)).add((Put)Mockito.any());
         sink.store("test5", "acceptable".getBytes(), new Date().getTime());
-        Mockito.verify(putsQueue, Mockito.times(2)).add((Put)Mockito.any());
+        Mockito.verify(rowQueue, Mockito.times(2)).add((Put)Mockito.any());
         sink.store("test6", theArray, new Date().getTime());
-        Mockito.verify(putsQueue, Mockito.times(2)).add((Put)Mockito.any());
+        Mockito.verify(rowQueue, Mockito.times(2)).add((Put)Mockito.any());
     }
 
 }

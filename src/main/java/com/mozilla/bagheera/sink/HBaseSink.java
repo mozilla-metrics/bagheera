@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
@@ -63,10 +64,11 @@ public class HBaseSink implements KeyValueSink {
     protected final int batchSize;
     protected long maxKeyValueSize;
 
-    protected AtomicInteger putsQueueSize = new AtomicInteger();
-    protected ConcurrentLinkedQueue<Put> putsQueue = new ConcurrentLinkedQueue<Put>();
+    protected AtomicInteger rowQueueSize = new AtomicInteger();
+    protected ConcurrentLinkedQueue<Row> rowQueue = new ConcurrentLinkedQueue<Row>();
 
     protected final Meter stored;
+    protected final Meter storeFailed;
     protected final Meter deleted;
     protected final Meter deleteFailed;
     protected final Meter oversized;
@@ -99,6 +101,7 @@ public class HBaseSink implements KeyValueSink {
         hbasePool = new HTablePool(conf, numThreads);
 
         stored = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".stored"), "messages", TimeUnit.SECONDS);
+        storeFailed = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".store.failed"), "messages", TimeUnit.SECONDS);
         deleted = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".deleted"), "messages", TimeUnit.SECONDS);
         deleteFailed = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".delete.failed"), "messages", TimeUnit.SECONDS);
         oversized = Metrics.newMeter(new MetricName("bagheera", "sink.hbase", tableName + ".oversized"), "messages", TimeUnit.SECONDS);
@@ -135,16 +138,23 @@ public class HBaseSink implements KeyValueSink {
                 table.setAutoFlush(false);
                 final TimerContext flushTimerContext = flushTimer.time();
                 try {
-                    List<Put> puts = new ArrayList<Put>(batchSize);
-                    while (!putsQueue.isEmpty() && puts.size() < batchSize) {
-                        Put p = putsQueue.poll();
-                        if (p != null) {
-                            puts.add(p);
-                            putsQueueSize.decrementAndGet();
+                    List<Row> rows = new ArrayList<Row>(batchSize);
+                    while (!rowQueue.isEmpty() && rows.size() < batchSize) {
+                        Row row = rowQueue.poll();
+                        if (row != null) {
+                            rows.add(row);
+                            rowQueueSize.decrementAndGet();
                         }
                     }
-                    flushTable(table, puts);
-                    stored.mark(puts.size());
+                    try {
+                        FlushResult result = flushTable(table, rows);
+                        stored.mark(result.successfulPutCount);
+                        storeFailed.mark(result.failedPutCount);
+                        deleted.mark(result.successfulDeleteCount);
+                        deleteFailed.mark(result.failedDeleteCount);
+                    } catch (InterruptedException e) {
+                        LOG.error("Error flushing batch of " + batchSize + " messages", e);
+                    }
                 } finally {
                     flushTimerContext.stop();
 
@@ -172,14 +182,68 @@ public class HBaseSink implements KeyValueSink {
         LOG.debug("Flush finished");
     }
 
-    private void flushTable(HTable table, List<Put> puts) throws IOException {
+    private FlushResult flushTable(HTable table, List<Row> puts) throws IOException, InterruptedException {
+        List<Row> currentAttempt = puts;
+        Object[] batch = null;
+        FlushResult result = null;
+
+        int successfulPuts = 0;
+        int successfulDeletes = 0;
+
         TimerContext htableTimerContext = htableTimer.time();
         try {
-            table.put(puts);
-            table.flushCommits();
+            for (int attempt = 0; attempt < retryCount; attempt++) {
+                // TODO: wrap each attempt in a try/catch?
+                batch = table.batch(currentAttempt);
+                table.flushCommits();
+                List<Row> fails = new ArrayList<Row>(currentAttempt.size());
+                if (batch != null) {
+                    for (int i = 0; i < batch.length; i++) {
+                        if (batch[i] == null) {
+                            fails.add(currentAttempt.get(i));
+                        } else {
+                            // figure out what type it was
+                            Row row = currentAttempt.get(i);
+                            if (row instanceof Delete) {
+                                successfulDeletes++;
+                            } else if (row instanceof Put) {
+                                successfulPuts++;
+                            } else {
+                                LOG.warn("We succeeded in flushing something that's neither a Delete nor a Put");
+                            }
+                        }
+                    }
+
+                    currentAttempt = fails;
+                    if (currentAttempt.isEmpty()) {
+                        break;
+                    }
+                } else {
+                    // something badly broke, retry the whole list.
+                    LOG.error("Result of table.batch() was null");
+                }
+            }
+
+            int failedPuts = 0;
+            int failedDeletes = 0;
+            if (!currentAttempt.isEmpty()) {
+                for (Row row : currentAttempt) {
+                    if (row instanceof Delete) {
+                        failedDeletes++;
+                    } else if (row instanceof Put) {
+                        failedPuts++;
+                    } else {
+                        LOG.error("We failed to flush something that's neither a Delete nor a Put");
+                    }
+                }
+            }
+
+            result = new FlushResult(failedPuts, failedDeletes, successfulPuts, successfulDeletes);
         } finally {
             htableTimerContext.stop();
         }
+
+        return result;
     }
 
     @Override
@@ -187,8 +251,8 @@ public class HBaseSink implements KeyValueSink {
         if (!isOversized(key, data)) {
             Put p = new Put(Bytes.toBytes(key));
             p.add(family, qualifier, data);
-            putsQueue.add(p);
-            if (putsQueueSize.incrementAndGet() >= batchSize) {
+            rowQueue.add(p);
+            if (rowQueueSize.incrementAndGet() >= batchSize) {
                 flush();
             }
         }
@@ -214,8 +278,8 @@ public class HBaseSink implements KeyValueSink {
             byte[] k = prefixDate ? IdUtil.bucketizeId(key, timestamp) : Bytes.toBytes(key);
             Put p = new Put(k);
             p.add(family, qualifier, data);
-            putsQueue.add(p);
-            if (putsQueueSize.incrementAndGet() >= batchSize) {
+            rowQueue.add(p);
+            if (rowQueueSize.incrementAndGet() >= batchSize) {
                 flush();
             }
         }
@@ -223,22 +287,10 @@ public class HBaseSink implements KeyValueSink {
 
     @Override
     public void delete(String key) throws IOException {
-        HTable table = (HTable) hbasePool.getTable(tableName);
-        boolean deleteSucceeded = false;
-        try {
-            Delete d = new Delete(Bytes.toBytes(key));
-            table.delete(d);
-            // TODO: how can we tell if we actually deleted a row?
-            deleteSucceeded = true;
-            deleted.mark();
-        } finally {
-            if (hbasePool != null && table != null) {
-                hbasePool.putTable(table);
-            }
-        }
-
-        if (!deleteSucceeded) {
-            deleteFailed.mark();
+        Delete d = new Delete(Bytes.toBytes(key));
+        rowQueue.add(d);
+        if (rowQueueSize.incrementAndGet() >= batchSize) {
+            flush();
         }
     }
 
@@ -256,5 +308,19 @@ public class HBaseSink implements KeyValueSink {
 
     public void setRetrySleepSeconds(int retrySleepSeconds) {
         this.retrySleepSeconds = retrySleepSeconds;
+    }
+}
+
+class FlushResult {
+    public final int failedPutCount;
+    public final int failedDeleteCount;
+    public final int successfulPutCount;
+    public final int successfulDeleteCount;
+
+    public FlushResult(int failedPuts, int failedDeletes, int successfulPuts, int successfulDeletes) {
+        this.failedPutCount = failedPuts;
+        this.failedDeleteCount = failedDeletes;
+        this.successfulPutCount = successfulPuts;
+        this.successfulDeleteCount = successfulDeletes;
     }
 }
