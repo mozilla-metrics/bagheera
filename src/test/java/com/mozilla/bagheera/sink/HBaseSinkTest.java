@@ -50,6 +50,7 @@ public class HBaseSinkTest {
         sinkConfig.setString("hbasesink.hbase.column.family", "data");
         sinkConfig.setString("hbasesink.hbase.column.qualifier", "json");
         sinkConfig.setBoolean("hbasesink.hbase.rowkey.prefixdate", false);
+        sinkConfig.setInt("hbasesink.hbase.batchsize", 10);
         sinkFactory = KeyValueSinkFactory.getInstance(HBaseSink.class, sinkConfig);
 
         hbasePool = Mockito.mock(HTablePool.class);
@@ -107,5 +108,4 @@ public class HBaseSinkTest {
         sink.store("test6", theArray, new Date().getTime());
         Mockito.verify(putsQueue, Mockito.times(2)).add((Put)Mockito.any());
     }
-
 }
