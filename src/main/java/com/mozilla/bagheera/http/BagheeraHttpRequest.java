@@ -19,6 +19,8 @@
  */
 package com.mozilla.bagheera.http;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.jboss.netty.handler.codec.http.DefaultHttpRequest;
@@ -29,18 +31,21 @@ import org.jboss.netty.handler.codec.http.HttpVersion;
 public class BagheeraHttpRequest extends DefaultHttpRequest {
 
     // Version constants
+    // TODO: make version a Pattern of ^[0-9]+([.][0-9]+)?$
     public static final String VERSION_1_0 = "1.0";
     public static final String VERSION_1 = "1";
-    
+
     // REST path indices
     public static final int ENDPOINT_PATH_IDX = 0;
     public static final int NAMESPACE_PATH_IDX = 1;
     public static final int ID_PATH_IDX = 2;
-    
+
+    private final String apiVersion;
     private final String endpoint;
     private final String namespace;
-    private String id;
-    
+    private final String id;
+    private final List<String> partitions;
+
     public BagheeraHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri) {
         this(httpVersion, method, uri, new PathDecoder(uri));
     }
@@ -48,24 +53,40 @@ public class BagheeraHttpRequest extends DefaultHttpRequest {
     public BagheeraHttpRequest(HttpRequest request) {
         this(request.getProtocolVersion(), request.getMethod(), request.getUri());
     }
-    
-    public BagheeraHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri, 
+
+    public BagheeraHttpRequest(HttpVersion httpVersion, HttpMethod method, String uri,
                                PathDecoder pathDecoder) {
         super(httpVersion, method, uri);
         int idxOffset = 0;
+
+        String apiVersionIn = pathDecoder.getPathElement(0);
         // If API version is in the path then offset the path indices
-        if (VERSION_1_0.equals(pathDecoder.getPathElement(0)) || 
-            VERSION_1.equals(pathDecoder.getPathElement(0))) {
+        if (VERSION_1_0.equals(apiVersionIn) ||
+            VERSION_1.equals(apiVersionIn)) {
             idxOffset = 1;
+            apiVersion = apiVersionIn;
+        } else {
+            apiVersion = null;
         }
         endpoint = pathDecoder.getPathElement(ENDPOINT_PATH_IDX + idxOffset);
         namespace = pathDecoder.getPathElement(NAMESPACE_PATH_IDX + idxOffset);
-        id = pathDecoder.getPathElement(ID_PATH_IDX + idxOffset);
-        if (id == null) {
-            id = UUID.randomUUID().toString();
+        String incomingId = pathDecoder.getPathElement(ID_PATH_IDX + idxOffset);
+        if (incomingId == null) {
+            incomingId = UUID.randomUUID().toString();
+        }
+        id = incomingId;
+
+        int partitionOffset = idxOffset + 3;
+        int numPartitions = pathDecoder.size() - partitionOffset;
+        if (numPartitions < 0) {
+            numPartitions = 0;
+        }
+        partitions = new ArrayList<String>(numPartitions);
+        for (int i = partitionOffset; i < pathDecoder.size(); i++) {
+            partitions.add(pathDecoder.getPathElement(i));
         }
     }
-    
+
     public String getEndpoint() {
         return endpoint;
     }
@@ -78,7 +99,11 @@ public class BagheeraHttpRequest extends DefaultHttpRequest {
         return id;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public String getApiVersion() {
+        return apiVersion;
+    }
+
+    public List<String> getPartitions() {
+        return partitions;
     }
 }

@@ -21,11 +21,11 @@ package com.mozilla.bagheera.http;
 
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
+import static org.jboss.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.METHOD_NOT_ALLOWED;
-import static org.jboss.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.OK;
 import static org.jboss.netty.handler.codec.http.HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE;
@@ -66,12 +66,12 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     private static final Logger LOG = Logger.getLogger(SubmissionHandler.class);
 
     // REST endpoints
-    private static final String ENDPOINT_SUBMIT = "submit";
+    public static final String ENDPOINT_SUBMIT = "submit";
 
     private final Producer producer;
     private final ChannelGroup channelGroup;
     private final MetricsManager metricsManager;
-    
+
     public SubmissionHandler(Validator validator,
                              Producer producer,
                              ChannelGroup channelGroup,
@@ -80,7 +80,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         this.channelGroup = channelGroup;
         this.metricsManager = metricsManager;
     }
- 
+
     private void updateRequestMetrics(String namespace, String method, int size) {
         this.metricsManager.getHttpMetricForNamespace(namespace).updateRequestMetrics(method, size);
         this.metricsManager.getGlobalHttpMetric().updateRequestMetrics(method, size);
@@ -92,22 +92,24 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         }
         this.metricsManager.getGlobalHttpMetric().updateResponseMetrics(status);
     }
-    
+
     private void handlePost(MessageEvent e, BagheeraHttpRequest request) {
         HttpResponseStatus status = BAD_REQUEST;
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
+            // TODO: insert apiVersion and partition info
             BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
             bmsgBuilder.setNamespace(request.getNamespace());
             bmsgBuilder.setId(request.getId());
-            bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, 
+            bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request,
                                                                              ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
             bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
             bmsgBuilder.setTimestamp(System.currentTimeMillis());
             producer.send(bmsgBuilder.build());
-            
+
             if (request.containsHeader("X-Obsolete-Document")) {
+                // TODO: insert apiVersion and partition info (unless we don't care about partitions for deletes)
                 String obsoleteId = request.getHeader("X-Obsolete-Document");
                 BagheeraMessage.Builder obsBuilder = BagheeraMessage.newBuilder();
                 obsBuilder.setOperation(Operation.DELETE);
@@ -117,27 +119,28 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
                 obsBuilder.setTimestamp(bmsgBuilder.getTimestamp());
                 producer.send(obsBuilder.build());
             }
-            
+
             status = CREATED;
         }
 
         updateRequestMetrics(request.getNamespace(), request.getMethod().getName(), content.readableBytes());
         writeResponse(status, e, request.getNamespace(), URI.create(request.getId()).toString());
     }
-    
+
     private void handleDelete(MessageEvent e, BagheeraHttpRequest request) {
+        // TODO: insert apiVersion and partition info (unless we don't care about partitions for deletes)
         BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
         bmsgBuilder.setOperation(Operation.DELETE);
         bmsgBuilder.setNamespace(request.getNamespace());
         bmsgBuilder.setId(request.getId());
-        bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, 
+        bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request,
                                                                          ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
         bmsgBuilder.setTimestamp(System.currentTimeMillis());
         producer.send(bmsgBuilder.build());
         updateRequestMetrics(request.getNamespace(), request.getMethod().getName(), 0);
         writeResponse(OK, e, request.getNamespace(), null);
     }
-    
+
     private void writeResponse(HttpResponseStatus status, MessageEvent e, String namespace, String entity) {
         // Build the response object.
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, status);
@@ -151,7 +154,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         // Write response
         ChannelFuture future = e.getChannel().write(response);
         future.addListener(ChannelFutureListener.CLOSE);
-        
+
         updateResponseMetrics(namespace, response.getStatus().getCode());
     }
 
@@ -159,7 +162,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) {
         this.channelGroup.add(e.getChannel());
     }
-    
+
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Object msg = e.getMessage();
@@ -203,12 +206,12 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             LOG.error(cause.getMessage());
             response = new DefaultHttpResponse(HTTP_1_1, INTERNAL_SERVER_ERROR);
         }
-        
+
         if (response != null) {
             ChannelFuture future = e.getChannel().write(response);
             future.addListener(ChannelFutureListener.CLOSE);
             updateResponseMetrics(null, response.getStatus().getCode());
         }
     }
-    
+
 }
