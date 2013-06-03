@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Mozilla Foundation
+ * Copyright 2013 Mozilla Foundation
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -34,6 +34,7 @@ import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.channels.ClosedChannelException;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -62,6 +63,8 @@ import com.mozilla.bagheera.util.HttpUtil;
 import com.mozilla.bagheera.validation.Validator;
 
 public class SubmissionHandler extends SimpleChannelUpstreamHandler {
+
+    public static final String HEADER_OBSOLETE_DOCUMENT = "X-Obsolete-Document";
 
     private static final Logger LOG = Logger.getLogger(SubmissionHandler.class);
 
@@ -108,16 +111,10 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             bmsgBuilder.setTimestamp(System.currentTimeMillis());
             producer.send(bmsgBuilder.build());
 
-            if (request.containsHeader("X-Obsolete-Document")) {
+            if (request.containsHeader(HEADER_OBSOLETE_DOCUMENT)) {
                 // TODO: insert apiVersion and partition info (unless we don't care about partitions for deletes)
-                String obsoleteId = request.getHeader("X-Obsolete-Document");
-                BagheeraMessage.Builder obsBuilder = BagheeraMessage.newBuilder();
-                obsBuilder.setOperation(Operation.DELETE);
-                obsBuilder.setNamespace(request.getNamespace());
-                obsBuilder.setId(obsoleteId);
-                obsBuilder.setIpAddr(bmsgBuilder.getIpAddr());
-                obsBuilder.setTimestamp(bmsgBuilder.getTimestamp());
-                producer.send(obsBuilder.build());
+                handleObsoleteDocuments(request.getHeaders(HEADER_OBSOLETE_DOCUMENT),
+                        request.getNamespace(), bmsgBuilder.getIpAddr(), bmsgBuilder.getTimestamp());
             }
 
             status = CREATED;
@@ -125,6 +122,42 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
         updateRequestMetrics(request.getNamespace(), request.getMethod().getName(), content.readableBytes());
         writeResponse(status, e, request.getNamespace(), URI.create(request.getId()).toString());
+    }
+
+    private void handleObsoleteDocuments(List<String> headers, String namespace, ByteString ipAddress, long timestamp) {
+        // According to RFC 2616, the standard for multi-valued document headers is
+        // a comma-separated list:
+        // http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
+        //  ------------------------------------------------------------------
+        //   Multiple message-header fields with the same field-name MAY be
+        //   present in a message if and only if the entire field-value for
+        //   that header field is defined as a comma-separated list
+        //   [i.e., #(values)]. It MUST be possible to combine the multiple
+        //   header fields into one "field-name: field-value" pair, without
+        //   changing the semantics of the message, by appending each
+        //   subsequent field-value to the first, each separated by a comma.
+        //   The order in which header fields with the same field-name are
+        //   received is therefore significant to the interpretation of the
+        //   combined field value, and thus a proxy MUST NOT change the order
+        //   of these field values when a message is forwarded.
+        //  ------------------------------------------------------------------
+        for (String header : headers) {
+            // Split on comma, delete each one.
+            // The performance penalty for supporting multiple values is
+            // tested in BagheeraHttpRequestTest.testSplitPerformance().
+            if (header != null) {
+                for (String obsoleteIdRaw : header.split(",")) {
+                    String obsoleteId = obsoleteIdRaw.trim();
+                    BagheeraMessage.Builder obsBuilder = BagheeraMessage.newBuilder();
+                    obsBuilder.setOperation(Operation.DELETE);
+                    obsBuilder.setNamespace(namespace);
+                    obsBuilder.setId(obsoleteId);
+                    obsBuilder.setIpAddr(ipAddress);
+                    obsBuilder.setTimestamp(timestamp);
+                    producer.send(obsBuilder.build());
+                }
+            }
+        }
     }
 
     private void handleDelete(MessageEvent e, BagheeraHttpRequest request) {
@@ -213,5 +246,4 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             updateResponseMetrics(null, response.getStatus().getCode());
         }
     }
-
 }
