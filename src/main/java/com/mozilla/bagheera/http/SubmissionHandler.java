@@ -101,10 +101,18 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
-            // TODO: insert apiVersion and partition info
             BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
             bmsgBuilder.setNamespace(request.getNamespace());
             bmsgBuilder.setId(request.getId());
+            if (request.getApiVersion() != null) {
+                bmsgBuilder.setApiVersion(request.getApiVersion());
+            }
+            List<String> partitions = request.getPartitions();
+            if (partitions != null) {
+                for (int i = 0; i < partitions.size(); i++) {
+                    bmsgBuilder.setPartition(i, partitions.get(i));
+                }
+            }
             bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request,
                                                                              ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
             bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
