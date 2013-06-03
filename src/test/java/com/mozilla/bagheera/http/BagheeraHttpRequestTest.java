@@ -48,6 +48,13 @@ public class BagheeraHttpRequestTest {
         UUID uuid = UUID.fromString(randomId);
         assertTrue(uuid != null);
         assertEquals(0, req.getPartitions().size());
+
+        String[] possibleVersions = new String[]{"no",   "1",  "2",  "3",  "1.2", "9.999", "",    "1.2.3", "123", "123.456", "bogus.bogus"};
+        boolean[] areTheyVersions = new boolean[]{false, true, true, true, true,  true,    false, false,   true,  true,      false};
+
+        for (int i = 0; i < possibleVersions.length; i++) {
+            assertEquals(areTheyVersions[i], req.isApiVersion(possibleVersions[i]));
+        }
     }
 
 }
