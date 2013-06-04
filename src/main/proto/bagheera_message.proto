@@ -17,6 +17,6 @@ message BagheeraMessage {
 		DELETE = 1;
 	}
 	optional Operation operation = 7 [default = CREATE_UPDATE];
-	optional string api_version = 8 [default = "1"];
+	optional string api_version = 8;
 	repeated string partition = 9;
 }
