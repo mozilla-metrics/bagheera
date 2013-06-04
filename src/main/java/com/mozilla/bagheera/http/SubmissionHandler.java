@@ -224,8 +224,6 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         if (cause instanceof ClosedChannelException) {
             // NOOP
         } else if (cause instanceof TooLongFrameException) {
-            // The client doesn't get the response even if we write one. There is an open
-            // issue in Netty on this here: https://github.com/netty/netty/issues/1007
             response = new DefaultHttpResponse(HTTP_1_1, REQUEST_ENTITY_TOO_LARGE);
         } else if (cause instanceof InvalidPathException) {
             response = new DefaultHttpResponse(HTTP_1_1, NOT_FOUND);
