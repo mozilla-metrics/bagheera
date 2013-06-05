@@ -102,19 +102,6 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
         if (content.readable() && content.readableBytes() > 0) {
             BagheeraMessage.Builder templateBuilder = BagheeraMessage.newBuilder();
-//            templateBuilder.setNamespace(request.getNamespace());
-//            if (request.getApiVersion() != null) {
-//                templateBuilder.setApiVersion(request.getApiVersion());
-//            }
-//            List<String> partitions = request.getPartitions();
-//            if (partitions != null) {
-//                for (int i = 0; i < partitions.size(); i++) {
-//                    templateBuilder.setPartition(i, partitions.get(i));
-//                }
-//            }
-//            templateBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request,
-//                                                                             ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
-//            templateBuilder.setTimestamp(System.currentTimeMillis());
             setMessageFields(request, e, templateBuilder, System.currentTimeMillis(), false);
             BagheeraMessage template = templateBuilder.buildPartial();
 

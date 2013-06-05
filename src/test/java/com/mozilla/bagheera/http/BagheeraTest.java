@@ -56,6 +56,7 @@ public class BagheeraTest {
     @Before
     public void setup() throws Exception {
         props.put("valid.namespaces", TEST_NAMESPACE);
+        props.put(TEST_NAMESPACE + ".allow.delete.access", "true");
 
         state = Bagheera.startServer(BAGHEERA_PORT, false, props, producer,
                 Bagheera.getChannelFactory(), Bagheera.class.getName(), manager);
@@ -77,7 +78,9 @@ public class BagheeraTest {
         assertNotSame(timestamp, message.getTimestamp());
 
         assertEquals(key, message.getId());
+        assertEquals(BagheeraMessage.Operation.CREATE_UPDATE, message.getOperation());
         assertEquals("", message.getApiVersion());
+        assertEquals(0, message.getPartitionCount());
     }
 
     @Test
@@ -96,6 +99,7 @@ public class BagheeraTest {
         assertNotSame(timestamp, message.getTimestamp());
 
         assertEquals(key, message.getId());
+        assertEquals(BagheeraMessage.Operation.CREATE_UPDATE, message.getOperation());
 
         // Ensure that partition information comes through.
         assertEquals(2, message.getPartitionCount());
@@ -104,6 +108,30 @@ public class BagheeraTest {
 
     }
 
+    @Test
+    public void testDeleteWithPartitions() throws IOException, InterruptedException {
+        // Use a ReplaySink to send messages
+        String destPattern = String.format("http://localhost:%d/%s/%s/%s/partition1/partition2", BAGHEERA_PORT, SubmissionHandler.ENDPOINT_SUBMIT, TEST_NAMESPACE, ReplaySink.KEY_PLACEHOLDER);
+        ReplaySink sink = new ReplaySink(destPattern, "1", "true", "true");
+        sink.delete(key);
+
+        assertEquals(1, producer.queueSize());
+        BagheeraMessage message = producer.getQueue().poll();
+        String payload = message.getPayload().toStringUtf8();
+        assertEquals("", payload);
+
+        // ReplaySink doesn't preserve timestamps.
+        assertNotSame(timestamp, message.getTimestamp());
+
+        assertEquals(key, message.getId());
+        assertEquals(BagheeraMessage.Operation.DELETE, message.getOperation());
+
+        // Ensure that partition information comes through.
+        assertEquals(2, message.getPartitionCount());
+        assertEquals("partition1", message.getPartition(0));
+        assertEquals("partition2", message.getPartition(1));
+
+    }
 
     @Test
     public void testMessageWithApiVersion() throws IOException, InterruptedException {
