@@ -61,7 +61,7 @@ public class AccessFilterTest {
     private ChannelHandlerContext ctx;
     private InetSocketAddress remoteAddr;
     private AccessFilter filter;
-    
+
     @Before
     public void setup() throws IOException {
         String[] namespaces = new String[] { "foo_*", "bar" };
@@ -73,32 +73,32 @@ public class AccessFilterTest {
         InputStream is = new ByteArrayInputStream(propsFileStr.getBytes("UTF-8"));
         props.load(is);
         filter = new AccessFilter(new Validator(namespaces), props);
-        
+
         remoteAddr = InetSocketAddress.createUnresolved("192.168.1.1", 51723);
-        
+
         Channel channel = createMock(Channel.class);
         expect(channel.getCloseFuture()).andReturn(new DefaultChannelFuture(channel, false));
         expect(channel.getRemoteAddress()).andReturn(remoteAddr);
-        
+
         OrderedMemoryAwareThreadPoolExecutor executor = new OrderedMemoryAwareThreadPoolExecutor(10, 0L, 0L);
         final ExecutionHandler handler = new ExecutionHandler(executor, true, true);
-        
+
         ctx = new FakeChannelHandlerContext(channel, handler);
     }
-    
-    private MessageEvent createMockEvent(Channel channel, HttpVersion protocolVersion, HttpMethod method, String uri) {    
+
+    private MessageEvent createMockEvent(Channel channel, HttpVersion protocolVersion, HttpMethod method, String uri) {
         MessageEvent event = createMock(UpstreamMessageEvent.class);
         expect(event.getChannel()).andReturn(channel).anyTimes();
         expect(event.getFuture()).andReturn(new DefaultChannelFuture(channel,false)).anyTimes();
         expect(event.getRemoteAddress()).andReturn(remoteAddr);
         expect(event.getMessage()).andReturn(new BagheeraHttpRequest(protocolVersion, method, uri));
         replay(channel, event);
-        
+
         return event;
     }
-    
+
     @Test
-    public void testInvalidNamespace() throws Exception {        
+    public void testInvalidNamespace() throws Exception {
         boolean success = false;
         try {
             filter.messageReceived(ctx, createMockEvent(ctx.getChannel(), HTTP_1_1, POST, "/bad"));
@@ -107,7 +107,7 @@ public class AccessFilterTest {
         }
         assertTrue(success);
     }
-    
+
     @Test
     public void testInvalidId() throws Exception {
         boolean success = false;
@@ -118,7 +118,7 @@ public class AccessFilterTest {
         }
         assertTrue(success);
     }
-    
+
     @Test
     public void testGetAccessDenied() throws Exception {
         boolean success = false;
@@ -129,9 +129,9 @@ public class AccessFilterTest {
         }
         assertTrue(success);
     }
-    
+
     @Test
-    public void testDeleteAccessGranted() throws Exception {        
+    public void testDeleteAccessGranted() throws Exception {
         boolean success = false;
         try {
             filter.messageReceived(ctx, createMockEvent(ctx.getChannel(), HTTP_1_1, DELETE, "/submit/bar/" + UUID.randomUUID().toString()));
@@ -140,7 +140,7 @@ public class AccessFilterTest {
         }
         assertTrue(success);
     }
-    
+
     @Test
     public void testDeleteAccessDenied() throws Exception {
         boolean success = false;
@@ -154,10 +154,16 @@ public class AccessFilterTest {
 
     @Test
     public void testAccessFilterSpeed() throws Exception {
-        int testMessageCount = 10000;
-        List<MessageEvent> events = new ArrayList<MessageEvent>(testMessageCount);
-        for (int i = 0; i < testMessageCount; i++) {
-            events.add(new TestMessageEvent(HTTP_1_1, DELETE, String.format("/submit/foo_blah/%s", UUID.randomUUID().toString())));
+        runSpeedTest(11000, "/submit/foo_blah/%s");
+        runSpeedTest(11000, "/submit/foo_bort/%s");
+        runSpeedTest(11000, "/submit/foo_bags/%s");
+        runSpeedTest(11000, "/submit/foo_blahhhhhhhhhhhhhhhhhh/%s");
+    }
+
+    public void runSpeedTest(int messageCount, String urlPattern) throws Exception {
+        List<MessageEvent> events = new ArrayList<MessageEvent>(messageCount);
+        for (int i = 0; i < messageCount; i++) {
+            events.add(new TestMessageEvent(HTTP_1_1, DELETE, String.format(urlPattern, UUID.randomUUID().toString())));
         }
 
         long startTime = new Date().getTime();
@@ -170,9 +176,9 @@ public class AccessFilterTest {
         long endTime = new Date().getTime();
 
         long duration = endTime - startTime;
-        double msgPerSec = testMessageCount / ((double)duration / 1000f);
+        double msgPerSec = messageCount / ((double)duration / 1000f);
 
-        System.out.println(String.format("Processing %d messages took %d milliseconds (%.02f msg/sec)", testMessageCount, duration, msgPerSec));
+        System.out.println(String.format("Processing %d messages of the form '%s' took %d milliseconds (%.02f msg/sec)", messageCount, urlPattern, duration, msgPerSec));
     }
 }
 
