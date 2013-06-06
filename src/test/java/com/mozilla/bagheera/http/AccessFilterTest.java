@@ -32,9 +32,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.DefaultChannelFuture;
 import org.jboss.netty.channel.FakeChannelHandlerContext;
@@ -46,6 +51,7 @@ import org.jboss.netty.handler.execution.ExecutionHandler;
 import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import com.mozilla.bagheera.util.WildcardProperties;
 import com.mozilla.bagheera.validation.Validator;
@@ -144,5 +150,67 @@ public class AccessFilterTest {
             success = true;
         }
         assertTrue(success);
+    }
+
+    @Test
+    public void testAccessFilterSpeed() throws Exception {
+        int testMessageCount = 10000;
+        List<MessageEvent> events = new ArrayList<MessageEvent>(testMessageCount);
+        for (int i = 0; i < testMessageCount; i++) {
+            events.add(new TestMessageEvent(HTTP_1_1, DELETE, String.format("/submit/foo_blah/%s", UUID.randomUUID().toString())));
+        }
+
+        long startTime = new Date().getTime();
+
+        for (MessageEvent event : events) {
+            try {
+                filter.messageReceived(ctx, event);
+            } catch (HttpSecurityException e) { }
+        }
+        long endTime = new Date().getTime();
+
+        long duration = endTime - startTime;
+        double msgPerSec = testMessageCount / ((double)duration / 1000f);
+
+        System.out.println(String.format("Processing %d messages took %d milliseconds (%.02f msg/sec)", testMessageCount, duration, msgPerSec));
+    }
+}
+
+class TestMessageEvent implements MessageEvent {
+    final HttpVersion protocolVersion;
+    final HttpMethod method;
+    final String uri;
+    final Channel channel;
+    static final InetSocketAddress remoteAddr = InetSocketAddress.createUnresolved("192.168.1.1", 31337);
+
+    public TestMessageEvent(HttpVersion protocolVersion, HttpMethod method, String uri) {
+        this.channel = Mockito.mock(Channel.class);
+        ChannelFuture mockFuture = Mockito.mock(ChannelFuture.class);
+        Mockito.when(channel.getRemoteAddress()).thenReturn(remoteAddr);
+        Mockito.when(channel.write(Mockito.any())).thenReturn(mockFuture);
+
+        this.protocolVersion = protocolVersion;
+        this.method = method;
+        this.uri = uri;
+    }
+
+    @Override
+    public Channel getChannel() {
+        return this.channel;
+    }
+
+    @Override
+    public ChannelFuture getFuture() {
+        return new DefaultChannelFuture(channel, false);
+    }
+
+    @Override
+    public Object getMessage() {
+        return new BagheeraHttpRequest(protocolVersion, method, uri);
+    }
+
+    @Override
+    public SocketAddress getRemoteAddress() {
+        return remoteAddr;
     }
 }
