@@ -158,6 +158,9 @@ public class AccessFilterTest {
         runSpeedTest(11000, "/submit/foo_bort/%s");
         runSpeedTest(11000, "/submit/foo_bags/%s");
         runSpeedTest(11000, "/submit/foo_blahhhhhhhhhhhhhhhhhh/%s");
+
+        runSpeedTest(11000, "/submit/bar/%s");
+//        runSpeedTest(11000, "/submit/foo_FFFFUUUUUUUUU/bogus%s");
     }
 
     public void runSpeedTest(int messageCount, String urlPattern) throws Exception {
@@ -171,7 +174,9 @@ public class AccessFilterTest {
         for (MessageEvent event : events) {
             try {
                 filter.messageReceived(ctx, event);
-            } catch (HttpSecurityException e) { }
+            }
+            catch (HttpSecurityException e) { }
+            catch (InvalidPathException e) { }
         }
         long endTime = new Date().getTime();
 
