@@ -31,10 +31,11 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -155,10 +156,16 @@ public class AccessFilterTest {
     @Test
     public void testAccessFilterSpeed() throws Exception {
         runSpeedTest(11000, "/submit/foo_blah/%s");
+        runSpeedTest(11000, "/submit/foo_blah/%s");
+        runSpeedTest(11000, "/submit/foo_blah/%s");
         runSpeedTest(11000, "/submit/foo_bort/%s");
         runSpeedTest(11000, "/submit/foo_bags/%s");
         runSpeedTest(11000, "/submit/foo_blahhhhhhhhhhhhhhhhhh/%s");
+        runSpeedTest(11000, "/submit/foo_bags/%s");
 
+        runSpeedTest(11000, "/submit/bar/%s");
+        runSpeedTest(11000, "/submit/bar/%s");
+        runSpeedTest(11000, "/submit/bar/%s");
         runSpeedTest(11000, "/submit/bar/%s");
 //        runSpeedTest(11000, "/submit/foo_FFFFUUUUUUUUU/bogus%s");
     }
@@ -169,7 +176,9 @@ public class AccessFilterTest {
             events.add(new TestMessageEvent(HTTP_1_1, DELETE, String.format(urlPattern, UUID.randomUUID().toString())));
         }
 
-        long startTime = new Date().getTime();
+        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+
+        long startTime = threadMXBean.getCurrentThreadCpuTime();
 
         for (MessageEvent event : events) {
             try {
@@ -178,12 +187,13 @@ public class AccessFilterTest {
             catch (HttpSecurityException e) { }
             catch (InvalidPathException e) { }
         }
-        long endTime = new Date().getTime();
+        long endTime = threadMXBean.getCurrentThreadCpuTime();
 
-        long duration = endTime - startTime;
+        // threadMXBean reports time in nanos, so convert to millis.
+        long duration = (endTime - startTime) / 1000000;
         double msgPerSec = messageCount / ((double)duration / 1000f);
 
-        System.out.println(String.format("Processing %d messages of the form '%s' took %d milliseconds (%.02f msg/sec)", messageCount, urlPattern, duration, msgPerSec));
+        System.out.println(String.format("Processing %d messages of the form '%s' took %d ms of cpu time (%.02f msg/sec)", messageCount, urlPattern, duration, msgPerSec));
     }
 }
 
