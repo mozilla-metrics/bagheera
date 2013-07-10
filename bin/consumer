@@ -8,12 +8,17 @@ if [ -z "$HADOOP_DISTRO" ]; then
     HADOOP_DISTRO="CDH3"
 fi
 
+# To use a different distro, set this outside.
+if [ -z "$HADOOP_CLUSTER" ]; then
+    HADOOP_CLUSTER="MANGO"
+fi
+
 NOW=`date "+%Y%m%d%H%M%S"`
 CONSUMER_HASH=`echo -n \"$@\" | md5sum | cut -f1 -d' '`
 CONSUMER_OPTS="-Dbagheera.log.dir=$bin/../logs -Dconsumer.hash=$CONSUMER_HASH"
 GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/consumer-$CONSUMER_HASH-gc.log.$NOW"
 JAVA_OPTS="$CONSUMER_OPTS -Xmx1024m -XX:+UseParallelGC"
-HADOOP_CONF="$bin/../conf/$HADOOP_DISTRO"
+HADOOP_CONF="$bin/../conf/$HADOOP_CLUSTER"
 if [ "$ENABLE_YJP" = true ]; then
     JAVA_OPTS="${JAVA_OPTS} -agentpath:/usr/lib/yjp-11.0.10/bin/linux-x86-64/libyjpagent.so"
 fi
