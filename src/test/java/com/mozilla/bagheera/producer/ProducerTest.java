@@ -216,6 +216,7 @@ public class ProducerTest {
         for (int i = content.length(); i < payloadSize; i++) {
             content.append(i % 10);
         }
+        bmsgBuilder.addPartition(String.valueOf(messageNumber));
         bmsgBuilder.setPayload(ByteString.copyFrom(content.toString().getBytes()));
         bmsgBuilder.setTimestamp(System.currentTimeMillis());
         return bmsgBuilder.build();

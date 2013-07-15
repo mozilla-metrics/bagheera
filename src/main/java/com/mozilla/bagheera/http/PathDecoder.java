@@ -27,9 +27,9 @@ import java.util.regex.Pattern;
 public class PathDecoder {
 
     private static final Pattern PATH_PATTERN = Pattern.compile("/([^/]+)");
-    
+
     private List<String> pathElements = new ArrayList<String>();
-    
+
     public PathDecoder(String uri) {
         Matcher m = PATH_PATTERN.matcher(uri);
         while (m.find()) {
@@ -42,5 +42,9 @@ public class PathDecoder {
     public String getPathElement(int idx) {
         return idx < pathElements.size() ? pathElements.get(idx) : null;
     }
-    
+
+    public int size() {
+        return pathElements.size();
+    }
+
 }

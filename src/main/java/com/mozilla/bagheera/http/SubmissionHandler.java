@@ -101,18 +101,17 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         ChannelBuffer content = request.getContent();
 
         if (content.readable() && content.readableBytes() > 0) {
-            BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
-            bmsgBuilder.setNamespace(request.getNamespace());
-            bmsgBuilder.setId(request.getId());
-            bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request,
-                                                                             ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
-            bmsgBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
-            bmsgBuilder.setTimestamp(System.currentTimeMillis());
-            producer.send(bmsgBuilder.build());
+            BagheeraMessage.Builder templateBuilder = BagheeraMessage.newBuilder();
+            setMessageFields(request, e, templateBuilder, System.currentTimeMillis(), false);
+            BagheeraMessage template = templateBuilder.buildPartial();
+
+            BagheeraMessage.Builder storeBuilder = BagheeraMessage.newBuilder(template);
+            storeBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
+            storeBuilder.setId(request.getId());
+            producer.send(storeBuilder.build());
 
             if (request.containsHeader(HEADER_OBSOLETE_DOCUMENT)) {
-                handleObsoleteDocuments(request.getHeaders(HEADER_OBSOLETE_DOCUMENT),
-                        request.getNamespace(), bmsgBuilder.getIpAddr(), bmsgBuilder.getTimestamp());
+                handleObsoleteDocuments(request.getHeaders(HEADER_OBSOLETE_DOCUMENT), template);
             }
 
             status = CREATED;
@@ -122,7 +121,26 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         writeResponse(status, e, request.getNamespace(), URI.create(request.getId()).toString());
     }
 
-    private void handleObsoleteDocuments(List<String> headers, String namespace, ByteString ipAddress, long timestamp) {
+    protected void setMessageFields(BagheeraHttpRequest request, MessageEvent event, BagheeraMessage.Builder builder, long timestamp, boolean setId) {
+        builder.setNamespace(request.getNamespace());
+        if (request.getApiVersion() != null) {
+            builder.setApiVersion(request.getApiVersion());
+        }
+
+        List<String> partitions = request.getPartitions();
+        if (partitions != null && !partitions.isEmpty()) {
+            builder.addAllPartition(partitions);
+        }
+
+        builder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request, ((InetSocketAddress)event.getChannel().getRemoteAddress()).getAddress())));
+        builder.setTimestamp(timestamp);
+
+        if (setId) {
+            builder.setId(request.getId());
+        }
+    }
+
+    private void handleObsoleteDocuments(List<String> headers, BagheeraMessage template) {
         // According to RFC 2616, the standard for multi-valued document headers is
         // a comma-separated list:
         // http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
@@ -145,14 +163,11 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             // tested in BagheeraHttpRequestTest.testSplitPerformance().
             if (header != null) {
                 for (String obsoleteIdRaw : header.split(",")) {
-                    String obsoleteId = obsoleteIdRaw.trim();
-                    BagheeraMessage.Builder obsBuilder = BagheeraMessage.newBuilder();
-                    obsBuilder.setOperation(Operation.DELETE);
-                    obsBuilder.setNamespace(namespace);
-                    obsBuilder.setId(obsoleteId);
-                    obsBuilder.setIpAddr(ipAddress);
-                    obsBuilder.setTimestamp(timestamp);
-                    producer.send(obsBuilder.build());
+                    // Use the given message as a base for creating each delete message.
+                    BagheeraMessage.Builder deleteBuilder = BagheeraMessage.newBuilder(template);
+                    deleteBuilder.setOperation(Operation.DELETE);
+                    deleteBuilder.setId(obsoleteIdRaw.trim());
+                    producer.send(deleteBuilder.build());
                 }
             }
         }
@@ -160,12 +175,8 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
 
     private void handleDelete(MessageEvent e, BagheeraHttpRequest request) {
         BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
+        setMessageFields(request, e, bmsgBuilder, System.currentTimeMillis(), true);
         bmsgBuilder.setOperation(Operation.DELETE);
-        bmsgBuilder.setNamespace(request.getNamespace());
-        bmsgBuilder.setId(request.getId());
-        bmsgBuilder.setIpAddr(ByteString.copyFrom(HttpUtil.getRemoteAddr(request,
-                                                                         ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress())));
-        bmsgBuilder.setTimestamp(System.currentTimeMillis());
         producer.send(bmsgBuilder.build());
         updateRequestMetrics(request.getNamespace(), request.getMethod().getName(), 0);
         writeResponse(OK, e, request.getNamespace(), null);
@@ -241,5 +252,4 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             updateResponseMetrics(null, response.getStatus().getCode());
         }
     }
-
 }
