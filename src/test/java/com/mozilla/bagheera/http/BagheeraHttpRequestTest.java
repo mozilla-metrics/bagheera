@@ -19,6 +19,8 @@
  */
 package com.mozilla.bagheera.http;
 
+import static org.jboss.netty.handler.codec.http.HttpMethod.POST;
+import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -29,6 +31,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
@@ -50,6 +53,7 @@ import com.mozilla.bagheera.metrics.MetricsManager;
 import com.mozilla.bagheera.producer.Producer;
 import com.mozilla.bagheera.util.HttpUtil;
 import com.mozilla.bagheera.validation.Validator;
+
 
 public class BagheeraHttpRequestTest {
     private Validator validator;
@@ -104,6 +108,52 @@ public class BagheeraHttpRequestTest {
         }
 
         return message;
+    }
+
+    @Test
+    public void testURIParsing() {
+        String apiVersion = "1.0";
+        String namespace = "bar";
+        String endpoint = SubmissionHandler.ENDPOINT_SUBMIT;
+        String id = "bogusid";
+        String partitions = "part1/part2/part3";
+
+        String uri = String.format("/%s/%s/%s/%s/%s", apiVersion, endpoint, namespace, id, partitions);
+        BagheeraHttpRequest req = new BagheeraHttpRequest(HTTP_1_1, POST, uri);
+        assertEquals(apiVersion, req.getApiVersion());
+        assertEquals(namespace, req.getNamespace());
+        assertEquals(endpoint, req.getEndpoint());
+        assertEquals(id, req.getId());
+        List<String> reqPartitions = req.getPartitions();
+        assertEquals("part1", reqPartitions.get(0));
+        assertEquals("part2", reqPartitions.get(1));
+        assertEquals("part3", reqPartitions.get(2));
+
+        req = new BagheeraHttpRequest(HTTP_1_1, POST, String.format("/%s/%s/%s", endpoint, namespace, id));
+        assertEquals(null, req.getApiVersion());
+        assertEquals(namespace, req.getNamespace());
+        assertEquals(endpoint, req.getEndpoint());
+        assertEquals(id, req.getId());
+        assertEquals(0, req.getPartitions().size());
+
+        req = new BagheeraHttpRequest(HTTP_1_1, POST, String.format("/%s/%s", endpoint, namespace));
+        assertEquals(null, req.getApiVersion());
+        assertEquals(namespace, req.getNamespace());
+        assertEquals(endpoint, req.getEndpoint());
+        // Should have an auto-assigned id:
+        String randomId = req.getId();
+        assertEquals(UUID.randomUUID().toString().length(), randomId.length());
+        assertTrue(randomId.matches("^[0-9a-f-]{36}$"));
+        UUID uuid = UUID.fromString(randomId);
+        assertTrue(uuid != null);
+        assertEquals(0, req.getPartitions().size());
+
+        String[] possibleVersions = new String[]{"no",   "1",  "2",  "3",  "1.2", "9.999", "",    "1.2.3", "123", "123.456", "bogus.bogus"};
+        boolean[] areTheyVersions = new boolean[]{false, true, true, true, true,  true,    false, false,   true,  true,      false};
+
+        for (int i = 0; i < possibleVersions.length; i++) {
+            assertEquals(areTheyVersions[i], req.isApiVersion(possibleVersions[i]));
+        }
     }
 
     @Test

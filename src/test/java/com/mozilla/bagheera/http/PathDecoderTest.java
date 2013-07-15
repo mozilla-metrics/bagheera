@@ -19,7 +19,8 @@
  */
 package com.mozilla.bagheera.http;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -32,6 +33,14 @@ public class PathDecoderTest {
         assertEquals("foo", pd.getPathElement(1));
         assertEquals("fakeid", pd.getPathElement(2));
         assertNull(pd.getPathElement(3));
-    }
 
+        assertEquals(3, pd.size());
+
+
+        pd = new PathDecoder("/1/2/3/4/5/6/7/8/9/10");
+        for (int i = 1; i <= 10; i++) {
+            assertEquals(String.valueOf(i), pd.getPathElement(i-1));
+        }
+        assertEquals(10, pd.size());
+    }
 }
