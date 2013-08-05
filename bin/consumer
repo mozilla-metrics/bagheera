@@ -56,7 +56,7 @@ done
 
 
 # add dependency libs
-CLASSPATH="$bin/../lib/*":"$bin/../lib/hadoop/*"
+CLASSPATH=${CLASSPATH}:"$bin/../lib/*":"$bin/../lib/hadoop/*"
 # create logs dir if it doesn't exist
 if [ ! -d $bin/../logs ]; then
     mkdir -p $bin/../logs
