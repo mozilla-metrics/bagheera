@@ -56,10 +56,7 @@ done
 
 
 # add dependency libs
-for lib in `ls $bin/../lib/*.jar`; do
-    CLASSPATH=${CLASSPATH}:$lib
-done
-
+CLASSPATH="$bin/../lib/*":"$bin/../lib/hadoop/*"
 # create logs dir if it doesn't exist
 if [ ! -d $bin/../logs ]; then
     mkdir -p $bin/../logs
