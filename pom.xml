@@ -4,7 +4,7 @@
 
 	<groupId>com.mozilla</groupId>
 	<artifactId>bagheera</artifactId>
-	<version>0.12-SNAPSHOT</version>
+	<version>0.13-SNAPSHOT</version>
 
 	<name>bagheera</name>
 	<description>REST services for Mozilla Metrics.</description>
@@ -192,6 +192,12 @@
 		</dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>2.0.0-cdh4.2.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
             <version>2.0.0-cdh4.2.0</version>
         </dependency>
@@ -243,10 +249,6 @@
 				<exclusion>
 					<artifactId>slf4j-api</artifactId>
 					<groupId>org.slf4j</groupId>
-				</exclusion>
-				<exclusion>
-					<artifactId>avro</artifactId>
-					<groupId>org.apache.hadoop</groupId>
 				</exclusion>
 				<exclusion>
 					<artifactId>jsp-2.1</artifactId>
@@ -326,8 +328,6 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-
-
 		<!-- yammer metrics collection -->
 		<dependency>
 			<groupId>com.yammer.metrics</groupId>
