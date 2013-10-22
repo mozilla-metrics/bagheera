@@ -109,7 +109,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             storeBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
             storeBuilder.setId(request.getId());
             producer.send(storeBuilder.build());
-
+            LOG.info("put "+request.getId());
             if (request.containsHeader(HEADER_OBSOLETE_DOCUMENT)) {
                 handleObsoleteDocuments(request.getHeaders(HEADER_OBSOLETE_DOCUMENT), template);
             }
@@ -163,6 +163,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             // tested in BagheeraHttpRequestTest.testSplitPerformance().
             if (header != null) {
                 for (String obsoleteIdRaw : header.split(",")) {
+                    LOG.info("delete "+obsoleteIdRaw.trim());
                     // Use the given message as a base for creating each delete message.
                     BagheeraMessage.Builder deleteBuilder = BagheeraMessage.newBuilder(template);
                     deleteBuilder.setOperation(Operation.DELETE);
