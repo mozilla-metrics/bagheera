@@ -109,9 +109,9 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             storeBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
             storeBuilder.setId(request.getId());
             producer.send(storeBuilder.build());
-            LOG.info("put "+request.getId());
+            LOG.info(request.getNamespace()+" HTTP_PUT "+request.getId());
             if (request.containsHeader(HEADER_OBSOLETE_DOCUMENT)) {
-                handleObsoleteDocuments(request.getHeaders(HEADER_OBSOLETE_DOCUMENT), template);
+                handleObsoleteDocuments(request.getNamespace(),request.getHeaders(HEADER_OBSOLETE_DOCUMENT), template);
             }
 
             status = CREATED;
@@ -140,7 +140,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         }
     }
 
-    private void handleObsoleteDocuments(List<String> headers, BagheeraMessage template) {
+    private void handleObsoleteDocuments(String namespace, List<String> headers, BagheeraMessage template) {
         // According to RFC 2616, the standard for multi-valued document headers is
         // a comma-separated list:
         // http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
@@ -163,7 +163,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             // tested in BagheeraHttpRequestTest.testSplitPerformance().
             if (header != null) {
                 for (String obsoleteIdRaw : header.split(",")) {
-                    LOG.info("delete "+obsoleteIdRaw.trim());
+                    LOG.info(namespace+" HTTP_DELETE "+obsoleteIdRaw.trim());
                     // Use the given message as a base for creating each delete message.
                     BagheeraMessage.Builder deleteBuilder = BagheeraMessage.newBuilder(template);
                     deleteBuilder.setOperation(Operation.DELETE);

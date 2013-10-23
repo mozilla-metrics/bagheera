@@ -258,7 +258,6 @@ public class HBaseSink implements KeyValueSink {
     @Override
     public void store(String key, byte[] data) throws IOException {
         if (!isOversized(key, data)) {
-            LOG.info("PUT "+key);
             Put p = new Put(Bytes.toBytes(key));
             p.add(family, qualifier, data);
             rowQueue.add(p);
@@ -299,7 +298,7 @@ public class HBaseSink implements KeyValueSink {
     @Override
     public void delete(String key) throws IOException {
         Delete d = new Delete(Bytes.toBytes(key));
-        LOG.info("DELETE "+key);
+        LOG.info(this.tableName+" CONSUMER_DELETE "+key);
         rowQueue.add(d);
         if (rowQueueSize.incrementAndGet() >= batchSize) {
             flush();
