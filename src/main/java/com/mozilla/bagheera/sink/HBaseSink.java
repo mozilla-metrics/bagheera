@@ -143,7 +143,7 @@ public class HBaseSink implements KeyValueSink {
         for (i = 0; i < getRetryCount(); i++) {
             HTableInterface table = hbasePool.getTable(tableName);
             try {
-                table.setAutoFlush(false);
+                table.setAutoFlush(false, true);
                 final TimerContext flushTimerContext = flushTimer.time();
                 try {
                     List<Row> rows = new ArrayList<Row>(batchSize);
