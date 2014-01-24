@@ -6,14 +6,20 @@ bin=`cd "$bin"; pwd`
 
 # To use a different distro, set this outside.
 if [ -z "$HADOOP_CLUSTER" ]; then
-    HADOOP_CLUSTER="MANGO"
+    HADOOP_CLUSTER="PEACH"
 fi
 
 NOW=`date "+%Y%m%d%H%M%S"`
 CONSUMER_HASH=`echo -n \"$@\" | md5sum | cut -f1 -d' '`
 CONSUMER_OPTS="-Dbagheera.log.dir=$bin/../logs -Dconsumer.hash=$CONSUMER_HASH"
 GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/consumer-$CONSUMER_HASH-gc.log.$NOW"
-JAVA_OPTS="$CONSUMER_OPTS -Xmx1024m -XX:+UseParallelGC"
+
+if [ "$1" == "com.mozilla.fhr.consumer.FHRConsumer" ]; then
+    JAVA_OPTS="$CONSUMER_OPTS -Xmx4096m -XX:+UseParallelGC"
+else
+    JAVA_OPTS="$CONSUMER_OPTS -Xmx1024m -XX:+UseParallelGC"
+fi
+
 HADOOP_CONF="$bin/../conf/$HADOOP_CLUSTER"
 if [ "$ENABLE_YJP" = true ]; then
     JAVA_OPTS="${JAVA_OPTS} -agentpath:/usr/lib/yjp-11.0.10/bin/linux-x86-64/libyjpagent.so"
@@ -56,10 +62,7 @@ done
 
 
 # add dependency libs
-for lib in `ls $bin/../lib/*.jar`; do
-    CLASSPATH=${CLASSPATH}:$lib
-done
-
+CLASSPATH=${CLASSPATH}:"$bin/../lib/*":"$bin/../lib/hadoop/*"
 # create logs dir if it doesn't exist
 if [ ! -d $bin/../logs ]; then
     mkdir -p $bin/../logs
