@@ -99,7 +99,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
     private void handlePost(MessageEvent e, BagheeraHttpRequest request) {
         HttpResponseStatus status = BAD_REQUEST;
         ChannelBuffer content = request.getContent();
-
+        String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
         if (content.readable() && content.readableBytes() > 0) {
             BagheeraMessage.Builder templateBuilder = BagheeraMessage.newBuilder();
             setMessageFields(request, e, templateBuilder, System.currentTimeMillis(), false);
@@ -109,9 +109,11 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             storeBuilder.setPayload(ByteString.copyFrom(content.toByteBuffer()));
             storeBuilder.setId(request.getId());
             producer.send(storeBuilder.build());
-            LOG.info(request.getNamespace()+" HTTP_PUT "+request.getId());
+
             if (request.containsHeader(HEADER_OBSOLETE_DOCUMENT)) {
-                handleObsoleteDocuments(request.getNamespace(),request.getHeaders(HEADER_OBSOLETE_DOCUMENT), template);
+                handleObsoleteDocuments(request,remoteIpAddress,request.getHeaders(HEADER_OBSOLETE_DOCUMENT), template);
+            } else {
+                LOG.info("IP "+remoteIpAddress+" "+request.getNamespace()+" HTTP_PUT "+request.getId());
             }
 
             status = CREATED;
@@ -140,7 +142,7 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         }
     }
 
-    private void handleObsoleteDocuments(String namespace, List<String> headers, BagheeraMessage template) {
+    private void handleObsoleteDocuments(BagheeraHttpRequest request, String remoteIpAddress,List<String> headers, BagheeraMessage template) {
         // According to RFC 2616, the standard for multi-valued document headers is
         // a comma-separated list:
         // http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
@@ -157,13 +159,14 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         //   combined field value, and thus a proxy MUST NOT change the order
         //   of these field values when a message is forwarded.
         //  ------------------------------------------------------------------
+        String deleteIDs = ""; 
         for (String header : headers) {
             // Split on comma, delete each one.
             // The performance penalty for supporting multiple values is
             // tested in BagheeraHttpRequestTest.testSplitPerformance().
             if (header != null) {
                 for (String obsoleteIdRaw : header.split(",")) {
-                    LOG.info(namespace+" HTTP_DELETE "+obsoleteIdRaw.trim());
+                    deleteIDs += obsoleteIdRaw.trim()+",";
                     // Use the given message as a base for creating each delete message.
                     BagheeraMessage.Builder deleteBuilder = BagheeraMessage.newBuilder(template);
                     deleteBuilder.setOperation(Operation.DELETE);
@@ -172,11 +175,14 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
                 }
             }
         }
+        LOG.info("IP "+remoteIpAddress+" "+request.getNamespace()+" HTTP_PUT "+request.getId()+" HTTP_DELETE "+deleteIDs);
     }
 
     private void handleDelete(MessageEvent e, BagheeraHttpRequest request) {
         BagheeraMessage.Builder bmsgBuilder = BagheeraMessage.newBuilder();
         setMessageFields(request, e, bmsgBuilder, System.currentTimeMillis(), true);
+        String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
+        LOG.info("IP "+remoteIpAddress+" "+request.getNamespace()+" HTTP_DELETE "+request.getId());
         bmsgBuilder.setOperation(Operation.DELETE);
         producer.send(bmsgBuilder.build());
         updateRequestMetrics(request.getNamespace(), request.getMethod().getName(), 0);
