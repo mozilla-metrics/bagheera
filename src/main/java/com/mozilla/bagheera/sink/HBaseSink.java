@@ -66,7 +66,7 @@ public class HBaseSink implements KeyValueSink {
     protected boolean prefixDate = true;
     protected int batchSize = 100;
     protected long maxKeyValueSize;
-
+    protected long currentTimeMillis;
     protected AtomicInteger rowQueueSize = new AtomicInteger();
     protected ConcurrentLinkedQueue<Row> rowQueue = new ConcurrentLinkedQueue<Row>();
 
@@ -80,7 +80,7 @@ public class HBaseSink implements KeyValueSink {
     protected final Timer htableTimer;
 
     protected final Gauge<Integer> batchSizeGauge;
-    protected final long deleteDelay = 86400000; // add 1 day delay to
+    protected final long deleteDelay = 604800000; // add 1 day delay to
                                                // deletes to counter
                                                // out of order deletes
     
@@ -99,7 +99,7 @@ public class HBaseSink implements KeyValueSink {
         this.qualifier = Bytes.toBytes(qualifier);
         this.prefixDate = prefixDate;
         this.batchSize = batchSize;
-
+        this.currentTimeMillis = System.currentTimeMillis();
         Configuration conf = HBaseConfiguration.create();
 
         // Use the standard HBase default
@@ -142,6 +142,7 @@ public class HBaseSink implements KeyValueSink {
 
     public void flush() throws IOException {
         IOException lastException = null;
+        this.currentTimeMillis = System.currentTimeMillis(); 
         int i;
         for (i = 0; i < getRetryCount(); i++) {
             HTableInterface table = hbasePool.getTable(tableName);
@@ -300,11 +301,8 @@ public class HBaseSink implements KeyValueSink {
 
     @Override
     public void delete(String key) throws IOException {
-        long timestamp = System.currentTimeMillis();
-        timestamp += deleteDelay;
-        LOG.info("harsha timestamp "+timestamp);
+        long timestamp = currentTimeMillis + deleteDelay;
         Delete d = new Delete(Bytes.toBytes(key),timestamp);
-        LOG.info(this.tableName+" CONSUMER_DELETE "+key);
         rowQueue.add(d);
         if (rowQueueSize.incrementAndGet() >= batchSize) {
             flush();
