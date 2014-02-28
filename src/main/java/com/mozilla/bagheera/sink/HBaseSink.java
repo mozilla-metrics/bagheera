@@ -80,7 +80,10 @@ public class HBaseSink implements KeyValueSink {
     protected final Timer htableTimer;
 
     protected final Gauge<Integer> batchSizeGauge;
-
+    protected final long deleteDelay = 86400000; // add 1 day delay to
+                                               // deletes to counter
+                                               // out of order deletes
+    
     public HBaseSink(SinkConfiguration sinkConfiguration) {
         this(sinkConfiguration.getString("hbasesink.hbase.tablename"),
              sinkConfiguration.getString("hbasesink.hbase.column.family", "data"),
@@ -297,7 +300,10 @@ public class HBaseSink implements KeyValueSink {
 
     @Override
     public void delete(String key) throws IOException {
-        Delete d = new Delete(Bytes.toBytes(key));
+        long timestamp = System.currentTimeMillis();
+        timestamp += deleteDelay;
+        LOG.info("harsha timestamp "+timestamp);
+        Delete d = new Delete(Bytes.toBytes(key),timestamp);
         LOG.info(this.tableName+" CONSUMER_DELETE "+key);
         rowQueue.add(d);
         if (rowQueueSize.incrementAndGet() >= batchSize) {
