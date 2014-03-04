@@ -6,13 +6,20 @@ bin=`cd "$bin"; pwd`
 CONSUMER_PROPS=$bin/../conf/kafka.consumer.properties
 HBASE_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaHBaseConsumer
 HDFS_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaSequenceFileConsumer
+HDFS_DELETE_CONSUMER_CLASS=com.mozilla.bagheera.consumer.KafkaDeleteSequenceFileConsumer
 # FHR consumer comes from fhr-toolbox which needs its jar deployed to bagheera/lib in order to use it
 FHR_CONSUMER_CLASS=com.mozilla.fhr.consumer.FHRConsumer
 
 # UserProfile
 HADOOP_CLUSTER=PEACH $bin/consumer $HBASE_CONSUMER_CLASS -t userprofile -gid userprofile-hbase-prod -p $CONSUMER_PROPS --validatejson --table user_profile --family data --qualifier json --prefixdate --batchsize 100
 # FHR (does its own json validation so option isn't needed)
-HADOOP_CLUSTER=PEACH $bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod-cdh4 -p $CONSUMER_PROPS --table metrics --family data --qualifier json --numthreads 4 --batchsize 2000 
+HADOOP_CLUSTER=PEACH $bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod-cdh4 -p $CONSUMER_PROPS --table metrics --family data --qualifier json --numthreads 1 --batchsize 2000 -t 1
+HADOOP_CLUSTER=PEACH $bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod-cdh4 -p $CONSUMER_PROPS --table metrics --family data --qualifier json --numthreads 1 --batchsize 2000 -t 2
+HADOOP_CLUSTER=PEACH $bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod-cdh4 -p $CONSUMER_PROPS --table metrics --family data --qualifier json --numthreads 1 --batchsize 2000 -t 3
+HADOOP_CLUSTER=PEACH $bin/consumer $FHR_CONSUMER_CLASS -t metrics -gid fhr-hbase-prod-cdh4 -p $CONSUMER_PROPS --table metrics --family data --qualifier json --numthreads 1 --batchsize 2000 -t 4
+
+# FHR delete
+#HADOOP_CLUSTER=PEACH $bin/consumer $HDFS_DELETE_CONSUMER_CLASS -t metrics -gid  fhr-delete-hdfs-prod -p $CONSUMER_PROPS --validatejson 
 # Testpilot
 HADOOP_CLUSTER=PEACH $bin/consumer $HDFS_CONSUMER_CLASS -t testpilot_.+ -gid testpilot-hdfs-prod -p $CONSUMER_PROPS --validatejson 
 # Marketplace
@@ -20,3 +27,5 @@ HADOOP_CLUSTER=PEACH $bin/consumer $HDFS_CONSUMER_CLASS -t marketplace_.+ -gid m
 # Android Reviews
 HADOOP_CLUSTER=PEACH $bin/consumer $HBASE_CONSUMER_CLASS -t android_release_review -gid android_release_review-hbase-prod -p $CONSUMER_PROPS --table android_release_review --family data --qualifier json
 HADOOP_CLUSTER=PEACH $bin/consumer $HBASE_CONSUMER_CLASS -t android_beta_review -gid android_beta_review-hbase-prod -p $CONSUMER_PROPS --table android_beta_review --family data --qualifier json
+# Lightbeam 
+HADOOP_CLUSTER=PEACH $bin/consumer $HDFS_CONSUMER_CLASS -t lightbeam -gid lightbeam-hdfs-prod -p $CONSUMER_PROPS --validatejson 
