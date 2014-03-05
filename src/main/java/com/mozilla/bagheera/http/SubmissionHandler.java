@@ -189,6 +189,15 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
         writeResponse(OK, e, request.getNamespace(), null);
     }
 
+    private void handleOptions(MessageEvent e, BagheeraHttpRequest request) {
+        HttpResponse response = new DefaultHttpResponse(HTTP_1_1, OK);
+        response.addHeader("Access-Control-Allow-Origin", "*");
+        response.addHeader("Access-Control-Allow-Methods", "POST,PUT,DELETE");
+        response.addHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Content-Length");
+        ChannelFuture future = e.getChannel().write(response);
+        future.addListener(ChannelFutureListener.CLOSE);
+    }
+    
     private void writeResponse(HttpResponseStatus status, MessageEvent e, String namespace, String entity) {
         // Build the response object.
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, status);
@@ -224,6 +233,8 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
                     writeResponse(METHOD_NOT_ALLOWED, e, request.getNamespace(), null);
                 } else if (request.getMethod() == HttpMethod.DELETE) {
                     handleDelete(e, request);
+                } else if (request.getMethod() == HttpMethod.OPTIONS) {
+                    handleOptions(e,request);
                 }
             } else {
                 String remoteIpAddress = HttpUtil.getRemoteAddr(request, ((InetSocketAddress)e.getChannel().getRemoteAddress()).getAddress().getHostAddress());
@@ -234,6 +245,8 @@ public class SubmissionHandler extends SimpleChannelUpstreamHandler {
             writeResponse(INTERNAL_SERVER_ERROR, e, null, null);
         }
     }
+
+    
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
