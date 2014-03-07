@@ -50,6 +50,7 @@ public final class KafkaSequenceFileConsumer extends App {
         options.addOption(optFactory.create("df", "dateformat", true, "Date format for the date subdirectories."));
         options.addOption(optFactory.create("fs", "filesize", true, "Max file size for output files."));
         options.addOption(optFactory.create("b", "usebytes", false, "Use BytesWritable for value rather than Text."));
+        options.addOption(optFactory.create("ts", "addtimestamp", false, "Adds bagheera timestamp to the json"));
         
         CommandLineParser parser = new GnuParser();
         ShutdownHook sh = ShutdownHook.getInstance();
@@ -66,6 +67,7 @@ public final class KafkaSequenceFileConsumer extends App {
             sinkConfig.setString("hdfssink.hdfs.date.format", cmd.getOptionValue("dateformat", "yyyy-MM-dd"));
             sinkConfig.setLong("hdfssink.hdfs.max.filesize", Long.parseLong(cmd.getOptionValue("filesize", "536870912")));
             sinkConfig.setBoolean("hdfssink.hdfs.usebytes", cmd.hasOption("usebytes"));
+            sinkConfig.setBoolean("hdfssink.hdfs.addtimestamp", cmd.hasOption("addtimestamp"));
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(SequenceFileSink.class, sinkConfig);
             sh.addLast(sinkFactory);
             

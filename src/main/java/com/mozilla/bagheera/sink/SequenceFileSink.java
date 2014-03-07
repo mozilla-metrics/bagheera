@@ -41,6 +41,12 @@ import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 import com.yammer.metrics.core.MetricName;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+
 public class SequenceFileSink implements KeyValueSink {
 
     private static final Logger LOG = Logger.getLogger(SequenceFileSink.class);
@@ -55,6 +61,7 @@ public class SequenceFileSink implements KeyValueSink {
     protected Path baseDir;
     protected Path outputPath;
     protected boolean useBytesValue;
+    protected boolean addTimestamp;
     protected long nextRolloverMillis = 0L;
     protected AtomicLong bytesWritten = new AtomicLong();
     protected long maxFileSize = 0L;
@@ -67,17 +74,19 @@ public class SequenceFileSink implements KeyValueSink {
              config.getString("hdfssink.hdfs.basedir.path", "/bagheera"),
              config.getString("hdfssink.hdfs.date.format", "yyyy-MM-dd"),
              config.getLong("hdfssink.hdfs.max.filesize", 536870912),
-             config.getBoolean("hdfssink.hdfs.usebytes", false));
+             config.getBoolean("hdfssink.hdfs.usebytes", false),
+             config.getBoolean("hdfssink.hdfs.addtimestamp",false));
     }
 
     public SequenceFileSink(String namespace, String baseDirPath, String dateFormat, long maxFileSize,
-                            boolean useBytesValue) throws IOException {
+                            boolean useBytesValue,boolean addTimestamp) throws IOException {
         LOG.info("Initializing writer for namespace: " + namespace);
         conf = new Configuration();
         conf.setBoolean("fs.automatic.close", false);
         hdfs = FileSystem.newInstance(conf);
         this.useBytesValue = useBytesValue;
         this.maxFileSize = maxFileSize;
+        this.addTimestamp = addTimestamp;
         sdf = new SimpleDateFormat(dateFormat);
         if (!baseDirPath.endsWith(Path.SEPARATOR)) {
             baseDir = new Path(baseDirPath + Path.SEPARATOR + namespace + Path.SEPARATOR +
@@ -193,10 +202,33 @@ public class SequenceFileSink implements KeyValueSink {
 
     @Override
     public void store(String key, byte[] data, long timestamp) throws IOException {
-        // HDFS sink will currently ignore timestamps
-        store(key, data);
+        try {
+            lock.acquire();
+            checkRollover();
+            if(addTimestamp) {
+                data = addTimestampToJson(data,timestamp);
+            }
+            if (useBytesValue) {
+                writer.append(new Text(key), new BytesWritable(data));
+            } else {
+                writer.append(new Text(key), new Text(data));
+            }
+            stored.mark();
+            bytesWritten.getAndAdd(key.length() + data.length);
+        } catch (IOException e) {
+            LOG.error("IOException while writing key/value pair", e);
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted while writing key/value pair", e);
+        } finally {
+            lock.release();
+        }
     }
 
+    public byte[] addTimestampToJson(byte[] data, long timestamp) {
+        return null;
+    }
+    
     @Override
     public void delete(String key) {
         // TODO: Throw error or just ignore?
