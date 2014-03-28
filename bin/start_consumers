@@ -28,4 +28,4 @@ HADOOP_CLUSTER=PEACH $bin/consumer $HDFS_CONSUMER_CLASS -t marketplace_.+ -gid m
 HADOOP_CLUSTER=PEACH $bin/consumer $HBASE_CONSUMER_CLASS -t android_release_review -gid android_release_review-hbase-prod -p $CONSUMER_PROPS --table android_release_review --family data --qualifier json
 HADOOP_CLUSTER=PEACH $bin/consumer $HBASE_CONSUMER_CLASS -t android_beta_review -gid android_beta_review-hbase-prod -p $CONSUMER_PROPS --table android_beta_review --family data --qualifier json
 # Lightbeam 
-HADOOP_CLUSTER=PEACH $bin/consumer $HDFS_CONSUMER_CLASS -t lightbeam -gid lightbeam-hdfs-prod -p $CONSUMER_PROPS --validatejson 
+HADOOP_CLUSTER=PEACH $bin/consumer $HDFS_CONSUMER_CLASS -t lightbeam -gid lightbeam-hdfs-prod -p $CONSUMER_PROPS --validatejson --addtimestamp

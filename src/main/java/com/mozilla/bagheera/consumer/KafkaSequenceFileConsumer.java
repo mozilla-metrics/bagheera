@@ -67,7 +67,9 @@ public final class KafkaSequenceFileConsumer extends App {
             sinkConfig.setString("hdfssink.hdfs.date.format", cmd.getOptionValue("dateformat", "yyyy-MM-dd"));
             sinkConfig.setLong("hdfssink.hdfs.max.filesize", Long.parseLong(cmd.getOptionValue("filesize", "536870912")));
             sinkConfig.setBoolean("hdfssink.hdfs.usebytes", cmd.hasOption("usebytes"));
-            sinkConfig.setBoolean("hdfssink.hdfs.addtimestamp", cmd.hasOption("addtimestamp"));
+            if(cmd.hasOption("addtimestamp")) {
+                sinkConfig.setBoolean("hdfssink.hdfs.addtimestamp", true);
+            }
             KeyValueSinkFactory sinkFactory = KeyValueSinkFactory.getInstance(SequenceFileSink.class, sinkConfig);
             sh.addLast(sinkFactory);
             
