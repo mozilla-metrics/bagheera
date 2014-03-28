@@ -48,8 +48,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 
 public class SequenceFileSink implements KeyValueSink {
-
     private static final Logger LOG = Logger.getLogger(SequenceFileSink.class);
+    private ObjectMapper jsonMapper = new ObjectMapper();
 
     protected static final long DAY_IN_MILLIS = 86400000L;
 
@@ -68,6 +68,8 @@ public class SequenceFileSink implements KeyValueSink {
     protected final SimpleDateFormat sdf;
 
     protected Meter stored;
+
+    public static final String SINK_TIMESTAMP_FIELD = "BAGHEERA_TS";
 
     public SequenceFileSink(SinkConfiguration config) throws IOException {
         this(config.getString("namespace"),
@@ -225,7 +227,19 @@ public class SequenceFileSink implements KeyValueSink {
         }
     }
 
-    public byte[] addTimestampToJson(byte[] data, long timestamp) {
+    public byte[] addTimestampToJson(byte[] data, long timestamp) throws IOException {
+        // TODO: add metrics/counters for failures
+        try {
+            ObjectNode document = jsonMapper.readValue(data, ObjectNode.class);
+            document.put(SINK_TIMESTAMP_FIELD, timestamp);
+        } catch (JsonParseException e) {
+            LOG.error("Invalid JSON", e);
+            LOG.debug(data);
+        } catch (JsonMappingException e) {
+            LOG.error("Invalid JSON", e);
+            LOG.debug(data);
+        }
+
         return null;
     }
     
