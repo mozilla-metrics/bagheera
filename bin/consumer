@@ -15,7 +15,7 @@ CONSUMER_OPTS="-Dbagheera.log.dir=$bin/../logs -Dconsumer.hash=$CONSUMER_HASH"
 GC_OPTS="-XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintTenuringDistribution -Xloggc:$bin/../logs/consumer-$CONSUMER_HASH-gc.log.$NOW"
 
 if [ "$1" == "com.mozilla.fhr.consumer.FHRConsumer" ]; then
-    JAVA_OPTS="$CONSUMER_OPTS -Xmx4096m -XX:+UseParallelGC"
+    JAVA_OPTS="$CONSUMER_OPTS -Xmx1024m -XX:+UseParallelGC"
 else
     JAVA_OPTS="$CONSUMER_OPTS -Xmx1024m -XX:+UseParallelGC"
 fi

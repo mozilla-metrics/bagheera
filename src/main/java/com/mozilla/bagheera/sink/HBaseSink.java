@@ -37,8 +37,6 @@ import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Logger;
 
-import com.mozilla.bagheera.sink.KeyValueSink;
-import com.mozilla.bagheera.sink.SinkConfiguration;
 import com.mozilla.bagheera.util.IdUtil;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Gauge;
