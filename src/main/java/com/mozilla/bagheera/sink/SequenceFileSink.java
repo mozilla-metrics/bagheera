@@ -232,6 +232,7 @@ public class SequenceFileSink implements KeyValueSink {
         try {
             ObjectNode document = jsonMapper.readValue(data, ObjectNode.class);
             document.put(SINK_TIMESTAMP_FIELD, timestamp);
+            return(jsonMapper.writeValueAsBytes(document));
         } catch (JsonParseException e) {
             LOG.error("Invalid JSON", e);
             LOG.debug(data);
@@ -240,7 +241,7 @@ public class SequenceFileSink implements KeyValueSink {
             LOG.debug(data);
         }
 
-        return null;
+        throw new IOException("Invalid JSON");
     }
     
     @Override
